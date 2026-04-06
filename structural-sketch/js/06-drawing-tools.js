@@ -70,6 +70,16 @@ function setActiveTool(tool) {
         leaderState.startPoint = null;
     }
 
+    // Callout tool
+    if (tool !== 'callout' && typeof calloutState !== 'undefined') {
+        calloutState.placing = false;
+        calloutState.startPoint = null;
+        if (typeof activeCalloutInput !== 'undefined' && activeCalloutInput) {
+            if (activeCalloutInput.parentNode) activeCalloutInput.parentNode.removeChild(activeCalloutInput);
+            activeCalloutInput = null;
+        }
+    }
+
     // Cloud tool
     if (tool !== 'cloud') {
         cloudState.drawing = false;
@@ -234,6 +244,9 @@ function setActiveTool(tool) {
     if (document.getElementById('btn-leader')) {
         document.getElementById('btn-leader').classList.toggle('active', tool === 'leader');
     }
+    if (document.getElementById('btn-callout')) {
+        document.getElementById('btn-callout').classList.toggle('active', tool === 'callout');
+    }
     if (document.getElementById('btn-cloud')) {
         document.getElementById('btn-cloud').classList.toggle('active', tool === 'cloud');
     }
@@ -333,7 +346,7 @@ function setActiveTool(tool) {
     const cursorTools = ['line', 'text', 'polyline', 'rect', 'dim', 'measure',
                          'leader', 'cloud', 'cloudpoly', 'section', 'chaindim',
                          'notes-panel', 'table', 'slab-callout', 'edge', 'fall', 'step',
-                         'rlmarker', 'secref', 'reftag', 'stripFooting', 'wall', 'detail', 'bracingWall', 'buildingEnvelope', 'ridgeLine', 'roofSkeleton'];
+                         'rlmarker', 'secref', 'reftag', 'stripFooting', 'wall', 'detail', 'bracingWall', 'buildingEnvelope', 'ridgeLine', 'roofSkeleton', 'callout'];
     // Column and footing get 'none' cursor — canvas preview replaces it
     const previewTools = ['column', 'footing'];
     if (previewTools.includes(tool)) {
@@ -374,7 +387,8 @@ function setActiveTool(tool) {
         buildingEnvelope: 'Building Envelope',
         ridgeLine: 'Ridge Line',
         roofSkeleton: 'Roof Skeleton',
-        detail: 'Detail Callout'
+        detail: 'Detail Callout',
+        callout: 'Callout'
     };
     document.getElementById('status-tool').textContent = names[tool] || tool;
 
@@ -478,7 +492,7 @@ window.addEventListener('keydown', (e) => {
     if (e.key === 'v') setActiveTool('select');
     if (e.key === 'l') setActiveTool('line');
     if (e.key === 'c') setActiveTool('column');
-    if (e.key === 't') setActiveTool('text');
+    if (e.key === 't') setActiveTool('callout');
     if (e.key === 'b') setActiveTool('bracingWall');
     if (e.key === 'e') setActiveTool('buildingEnvelope');
     if (e.key === 'Escape') {
@@ -1987,7 +2001,7 @@ container.addEventListener('mousedown', (e) => {
         dragState.nodeIndex = -1; // default: drag whole element
 
         // Store original coords based on element type
-        if (hit.type === 'line' || hit.type === 'dimension' || hit.type === 'leader' || hit.type === 'wall' || hit.type === 'stripFooting' || hit.type === 'bracingWall') {
+        if (hit.type === 'line' || hit.type === 'dimension' || hit.type === 'leader' || hit.type === 'callout' || hit.type === 'wall' || hit.type === 'stripFooting' || hit.type === 'bracingWall') {
             dragState.origCoords = { x1: hit.x1, y1: hit.y1, x2: hit.x2, y2: hit.y2 };
 
             // Check if near an endpoint — if so, drag just that node
@@ -2037,7 +2051,7 @@ window.addEventListener('mousemove', (e) => {
     const realDy = dy * CONFIG.drawingScale;
 
     const el = dragState.el;
-    if (el.type === 'line' || el.type === 'dimension' || el.type === 'leader' || el.type === 'edge' || el.type === 'fallarrow' || el.type === 'step' || el.type === 'wall' || el.type === 'stripFooting' || el.type === 'bracingWall') {
+    if (el.type === 'line' || el.type === 'dimension' || el.type === 'leader' || el.type === 'callout' || el.type === 'edge' || el.type === 'fallarrow' || el.type === 'step' || el.type === 'wall' || el.type === 'stripFooting' || el.type === 'bracingWall') {
         if (dragState.nodeIndex === 0) {
             // Drag start node only — use snap for precision
             const snap = findSnap(e.clientX - container.getBoundingClientRect().left, e.clientY - container.getBoundingClientRect().top);
@@ -2103,7 +2117,7 @@ window.addEventListener('mouseup', (e) => {
 
     const el = dragState.el;
     const orig = dragState.origCoords;
-    const isLineType = (el.type === 'line' || el.type === 'dimension' || el.type === 'leader' || el.type === 'edge' || el.type === 'fallarrow' || el.type === 'step' || el.type === 'wall' || el.type === 'stripFooting');
+    const isLineType = (el.type === 'line' || el.type === 'dimension' || el.type === 'leader' || el.type === 'callout' || el.type === 'edge' || el.type === 'fallarrow' || el.type === 'step' || el.type === 'wall' || el.type === 'stripFooting');
     const moved = isLineType
         ? (Math.abs(el.x1 - orig.x1) > 0.1 || Math.abs(el.y1 - orig.y1) > 0.1 || Math.abs(el.x2 - orig.x2) > 0.1 || Math.abs(el.y2 - orig.y2) > 0.1)
         : (el.type === 'polyline' || el.type === 'cloud')

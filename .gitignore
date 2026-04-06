@@ -1,0 +1,16 @@
+# Development workspace — never pushed to GitHub
+**/dev/
+
+# macOS system files
+.DS_Store
+**/.DS_Store
+
+# Claude working files
+**/.claude/
+
+# Editor and IDE files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/

@@ -1156,9 +1156,86 @@ function generateHipRoofFromEnvelope() {
 
 engine.onRender(drawRoofSkeleton);
 
+// ── Windward Face Info (for AS1684 table lookup) ──────────────
+
+/**
+ * For a given wind direction, identify the dominant windward roof face
+ * and return its pitch for use in the AS1684 pressure table lookup.
+ *
+ * The "dominant" face is the one with the largest plan area that is
+ * facing into the wind (its centroid is on the windward side of the
+ * building centre).
+ *
+ * @param {object} skeleton - committed roofSkeleton element
+ * @param {number} windAngleRad - 0 = +X wind, Math.PI/2 = +Y wind
+ * @returns {{ dominantPitch: number, faceCount: number } | null}
+ */
+function getWindwardFaceInfo(skeleton, windAngleRad) {
+    if (!skeleton || !skeleton.faces || !skeleton.nodes) return null;
+
+    const windX = Math.cos(windAngleRad);
+    const windY = Math.sin(windAngleRad);
+
+    // Build node position lookup (real-world mm)
+    const nodePos = {};
+    for (const n of skeleton.nodes) nodePos[n.id] = { x: n.x, y: n.y };
+
+    // Building centroid from envelope-source nodes (the footprint corners)
+    const envNodes = skeleton.nodes.filter(n => n.source === 'envelope');
+    if (envNodes.length === 0) return null;
+    const cx = envNodes.reduce((s, n) => s + n.x, 0) / envNodes.length;
+    const cy = envNodes.reduce((s, n) => s + n.y, 0) / envNodes.length;
+
+    let dominantPitch = null;
+    let dominantWeight = 0;
+    let faceCount = 0;
+
+    for (const face of skeleton.faces) {
+        if (face.pitch == null) continue;
+
+        // Use the pre-computed face centroid
+        const fcx = face.centroid ? face.centroid.x : null;
+        const fcy = face.centroid ? face.centroid.y : null;
+        if (fcx == null) continue;
+
+        // Direction from building centre → face centroid = outward normal (plan)
+        const dx = fcx - cx;
+        const dy = fcy - cy;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        if (len < 1) continue;
+
+        // Windward check: outward normal has positive component in wind direction
+        const dot = (dx / len) * windX + (dy / len) * windY;
+        if (dot <= 0) continue;
+
+        faceCount++;
+
+        // Plan area as weight (shoelace using nodeIds)
+        const pts = (face.nodeIds || []).map(id => nodePos[id]).filter(Boolean);
+        if (pts.length < 3) continue;
+        let planArea = 0;
+        for (let i = 0; i < pts.length; i++) {
+            const j = (i + 1) % pts.length;
+            planArea += pts[i].x * pts[j].y - pts[j].x * pts[i].y;
+        }
+        planArea = Math.abs(planArea) / 2;
+
+        // Weight = plan area × alignment with wind direction
+        const weight = planArea * dot;
+        if (weight > dominantWeight) {
+            dominantWeight = weight;
+            dominantPitch = face.pitch;
+        }
+    }
+
+    return dominantPitch !== null ? { dominantPitch, faceCount } : null;
+}
+
+
 // ── Global Exports ───────────────────────────────────────────
 
 window.findSkeletonElement         = findSkeletonElement;
 window.startDrawSkeleton           = startDrawSkeleton;
 window.buildRoofModelFromSkeleton  = buildRoofModelFromSkeleton;
 window.generateHipRoofFromEnvelope = generateHipRoofFromEnvelope;
+window.getWindwardFaceInfo         = getWindwardFaceInfo;

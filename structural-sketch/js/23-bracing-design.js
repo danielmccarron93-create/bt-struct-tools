@@ -703,10 +703,25 @@ function calcWindDemand(bbox, settings) {
     const skeleton = typeof findSkeletonElement === 'function' ? findSkeletonElement() : null;
     const ridge    = findRidgeElement();
 
+    // eavesH = height of eaves above the floor of the storey being designed.
+    // For single storey: use ceilingHeight (the wall height of the one storey).
+    // For upper/lower of two-storey: use RF level elevation (absolute height above GF).
+    // The RF level elevation is only meaningful when it matches the actual building height.
     const rfLevel = typeof levelSystem !== 'undefined'
         ? levelSystem.levels.find(l => l.id === 'RF' || l.name.toLowerCase().includes('roof'))
         : null;
-    const eavesH = rfLevel ? rfLevel.elevation : (settings.ceilingHeight || 2700);
+    const ceilH_mm = settings.ceilingHeight || 2700;
+    let eavesH;
+    if (storeyPos === 'single') {
+        // Single storey: eaves = one ceiling height above floor
+        eavesH = ceilH_mm;
+    } else if (storeyPos === 'upper') {
+        // Upper storey of two-storey: eaves = RF level elevation if set, else 2 × ceilH
+        eavesH = rfLevel ? rfLevel.elevation : ceilH_mm * 2;
+    } else {
+        // Lower storey: only bracing the lower floor, wall height = one ceilH
+        eavesH = ceilH_mm;
+    }
 
     let xArea_m2, yArea_m2, areaMethod;
 
@@ -754,20 +769,33 @@ function calcWindDemand(bbox, settings) {
     const xIsLongSide = dimY >= dimX;
     const yIsLongSide = dimX >= dimY;
 
+    // Per-direction pitch: use dominant windward face pitch from skeleton when available,
+    // otherwise fall back to the global roofPitch setting.
+    let xPitch = roofPitch;
+    let yPitch = roofPitch;
+    if (skeletonReady && skeleton && typeof getWindwardFaceInfo === 'function') {
+        const xFaceInfo = getWindwardFaceInfo(skeleton, 0);           // X-dir wind (+X)
+        const yFaceInfo = getWindwardFaceInfo(skeleton, Math.PI / 2); // Y-dir wind (+Y)
+        if (xFaceInfo) xPitch = xFaceInfo.dominantPitch;
+        if (yFaceInfo) yPitch = yFaceInfo.dominantPitch;
+    }
+
     const xWindDir = xIsLongSide ? 'longSide' : 'shortEnd';
     const xBuildingWidth = dimX;
-    const xPressure = lookupWindPressure(windClass, xBuildingWidth, roofPitch, roofType, storeyPos, xWindDir);
+    const xPressure = lookupWindPressure(windClass, xBuildingWidth, xPitch, roofType, storeyPos, xWindDir);
     const xDemand = xArea_m2 * xPressure.pressure;
 
     const yWindDir = yIsLongSide ? 'longSide' : 'shortEnd';
     const yBuildingWidth = dimY;
-    const yPressure = lookupWindPressure(windClass, yBuildingWidth, roofPitch, roofType, storeyPos, yWindDir);
+    const yPressure = lookupWindPressure(windClass, yBuildingWidth, yPitch, roofType, storeyPos, yWindDir);
     const yDemand = yArea_m2 * yPressure.pressure;
 
     // Build breakdowns
     const methodTag = areaMethod === 'simplified' ? '' : ` (${areaMethod})`;
-    const xBreakdown = `${xArea_m2.toFixed(1)} m\u00B2${methodTag} \u00D7 ${xPressure.pressure.toFixed(3)} kPa (Tbl ${xPressure.tableRef}) = ${xDemand.toFixed(1)} kN`;
-    const yBreakdown = `${yArea_m2.toFixed(1)} m\u00B2${methodTag} \u00D7 ${yPressure.pressure.toFixed(3)} kPa (Tbl ${yPressure.tableRef}) = ${yDemand.toFixed(1)} kN`;
+    const xPitchTag = (skeletonReady && xPitch !== roofPitch) ? ` @${xPitch}°` : ` @${xPitch}°`;
+    const yPitchTag = (skeletonReady && yPitch !== roofPitch) ? ` @${yPitch}°` : ` @${yPitch}°`;
+    const xBreakdown = `${xArea_m2.toFixed(1)} m\u00B2${methodTag} \u00D7 ${xPressure.pressure.toFixed(3)} kPa${xPitchTag} (Tbl ${xPressure.tableRef}) = ${xDemand.toFixed(1)} kN`;
+    const yBreakdown = `${yArea_m2.toFixed(1)} m\u00B2${methodTag} \u00D7 ${yPressure.pressure.toFixed(3)} kPa${yPitchTag} (Tbl ${yPressure.tableRef}) = ${yDemand.toFixed(1)} kN`;
 
     return {
         xDemand: Math.round(xDemand * 10) / 10,

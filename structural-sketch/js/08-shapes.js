@@ -681,15 +681,16 @@ const leaderState = {
 let activeLeaderInput = null;
 
 document.getElementById('btn-leader').addEventListener('click', () => setActiveTool('leader'));
+document.getElementById('btn-callout').addEventListener('click', () => setActiveTool('callout'));
 
 // Extend setActiveTool
-// E/Q = leader, W/G = cloud, S = section
+// E/Q = leader, W = cloud, S = section (T = callout mapped in 06-drawing-tools)
 window.addEventListener('keydown', (e) => {
     if (document.activeElement !== document.body) return;
     if (e.ctrlKey || e.metaKey) return;
     if (e.key === 'e' || e.key === 'q') setActiveTool('leader');
     if (e.key === 'w') setActiveTool('cloud');
-    if (e.key === 'g') { setActiveTool('grids'); activateGridTool(); }
+    // 'g' — reserved for future use
     if (e.key === 's') { e.preventDefault(); setActiveTool('section'); }
 });
 
@@ -1591,6 +1592,313 @@ engine.onRender(() => {
         }
     }
 });
+
+// ══════════════════════════════════════════════════════════
+// ── Callout Tool (G) ─────────────────────────────────────
+// Click arrow tip → click text box position → type label → Enter
+// Renders as: bordered text box + leader line with filled arrowhead
+// ══════════════════════════════════════════════════════════
+
+const calloutState = {
+    placing: false,
+    startPoint: null,   // arrow tip, sheet-mm
+    currentEnd: null,   // preview endpoint, sheet-mm
+};
+let activeCalloutInput = null;
+
+function getCalloutPos(e) {
+    const rect = container.getBoundingClientRect();
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    const snap = findSnap(sx, sy);
+    return snap ? { x: snap.x, y: snap.y } : engine.coords.screenToSheet(sx, sy);
+}
+
+// Mousemove — update preview
+container.addEventListener('mousemove', (e) => {
+    if (activeTool === 'callout') {
+        calloutState.currentEnd = getCalloutPos(e);
+        engine.requestRender();
+    }
+});
+
+// Mousedown — first click = arrow tip, second click = text box position
+container.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    if (engine._spaceDown || engine._isPanning) return;
+    if (activeTool !== 'callout') return;
+    if (pdfState.calibrating) return;
+    if (activeCalloutInput) return;
+
+    const pos = getCalloutPos(e);
+
+    if (!calloutState.placing) {
+        // First click — set arrow tip
+        calloutState.placing = true;
+        calloutState.startPoint = pos;
+    } else {
+        // Second click — show text input at this position
+        const endPos = pos;
+        const screenEnd = engine.coords.sheetToScreen(endPos.x, endPos.y);
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'text-input-overlay';
+        input.style.left = screenEnd.x + 'px';
+        input.style.top = (screenEnd.y - 14) + 'px';
+        input.style.width = '150px';
+        input.style.fontSize = '12px';
+        input.placeholder = 'Callout text...';
+        input.style.border = '1px solid #2B7CD0';
+        input.style.background = 'rgba(255,255,255,0.95)';
+        input._arrowPt = { x: calloutState.startPoint.x, y: calloutState.startPoint.y };
+        input._endPt = { x: endPos.x, y: endPos.y };
+
+        container.appendChild(input);
+        setTimeout(() => input.focus(), 30);
+        activeCalloutInput = input;
+
+        input.addEventListener('keydown', (ev) => {
+            ev.stopPropagation();
+            if (ev.key === 'Enter') { ev.preventDefault(); commitCallout(); }
+            if (ev.key === 'Escape') { ev.preventDefault(); cancelCallout(); }
+        });
+        input.addEventListener('blur', () => {
+            setTimeout(() => { if (activeCalloutInput === input) commitCallout(); }, 150);
+        });
+
+        calloutState.placing = false;
+        calloutState.startPoint = null;
+    }
+});
+
+// Right-click cancel
+container.addEventListener('contextmenu', (e) => {
+    if (activeTool === 'callout' && calloutState.placing) {
+        e.preventDefault();
+        calloutState.placing = false;
+        calloutState.startPoint = null;
+        engine.requestRender();
+    }
+});
+
+function commitCallout() {
+    if (!activeCalloutInput) return;
+    const input = activeCalloutInput;
+    const text = input.value.trim();
+    activeCalloutInput = null;
+    if (input.parentNode) input.parentNode.removeChild(input);
+
+    if (!text) { engine.requestRender(); return; }
+
+    const arrowReal = engine.coords.sheetToReal(input._arrowPt.x, input._arrowPt.y);
+    const endReal = engine.coords.sheetToReal(input._endPt.x, input._endPt.y);
+    const textSizeSelect = document.getElementById('text-size');
+    const fontSize = textSizeSelect ? parseFloat(textSizeSelect.value) : 3.5;
+
+    const newCallout = {
+        id: generateId(),
+        type: 'callout',
+        layer: 'S-ANNO',
+        x1: arrowReal.x, y1: arrowReal.y,  // arrow tip
+        x2: endReal.x, y2: endReal.y,       // text box anchor
+        text: text,
+        fontSize: fontSize,
+    };
+
+    history.execute({
+        description: 'Add callout: ' + text,
+        execute() { project.elements.push(newCallout); },
+        undo() {
+            const i = project.elements.indexOf(newCallout);
+            if (i !== -1) project.elements.splice(i, 1);
+        }
+    });
+    engine.requestRender();
+}
+
+function cancelCallout() {
+    if (!activeCalloutInput) return;
+    const input = activeCalloutInput;
+    activeCalloutInput = null;
+    if (input.parentNode) input.parentNode.removeChild(input);
+    engine.requestRender();
+}
+
+// ── Callout Rendering + Preview ──────────────────────────
+
+const prevPhase9Draw = phase9Draw;
+const calloutDraw = function(ctx, eng) {
+    prevPhase9Draw(ctx, eng);
+
+    const coords = eng.coords;
+    const zoom = eng.viewport.zoom;
+
+    // Render committed callout elements
+    for (const el of project.getVisibleElements()) {
+        if (el.type !== 'callout') continue;
+
+        const layer = project.layers[el.layer];
+        if (!layer || !layer.visible) continue;
+
+        const isSelected = (selectedElement === el);
+        const tip = coords.realToScreen(el.x1, el.y1);
+        const end = coords.realToScreen(el.x2, el.y2);
+        const color = isSelected ? '#2B7CD0' : layer.color;
+
+        // ── Leader line ──
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.max(1, 0.25 * zoom);
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(tip.x, tip.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.stroke();
+
+        // ── Filled arrowhead at tip ──
+        const angle = Math.atan2(tip.y - end.y, tip.x - end.x);
+        const arrowLen = Math.max(6, 2.5 * zoom);
+        const arrowW = Math.PI / 7;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(tip.x, tip.y);
+        ctx.lineTo(tip.x - arrowLen * Math.cos(angle - arrowW), tip.y - arrowLen * Math.sin(angle - arrowW));
+        ctx.lineTo(tip.x - arrowLen * Math.cos(angle + arrowW), tip.y - arrowLen * Math.sin(angle + arrowW));
+        ctx.closePath();
+        ctx.fill();
+
+        // ── Text box with border ──
+        if (el.text) {
+            const fontSize = Math.max(7, (el.fontSize || 3.5) * zoom);
+            ctx.font = `${fontSize}px "Architects Daughter", cursive`;
+
+            const metrics = ctx.measureText(el.text);
+            const padX = Math.max(4, 1.5 * zoom);
+            const padY = Math.max(3, 1.0 * zoom);
+            const boxW = metrics.width + padX * 2;
+            const boxH = fontSize + padY * 2;
+
+            // Position box: anchor from the line endpoint
+            const textLeft = end.x > tip.x;
+            const boxX = textLeft ? end.x : end.x - boxW;
+            const boxY = end.y - boxH / 2;
+
+            // White fill behind text
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+            ctx.fillRect(boxX, boxY, boxW, boxH);
+
+            // Thin border
+            ctx.strokeStyle = color;
+            ctx.lineWidth = Math.max(0.5, 0.18 * zoom);
+            ctx.setLineDash([]);
+            ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+            // Text
+            ctx.fillStyle = color;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(el.text, boxX + padX, boxY + boxH / 2);
+        }
+
+        // ── Selection handles ──
+        if (isSelected) {
+            ctx.fillStyle = '#2B7CD0';
+            ctx.fillRect(tip.x - 3, tip.y - 3, 6, 6);
+            ctx.fillRect(end.x - 3, end.y - 3, 6, 6);
+        }
+    }
+
+    // ── Callout preview while placing ──
+    if (activeTool === 'callout' && calloutState.placing && calloutState.startPoint && calloutState.currentEnd) {
+        const tip = coords.sheetToScreen(calloutState.startPoint.x, calloutState.startPoint.y);
+        const end = coords.sheetToScreen(calloutState.currentEnd.x, calloutState.currentEnd.y);
+
+        // Preview line
+        ctx.strokeStyle = '#2B7CD0';
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.6;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(tip.x, tip.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.stroke();
+
+        // Preview arrowhead
+        const angle = Math.atan2(tip.y - end.y, tip.x - end.x);
+        const arrowLen = 8;
+        ctx.fillStyle = '#2B7CD0';
+        ctx.beginPath();
+        ctx.moveTo(tip.x, tip.y);
+        ctx.lineTo(tip.x - arrowLen * Math.cos(angle - 0.4), tip.y - arrowLen * Math.sin(angle - 0.4));
+        ctx.lineTo(tip.x - arrowLen * Math.cos(angle + 0.4), tip.y - arrowLen * Math.sin(angle + 0.4));
+        ctx.closePath();
+        ctx.fill();
+
+        // Preview text box outline
+        const previewBoxW = 80;
+        const previewBoxH = 20;
+        const textLeft = end.x > tip.x;
+        const boxX = textLeft ? end.x : end.x - previewBoxW;
+        const boxY = end.y - previewBoxH / 2;
+
+        ctx.strokeStyle = '#2B7CD0';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 3]);
+        ctx.strokeRect(boxX, boxY, previewBoxW, previewBoxH);
+        ctx.setLineDash([]);
+
+        // Dot at arrow tip
+        ctx.beginPath(); ctx.arc(tip.x, tip.y, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1.0;
+    }
+};
+
+// Replace in render callbacks
+const cbIdx4 = engine._renderCallbacks.indexOf(phase9Draw);
+if (cbIdx4 !== -1) engine._renderCallbacks[cbIdx4] = calloutDraw;
+
+// ── Callout hit-testing ──────────────────────────────────
+// Patch hitTestElement to detect callout elements
+const prevHitTest3 = hitTestElement;
+hitTestElement = function(sheetPos) {
+    // Check callouts first (they render on top)
+    const tolerance = 6 / engine.viewport.zoom;
+    for (let i = project.elements.length - 1; i >= 0; i--) {
+        const el = project.elements[i];
+        if (el.type !== 'callout') continue;
+        const layer = project.layers[el.layer];
+        if (!layer || !layer.visible) continue;
+
+        const p1 = engine.coords.realToSheet(el.x1, el.y1);
+        const p2 = engine.coords.realToSheet(el.x2, el.y2);
+
+        // Hit on leader line
+        if (pointToSegmentDist(sheetPos.x, sheetPos.y, p1.x, p1.y, p2.x, p2.y) < tolerance + 2)
+            return el;
+
+        // Hit on text box area
+        if (el.text) {
+            const zoom = engine.viewport.zoom;
+            const fontSize = Math.max(7, (el.fontSize || 3.5) * zoom);
+            const screenEnd = engine.coords.sheetToScreen(p2.x, p2.y);
+            const ctx = engine.ctx;
+            ctx.font = `${fontSize}px "Architects Daughter", cursive`;
+            const metrics = ctx.measureText(el.text);
+            const padX = Math.max(4, 1.5 * zoom);
+            const padY = Math.max(3, 1.0 * zoom);
+            const boxW = (metrics.width + padX * 2) / zoom;
+            const boxH = (fontSize + padY * 2) / zoom;
+
+            const textLeft = p2.x > p1.x;
+            const boxSheetX = textLeft ? p2.x : p2.x - boxW;
+            const boxSheetY = p2.y - boxH / 2;
+
+            if (sheetPos.x >= boxSheetX - tolerance && sheetPos.x <= boxSheetX + boxW + tolerance &&
+                sheetPos.y >= boxSheetY - tolerance && sheetPos.y <= boxSheetY + boxH + tolerance)
+                return el;
+        }
+    }
+    return prevHitTest3(sheetPos);
+};
 
 // ── Hatch PDF Export Patch ────────────────────────────────
 // Note: hatches are complex patterns — the PDF export currently renders
