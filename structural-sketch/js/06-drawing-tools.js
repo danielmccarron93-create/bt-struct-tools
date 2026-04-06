@@ -72,8 +72,11 @@ function setActiveTool(tool) {
 
     // Callout tool
     if (tool !== 'callout' && typeof calloutState !== 'undefined') {
-        calloutState.placing = false;
-        calloutState.startPoint = null;
+        calloutState.phase = 0;
+        calloutState.arrowPt = null;
+        calloutState.boxStart = null;
+        calloutState.boxEnd = null;
+        calloutState.currentEnd = null;
         if (typeof activeCalloutInput !== 'undefined' && activeCalloutInput) {
             if (activeCalloutInput.parentNode) activeCalloutInput.parentNode.removeChild(activeCalloutInput);
             activeCalloutInput = null;
@@ -82,6 +85,9 @@ function setActiveTool(tool) {
 
     // Text box tool
     if (tool !== 'textbox' && typeof textboxState !== 'undefined') {
+        textboxState.phase = 0;
+        textboxState.boxStart = null;
+        textboxState.boxEnd = null;
         if (typeof activeTextboxInput !== 'undefined' && activeTextboxInput) {
             if (activeTextboxInput.parentNode) activeTextboxInput.parentNode.removeChild(activeTextboxInput);
             activeTextboxInput = null;
