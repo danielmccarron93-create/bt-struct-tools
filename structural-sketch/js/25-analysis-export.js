@@ -175,9 +175,11 @@ function extractAnalysisNodes() {
 
     // ── Label nodes from structural grids ──
     if (typeof structuralGrids !== 'undefined' && structuralGrids.length > 0) {
-        const vGrids = structuralGrids.filter(g => g.axis === 'V')
+        const orthoGrids = structuralGrids.filter(g => typeof isOrthoGrid === 'function' ? isOrthoGrid(g) : !g.type || g.type === 'ortho');
+        const angledGrids = structuralGrids.filter(g => typeof isAngledGrid === 'function' ? isAngledGrid(g) : g.type === 'angled');
+        const vGrids = orthoGrids.filter(g => g.axis === 'V')
             .sort((a, b) => a.position - b.position);
-        const hGrids = structuralGrids.filter(g => g.axis === 'H')
+        const hGrids = orthoGrids.filter(g => g.axis === 'H')
             .sort((a, b) => a.position - b.position);
 
         for (const node of nodes) {
@@ -199,6 +201,24 @@ function extractAnalysisNodes() {
                 if (Math.abs(g.position - yMM) < tol) {
                     hLabel = g.label;
                     break;
+                }
+            }
+
+            // Check angled grids — find nearest by point-to-line distance
+            if (!vLabel && !hLabel) {
+                for (const g of angledGrids) {
+                    // Use real-world mm coordinates for angled grids
+                    const dx = g.x2 - g.x1, dy = g.y2 - g.y1;
+                    const lenSq = dx * dx + dy * dy;
+                    if (lenSq < 0.01) continue;
+                    let t = ((xMM - g.x1) * dx + (yMM - g.y1) * dy) / lenSq;
+                    t = Math.max(0, Math.min(1, t));
+                    const nx = g.x1 + t * dx, ny = g.y1 + t * dy;
+                    const dist = Math.sqrt((xMM - nx) ** 2 + (yMM - ny) ** 2);
+                    if (dist < tol) {
+                        vLabel = g.label; // use as primary label
+                        break;
+                    }
                 }
             }
 

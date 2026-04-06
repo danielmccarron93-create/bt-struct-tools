@@ -66,15 +66,23 @@ function findSnap(screenX, screenY) {
 
     // ── Structural grid intersections (P1 — highest, boosted radius) ──
     if (snapState.gridLineSnap && snapState.intersectionSnap) {
-        for (const g1 of structuralGrids) {
-            if (g1.axis !== 'V') continue;
-            for (const g2 of structuralGrids) {
-                if (g2.axis !== 'H') continue;
-                const ix = engine.coords.drawArea.left + g1.position / CONFIG.drawingScale;
-                const iy = engine.coords.drawArea.top + g2.position / CONFIG.drawingScale;
-                const d = dist2d(sheetPos.x, sheetPos.y, ix, iy);
+        for (let i = 0; i < structuralGrids.length; i++) {
+            for (let j = i + 1; j < structuralGrids.length; j++) {
+                const g1 = structuralGrids[i];
+                const g2 = structuralGrids[j];
+
+                // Skip grids in hidden zones
+                if (!isGridZoneVisible(g1) || !isGridZoneVisible(g2)) continue;
+
+                // For ortho grids: only intersect V with H (skip V-V and H-H)
+                if (isOrthoGrid(g1) && isOrthoGrid(g2) && g1.axis === g2.axis) continue;
+
+                const pt = gridIntersection(g1, g2);
+                if (!pt) continue;
+
+                const d = dist2d(sheetPos.x, sheetPos.y, pt.x, pt.y);
                 if (d < boostRadius) {
-                    candidates.push({ x: ix, y: iy, type: SNAP_TYPES.INTERSECTION, dist: d, priority: 1 });
+                    candidates.push({ x: pt.x, y: pt.y, type: SNAP_TYPES.INTERSECTION, dist: d, priority: 1 });
                 }
             }
         }
@@ -295,18 +303,16 @@ function findSnap(screenX, screenY) {
     // ── Single-axis structural grid line snaps (P4) ──
     if (snapState.gridLineSnap) {
         for (const grid of structuralGrids) {
-            if (grid.axis === 'V') {
-                const gx = engine.coords.drawArea.left + grid.position / CONFIG.drawingScale;
-                const d = Math.abs(sheetPos.x - gx);
-                if (d < radiusMM) {
-                    candidates.push({ x: gx, y: sheetPos.y, type: SNAP_TYPES.GRIDLINE, dist: d, priority: 4 });
-                }
-            } else {
-                const gy = engine.coords.drawArea.top + grid.position / CONFIG.drawingScale;
-                const d = Math.abs(sheetPos.y - gy);
-                if (d < radiusMM) {
-                    candidates.push({ x: sheetPos.x, y: gy, type: SNAP_TYPES.GRIDLINE, dist: d, priority: 4 });
-                }
+            if (!isGridZoneVisible(grid)) continue;
+            const snap = distToGrid(grid, sheetPos.x, sheetPos.y);
+            if (snap.dist < radiusMM) {
+                candidates.push({
+                    x: snap.nearestX,
+                    y: snap.nearestY,
+                    type: SNAP_TYPES.GRIDLINE,
+                    dist: snap.dist,
+                    priority: 4
+                });
             }
         }
     }
@@ -565,10 +571,68 @@ if (statusAutoLink) {
 // ── Structural Grid Data ─────────────────────────────────
 
 /**
- * Structural grids. Each grid is:
- * { id, axis: 'V'|'H', position: real-world mm, label: string }
+ * Structural grids. Two types are supported:
+ *
+ * ORTHOGONAL (classic, backward-compatible):
+ * { id, type:'ortho', axis:'V'|'H', position: real-world mm, label, zone? }
+ *
+ * ANGLED (finite-extent line at any angle):
+ * { id, type:'angled', x1, y1, x2, y2, angle, label, zone? }
+ *   - x1,y1,x2,y2 are in real-world mm (same coordinate space as position)
+ *   - angle is in degrees, computed from the endpoints
+ *   - zone groups grids that share the same rotation (e.g. 'Main', 'Wing')
+ *
+ * Grids loaded from old save files without a 'type' field are treated as 'ortho'.
  */
 const structuralGrids = [];
+
+/**
+ * Grid Zones — groups of grids that share the same orientation / area.
+ * Each zone: { id, name, angle (representative), visible: bool, color }
+ * The 'Main' zone is the default for orthogonal grids.
+ */
+const gridZones = [];
+
+/** Default zone colours — cycled through as new zones are created */
+const ZONE_COLOURS = [
+    '#808080', // grey  — Main (ortho)
+    '#2B7CD0', // blue  — first angled
+    '#D04B2B', // red
+    '#2BD070', // green
+    '#D0A02B', // amber
+    '#8B2BD0', // purple
+];
+
+/** Ensure a default 'Main' zone exists; return it */
+function ensureMainZone() {
+    let main = gridZones.find(z => z.id === 'main');
+    if (!main) {
+        main = { id: 'main', name: 'Main', angle: 0, visible: true, color: ZONE_COLOURS[0] };
+        gridZones.push(main);
+    }
+    return main;
+}
+
+/** Create a new zone; returns the zone object */
+function createGridZone(name, angle) {
+    const id = 'zone_' + generateId();
+    const colorIdx = gridZones.length % ZONE_COLOURS.length;
+    const zone = { id, name, angle: Math.round(angle * 10) / 10, visible: true, color: ZONE_COLOURS[colorIdx] };
+    gridZones.push(zone);
+    return zone;
+}
+
+/** Find a zone by id. Returns undefined if not found. */
+function findGridZone(zoneId) {
+    return gridZones.find(z => z.id === zoneId);
+}
+
+/** Check if a grid's zone is visible (defaults to visible if no zone set) */
+function isGridZoneVisible(grid) {
+    if (!grid.zone) return true;
+    const zone = findGridZone(grid.zone);
+    return zone ? zone.visible : true;
+}
 
 // Per-axis label counters and scheme ('num' or 'alpha')
 const gridLabelState = {
@@ -587,6 +651,118 @@ function nextGridLabel(axis) {
     }
 }
 
+/* ── Grid type helpers ─────────────────────────────────────
+ * These provide a consistent way to query grid properties regardless
+ * of whether the grid is ortho or angled.  Every function that reads
+ * grid data should use these instead of directly checking grid.axis.
+ */
+
+/** Normalise a grid loaded from JSON — adds type:'ortho' if missing, ensures zone. */
+function normaliseGrid(g) {
+    if (!g.type) g.type = 'ortho';
+    if (!g.zone) {
+        ensureMainZone();
+        g.zone = 'main';
+    }
+    return g;
+}
+
+/** Is this grid an orthogonal (V or H) grid? */
+function isOrthoGrid(g) { return (!g.type || g.type === 'ortho'); }
+
+/** Is this grid an angled (finite-extent) grid? */
+function isAngledGrid(g) { return g.type === 'angled'; }
+
+/**
+ * Get the two endpoints of a grid in sheet-mm coordinates.
+ * For ortho grids the line spans the full drawing area.
+ * For angled grids the endpoints are defined directly.
+ */
+function gridEndpoints(g) {
+    const da = engine.coords.drawArea;
+    if (isOrthoGrid(g)) {
+        if (g.axis === 'V') {
+            const sx = da.left + g.position / CONFIG.drawingScale;
+            return { x1: sx, y1: da.top, x2: sx, y2: da.bottom };
+        } else {
+            const sy = da.top + g.position / CONFIG.drawingScale;
+            return { x1: da.left, y1: sy, x2: da.right, y2: sy };
+        }
+    } else {
+        // Angled grid — convert real-world mm to sheet-mm
+        return {
+            x1: da.left + g.x1 / CONFIG.drawingScale,
+            y1: da.top  + g.y1 / CONFIG.drawingScale,
+            x2: da.left + g.x2 / CONFIG.drawingScale,
+            y2: da.top  + g.y2 / CONFIG.drawingScale,
+        };
+    }
+}
+
+/**
+ * Perpendicular distance from point (px,py) to the grid line segment.
+ * Returns { dist, nearestX, nearestY, t } where t is 0..1 along segment.
+ * For ortho grids uses the simple axis-aligned fast path.
+ */
+function distToGrid(g, px, py) {
+    const ep = gridEndpoints(g);
+    const dx = ep.x2 - ep.x1, dy = ep.y2 - ep.y1;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq < 0.0001) return { dist: Infinity, nearestX: ep.x1, nearestY: ep.y1, t: 0 };
+
+    // Clamp t to [0,1] for finite-extent grids; ortho grids span full area so always in range
+    let t = ((px - ep.x1) * dx + (py - ep.y1) * dy) / lenSq;
+    if (isAngledGrid(g)) t = Math.max(0, Math.min(1, t));
+
+    const nx = ep.x1 + t * dx;
+    const ny = ep.y1 + t * dy;
+    const dist = Math.sqrt((px - nx) ** 2 + (py - ny) ** 2);
+    return { dist, nearestX: nx, nearestY: ny, t };
+}
+
+/**
+ * Compute the intersection point of two grid lines.
+ * Returns { x, y } in sheet-mm or null if they are parallel / don't intersect
+ * within both grids' extents.
+ */
+function gridIntersection(g1, g2) {
+    const a = gridEndpoints(g1);
+    const b = gridEndpoints(g2);
+
+    const d1x = a.x2 - a.x1, d1y = a.y2 - a.y1;
+    const d2x = b.x2 - b.x1, d2y = b.y2 - b.y1;
+
+    const denom = d1x * d2y - d1y * d2x;
+    if (Math.abs(denom) < 1e-10) return null; // parallel
+
+    const t = ((b.x1 - a.x1) * d2y - (b.y1 - a.y1) * d2x) / denom;
+    const u = ((b.x1 - a.x1) * d1y - (b.y1 - a.y1) * d1x) / denom;
+
+    // For angled grids, intersection must lie within both segments
+    if (isAngledGrid(g1) && (t < -0.01 || t > 1.01)) return null;
+    if (isAngledGrid(g2) && (u < -0.01 || u > 1.01)) return null;
+
+    return { x: a.x1 + t * d1x, y: a.y1 + t * d1y };
+}
+
+/**
+ * Serialise a grid for JSON save. Includes all fields needed for both types.
+ */
+function serialiseGrid(g) {
+    const base = { id: g.id, label: g.label, type: g.type || 'ortho' };
+    if (g.zone) base.zone = g.zone;
+
+    if (isOrthoGrid(g)) {
+        base.axis = g.axis;
+        base.position = g.position;
+    } else {
+        base.x1 = g.x1; base.y1 = g.y1;
+        base.x2 = g.x2; base.y2 = g.y2;
+        base.angle = g.angle;
+    }
+    return base;
+}
+
 // ── Structural Grid Rendering ────────────────────────────
 
 function drawStructuralGrids(ctx, eng) {
@@ -601,67 +777,139 @@ function drawStructuralGrids(ctx, eng) {
     ctx.save();
 
     for (const grid of structuralGrids) {
+        // Skip grids in hidden zones
+        if (!isGridZoneVisible(grid)) continue;
+
         const isSelected = (gridToolState.selectedGrid === grid);
 
-        // Grid line style — Revit convention: grey, thin, solid
-        ctx.strokeStyle = isSelected ? '#2B7CD0' : '#808080';
+        // Grid line style — use zone colour if available, else grey
+        const zone = grid.zone ? findGridZone(grid.zone) : null;
+        const zoneColor = zone ? zone.color : '#808080';
+        ctx.strokeStyle = isSelected ? '#2B7CD0' : zoneColor;
         ctx.lineWidth = Math.max(0.5, (isSelected ? 0.3 : 0.18) * zoom);
         ctx.setLineDash([]);
 
-        if (grid.axis === 'V') {
-            const sx = da.left + grid.position / CONFIG.drawingScale;
-            if (sx < da.left || sx > da.right) continue;
+        if (isOrthoGrid(grid)) {
+            // ── Classic orthogonal grid ──────────────────────
+            if (grid.axis === 'V') {
+                const sx = da.left + grid.position / CONFIG.drawingScale;
+                if (sx < da.left || sx > da.right) continue;
 
-            const p1 = coords.sheetToScreen(sx, da.top);
-            const p2 = coords.sheetToScreen(sx, da.bottom);
+                const p1 = coords.sheetToScreen(sx, da.top);
+                const p2 = coords.sheetToScreen(sx, da.bottom);
+
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+
+                // Bubble at top
+                const bubbleCenter = coords.sheetToScreen(sx, da.top - bubbleOffset);
+                drawGridBubble(ctx, bubbleCenter.x, bubbleCenter.y, bubbleR * zoom, grid.label, isSelected, zoom);
+
+            } else {
+                const sy = da.top + grid.position / CONFIG.drawingScale;
+                if (sy < da.top || sy > da.bottom) continue;
+
+                const p1 = coords.sheetToScreen(da.left, sy);
+                const p2 = coords.sheetToScreen(da.right, sy);
+
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+
+                // Bubble at left
+                const bubbleCenter = coords.sheetToScreen(da.left - bubbleOffset, sy);
+                drawGridBubble(ctx, bubbleCenter.x, bubbleCenter.y, bubbleR * zoom, grid.label, isSelected, zoom);
+            }
+        } else if (isAngledGrid(grid)) {
+            // ── Angled / finite-extent grid ──────────────────
+            const ep = gridEndpoints(grid);
+
+            const p1 = coords.sheetToScreen(ep.x1, ep.y1);
+            const p2 = coords.sheetToScreen(ep.x2, ep.y2);
 
             ctx.beginPath();
             ctx.moveTo(p1.x, p1.y);
             ctx.lineTo(p2.x, p2.y);
             ctx.stroke();
 
-            // Bubble at top
-            const bubbleCenter = coords.sheetToScreen(sx, da.top - bubbleOffset);
-            drawGridBubble(ctx, bubbleCenter.x, bubbleCenter.y, bubbleR * zoom, grid.label, isSelected, zoom);
-
-        } else {
-            const sy = da.top + grid.position / CONFIG.drawingScale;
-            if (sy < da.top || sy > da.bottom) continue;
-
-            const p1 = coords.sheetToScreen(da.left, sy);
-            const p2 = coords.sheetToScreen(da.right, sy);
-
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.stroke();
-
-            // Bubble at left
-            const bubbleCenter = coords.sheetToScreen(da.left - bubbleOffset, sy);
+            // Bubble at the endpoint closest to the sheet edge (top or left)
+            // Use the endpoint with the smallest y (closest to top), or smallest x if similar
+            const bubbleEnd = (ep.y1 <= ep.y2) ? { x: ep.x1, y: ep.y1 } : { x: ep.x2, y: ep.y2 };
+            // Offset the bubble along the grid line direction, away from the drawing
+            const dx = ep.x2 - ep.x1, dy = ep.y2 - ep.y1;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            const ux = len > 0 ? dx / len : 0;
+            const uy = len > 0 ? dy / len : -1;
+            // Push bubble outward from the chosen endpoint
+            const bx = bubbleEnd.x - ux * bubbleOffset;
+            const by = bubbleEnd.y - uy * bubbleOffset;
+            const bubbleCenter = coords.sheetToScreen(bx, by);
             drawGridBubble(ctx, bubbleCenter.x, bubbleCenter.y, bubbleR * zoom, grid.label, isSelected, zoom);
         }
     }
 
     // Draw preview line if in grid placement mode
-    if (gridToolState.active && gridToolState.previewPos !== null) {
+    if (gridToolState.active) {
         ctx.strokeStyle = '#2B7CD0';
         ctx.lineWidth = Math.max(1, 0.25 * zoom);
         ctx.setLineDash([4, 3]);
 
-        if (gridToolState.axis === 'V') {
-            const p1 = coords.sheetToScreen(gridToolState.previewPos, da.top);
-            const p2 = coords.sheetToScreen(gridToolState.previewPos, da.bottom);
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.stroke();
-        } else {
-            const p1 = coords.sheetToScreen(da.left, gridToolState.previewPos);
-            const p2 = coords.sheetToScreen(da.right, gridToolState.previewPos);
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.stroke();
+        if (gridToolState.axis === 'A') {
+            // ── Angled preview ──
+            if (gridToolState.angledStart && gridToolState.angledPreviewEnd) {
+                const p1 = coords.sheetToScreen(gridToolState.angledStart.x, gridToolState.angledStart.y);
+                const p2 = coords.sheetToScreen(gridToolState.angledPreviewEnd.x, gridToolState.angledPreviewEnd.y);
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+
+                // Draw start point marker
+                ctx.setLineDash([]);
+                ctx.beginPath();
+                ctx.arc(p1.x, p1.y, 4, 0, Math.PI * 2);
+                ctx.fillStyle = '#2B7CD0';
+                ctx.fill();
+
+                // Show angle readout
+                const dx = gridToolState.angledPreviewEnd.x - gridToolState.angledStart.x;
+                const dy = gridToolState.angledPreviewEnd.y - gridToolState.angledStart.y;
+                const angleDeg = Math.atan2(-dy, dx) * 180 / Math.PI; // negate dy because sheet y increases downward
+                const lenMM = Math.sqrt(dx * dx + dy * dy) * CONFIG.drawingScale;
+                const midP = coords.sheetToScreen(
+                    (gridToolState.angledStart.x + gridToolState.angledPreviewEnd.x) / 2,
+                    (gridToolState.angledStart.y + gridToolState.angledPreviewEnd.y) / 2
+                );
+                ctx.font = `bold ${Math.max(10, 3 * zoom)}px "Segoe UI", Arial, sans-serif`;
+                ctx.fillStyle = '#2B7CD0';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText(angleDeg.toFixed(1) + '°  ' + (lenMM / 1000).toFixed(1) + 'm', midP.x, midP.y - 6);
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+            } else if (!gridToolState.angledStart) {
+                // No start yet — show crosshair hint at cursor (nothing to draw)
+            }
+        } else if (gridToolState.previewPos !== null) {
+            // ── Ortho preview ──
+            if (gridToolState.axis === 'V') {
+                const p1 = coords.sheetToScreen(gridToolState.previewPos, da.top);
+                const p2 = coords.sheetToScreen(gridToolState.previewPos, da.bottom);
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+            } else {
+                const p1 = coords.sheetToScreen(da.left, gridToolState.previewPos);
+                const p2 = coords.sheetToScreen(da.right, gridToolState.previewPos);
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+            }
         }
         ctx.setLineDash([]);
     }
@@ -701,9 +949,12 @@ engine.onRender(drawSnapIndicator);
 
 const gridToolState = {
     active: false,
-    axis: 'V',             // 'V' or 'H'
-    previewPos: null,      // sheet-mm coordinate of preview line
+    axis: 'V',             // 'V', 'H', or 'A' (angled)
+    previewPos: null,      // sheet-mm coordinate of preview line (ortho modes)
     selectedGrid: null,    // for future editing
+    // Angled placement state (two-click workflow)
+    angledStart: null,     // { x, y } sheet-mm of first click (null until first click)
+    angledPreviewEnd: null,// { x, y } sheet-mm of cursor position (live preview)
 };
 
 const gridBanner = document.getElementById('grid-banner');
@@ -714,8 +965,16 @@ const gridLabelSelect = document.getElementById('grid-label-scheme');
 
 /** Sync the label scheme dropdown to the current axis */
 function syncGridLabelUI() {
-    gridAxisLabel.textContent = gridToolState.axis === 'V' ? 'vertical' : 'horizontal';
-    gridLabelSelect.value = gridLabelState[gridToolState.axis].scheme;
+    if (gridToolState.axis === 'A') {
+        gridAxisLabel.textContent = 'angled';
+        // Angled grids use their own label input — keep dropdown as-is
+    } else {
+        gridAxisLabel.textContent = gridToolState.axis === 'V' ? 'vertical' : 'horizontal';
+        gridLabelSelect.value = gridLabelState[gridToolState.axis].scheme;
+    }
+    // Update banner hint text for angled mode
+    const hintEl = document.getElementById('grid-angled-hint');
+    if (hintEl) hintEl.style.display = gridToolState.axis === 'A' ? '' : 'none';
 }
 
 // Label scheme dropdown change
@@ -737,6 +996,8 @@ function activateGridTool() {
 function deactivateGridTool() {
     gridToolState.active = false;
     gridToolState.previewPos = null;
+    gridToolState.angledStart = null;
+    gridToolState.angledPreviewEnd = null;
     gridBanner.classList.add('hidden');
     container.style.cursor = '';
     gridPlaceBtn.classList.remove('active');
@@ -758,7 +1019,11 @@ selectBtn.addEventListener('click', () => {
 });
 
 document.getElementById('grid-toggle-axis').addEventListener('click', () => {
-    gridToolState.axis = gridToolState.axis === 'V' ? 'H' : 'V';
+    // Cycle: V → H → A → V
+    gridToolState.axis = gridToolState.axis === 'V' ? 'H' : gridToolState.axis === 'H' ? 'A' : 'V';
+    gridToolState.angledStart = null;
+    gridToolState.angledPreviewEnd = null;
+    gridToolState.previewPos = null;
     syncGridLabelUI();
     engine.requestRender();
 });
@@ -772,16 +1037,26 @@ window.addEventListener('keydown', (e) => {
     if (document.activeElement !== document.body) return;
     if (e.ctrlKey || e.metaKey) return;
 
-    // Escape exits grid tool
+    // Escape: if in angled mode with a start point, cancel the start point first;
+    // otherwise exit the grid tool entirely
     if (e.key === 'Escape' && gridToolState.active) {
-        deactivateGridTool();
+        if (gridToolState.axis === 'A' && gridToolState.angledStart) {
+            gridToolState.angledStart = null;
+            gridToolState.angledPreviewEnd = null;
+            engine.requestRender();
+        } else {
+            deactivateGridTool();
+        }
         return;
     }
 
-    // Tab switches axis while in grid tool
+    // Tab switches axis while in grid tool (V → H → A → V)
     if (e.key === 'Tab' && gridToolState.active) {
         e.preventDefault();
-        gridToolState.axis = gridToolState.axis === 'V' ? 'H' : 'V';
+        gridToolState.axis = gridToolState.axis === 'V' ? 'H' : gridToolState.axis === 'H' ? 'A' : 'V';
+        gridToolState.angledStart = null;
+        gridToolState.angledPreviewEnd = null;
+        gridToolState.previewPos = null;
         syncGridLabelUI();
         engine.requestRender();
         return;
@@ -918,26 +1193,39 @@ container.addEventListener('mousemove', (e) => {
     const sx = e.clientX - rect.left;
     const sy = e.clientY - rect.top;
 
-    // Priority: 1. Existing structural grid snap, 2. PDF line snap, 3. Raw cursor
-    const snap = findSnap(sx, sy);
-
-    if (gridToolState.axis === 'V') {
-        if (snap && snap.type === SNAP_TYPES.GRIDLINE) {
-            gridToolState.previewPos = snap.x;
-        } else {
-            // Try PDF line snap
-            const pdfSnap = findPdfLineSnap(sx, sy, 'V');
-            gridToolState.previewPos = pdfSnap !== null ? pdfSnap : sheetPos.x;
+    if (gridToolState.axis === 'A') {
+        // ── Angled mode: track cursor as the preview endpoint ──
+        if (gridToolState.angledStart) {
+            // Snap the endpoint to existing grid intersections/endpoints
+            const snap = findSnap(sx, sy);
+            if (snap && (snap.type === SNAP_TYPES.INTERSECTION || snap.type === SNAP_TYPES.ENDPOINT)) {
+                gridToolState.angledPreviewEnd = { x: snap.x, y: snap.y };
+            } else {
+                gridToolState.angledPreviewEnd = { x: sheetPos.x, y: sheetPos.y };
+            }
         }
-        gridToolState.previewPos = Math.max(da.left, Math.min(da.right, gridToolState.previewPos));
     } else {
-        if (snap && snap.type === SNAP_TYPES.GRIDLINE) {
-            gridToolState.previewPos = snap.y;
+        // ── Ortho mode (V or H) ──
+        // Priority: 1. Existing structural grid snap, 2. PDF line snap, 3. Raw cursor
+        const snap = findSnap(sx, sy);
+
+        if (gridToolState.axis === 'V') {
+            if (snap && snap.type === SNAP_TYPES.GRIDLINE) {
+                gridToolState.previewPos = snap.x;
+            } else {
+                const pdfSnap = findPdfLineSnap(sx, sy, 'V');
+                gridToolState.previewPos = pdfSnap !== null ? pdfSnap : sheetPos.x;
+            }
+            gridToolState.previewPos = Math.max(da.left, Math.min(da.right, gridToolState.previewPos));
         } else {
-            const pdfSnap = findPdfLineSnap(sx, sy, 'H');
-            gridToolState.previewPos = pdfSnap !== null ? pdfSnap : sheetPos.y;
+            if (snap && snap.type === SNAP_TYPES.GRIDLINE) {
+                gridToolState.previewPos = snap.y;
+            } else {
+                const pdfSnap = findPdfLineSnap(sx, sy, 'H');
+                gridToolState.previewPos = pdfSnap !== null ? pdfSnap : sheetPos.y;
+            }
+            gridToolState.previewPos = Math.max(da.top, Math.min(da.bottom, gridToolState.previewPos));
         }
-        gridToolState.previewPos = Math.max(da.top, Math.min(da.bottom, gridToolState.previewPos));
     }
 
     engine.requestRender();
@@ -950,63 +1238,126 @@ container.addEventListener('mousedown', (e) => {
     if (pdfState.calibrating) return;
 
     if (gridToolState.active) {
-        // Place a new grid line
         const da = engine.coords.drawArea;
-        let realPos;
+        const rect = container.getBoundingClientRect();
+        const sx = e.clientX - rect.left;
+        const sy = e.clientY - rect.top;
 
-        if (gridToolState.axis === 'V') {
-            const sheetX = gridToolState.previewPos || engine.getSheetPos(e).x;
-            realPos = (sheetX - da.left) * CONFIG.drawingScale;
-        } else {
-            const sheetY = gridToolState.previewPos || engine.getSheetPos(e).y;
-            realPos = (sheetY - da.top) * CONFIG.drawingScale;
-        }
+        if (gridToolState.axis === 'A') {
+            // ── Angled two-click placement ──
+            const sheetPos = engine.getSheetPos(e);
 
-        if (realPos < 0) return; // outside drawing area
+            // Snap to existing intersections/endpoints
+            const snap = findSnap(sx, sy);
+            const clickPt = (snap && (snap.type === SNAP_TYPES.INTERSECTION || snap.type === SNAP_TYPES.ENDPOINT))
+                ? { x: snap.x, y: snap.y }
+                : { x: sheetPos.x, y: sheetPos.y };
 
-        const newGrid = {
-            id: generateId(),
-            axis: gridToolState.axis,
-            position: realPos,
-            label: nextGridLabel(gridToolState.axis)
-        };
+            if (!gridToolState.angledStart) {
+                // First click — set start point
+                gridToolState.angledStart = clickPt;
+                gridToolState.angledPreviewEnd = null;
+                engine.requestRender();
+            } else {
+                // Second click — create the angled grid
+                const start = gridToolState.angledStart;
+                const end = clickPt;
 
-        history.execute({
-            description: 'Place grid ' + newGrid.label,
-            execute() { structuralGrids.push(newGrid); },
-            undo() {
-                const i = structuralGrids.indexOf(newGrid);
-                if (i !== -1) structuralGrids.splice(i, 1);
+                // Convert sheet-mm to real-world mm
+                const x1 = (start.x - da.left) * CONFIG.drawingScale;
+                const y1 = (start.y - da.top) * CONFIG.drawingScale;
+                const x2 = (end.x - da.left) * CONFIG.drawingScale;
+                const y2 = (end.y - da.top) * CONFIG.drawingScale;
+
+                const dx = x2 - x1, dy = y2 - y1;
+                const len = Math.sqrt(dx * dx + dy * dy);
+                if (len < 10) return; // too short, ignore
+
+                const angleDeg = Math.atan2(-dy, dx) * 180 / Math.PI;
+
+                // Determine label — use the current scheme for whichever
+                // axis is closest to this angle (V for near-vertical, H for near-horizontal)
+                const absAngle = Math.abs(angleDeg % 180);
+                const nearerAxis = (absAngle > 45 && absAngle < 135) ? 'V' : 'H';
+                const label = nextGridLabel(nearerAxis);
+
+                ensureMainZone();
+                const newGrid = {
+                    id: generateId(),
+                    type: 'angled',
+                    x1, y1, x2, y2,
+                    angle: angleDeg,
+                    label: label,
+                    zone: 'main',
+                };
+
+                history.execute({
+                    description: 'Place angled grid ' + newGrid.label,
+                    execute() { structuralGrids.push(newGrid); },
+                    undo() {
+                        const i = structuralGrids.indexOf(newGrid);
+                        if (i !== -1) structuralGrids.splice(i, 1);
+                    }
+                });
+
+                // Reset for next angled grid
+                gridToolState.angledStart = null;
+                gridToolState.angledPreviewEnd = null;
+                engine.requestRender();
             }
-        });
+            return;
 
-        engine.requestRender();
+        } else {
+            // ── Ortho placement (V or H) ──
+            let realPos;
+
+            if (gridToolState.axis === 'V') {
+                const sheetX = gridToolState.previewPos || engine.getSheetPos(e).x;
+                realPos = (sheetX - da.left) * CONFIG.drawingScale;
+            } else {
+                const sheetY = gridToolState.previewPos || engine.getSheetPos(e).y;
+                realPos = (sheetY - da.top) * CONFIG.drawingScale;
+            }
+
+            if (realPos < 0) return; // outside drawing area
+
+            ensureMainZone();
+            const newGrid = {
+                id: generateId(),
+                type: 'ortho',
+                axis: gridToolState.axis,
+                position: realPos,
+                label: nextGridLabel(gridToolState.axis),
+                zone: 'main',
+            };
+
+            history.execute({
+                description: 'Place grid ' + newGrid.label,
+                execute() { structuralGrids.push(newGrid); },
+                undo() {
+                    const i = structuralGrids.indexOf(newGrid);
+                    if (i !== -1) structuralGrids.splice(i, 1);
+                }
+            });
+
+            engine.requestRender();
+        }
         return;
     }
 
-    // Select mode — check if clicking near a grid line
+    // Select mode — check if clicking near a grid line (works for both ortho and angled)
     if (!gridToolState.active) {
         const sheetPos = engine.getSheetPos(e);
-        const da = engine.coords.drawArea;
         const tolerance = 3 / engine.viewport.zoom; // 3px tolerance
 
         gridToolState.selectedGrid = null;
 
         for (const grid of structuralGrids) {
-            if (grid.axis === 'V') {
-                const sx = da.left + grid.position / CONFIG.drawingScale;
-                if (Math.abs(sheetPos.x - sx) < tolerance &&
-                    sheetPos.y >= da.top && sheetPos.y <= da.bottom) {
-                    gridToolState.selectedGrid = grid;
-                    break;
-                }
-            } else {
-                const sy = da.top + grid.position / CONFIG.drawingScale;
-                if (Math.abs(sheetPos.y - sy) < tolerance &&
-                    sheetPos.x >= da.left && sheetPos.x <= da.right) {
-                    gridToolState.selectedGrid = grid;
-                    break;
-                }
+            if (!isGridZoneVisible(grid)) continue;
+            const snap = distToGrid(grid, sheetPos.x, sheetPos.y);
+            if (snap.dist < tolerance) {
+                gridToolState.selectedGrid = grid;
+                break;
             }
         }
 
@@ -1017,5 +1368,106 @@ container.addEventListener('mousedown', (e) => {
 // Expose grids to global app state
 window._app.structuralGrids = structuralGrids;
 window._app.snapState = snapState;
+
+// ══════════════════════════════════════════════════════════
+// Grid Zones Panel
+// ══════════════════════════════════════════════════════════
+
+/** Render the zone list inside the panel */
+function renderGridZonesPanel() {
+    const list = document.getElementById('gz-zone-list');
+    if (!list) return;
+
+    if (gridZones.length === 0) {
+        list.innerHTML = '<div class="gz-empty">No grid zones defined.<br>Import a drawing set or place grids to create zones.</div>';
+        return;
+    }
+
+    list.innerHTML = '';
+    for (const zone of gridZones) {
+        const gridCount = structuralGrids.filter(g => g.zone === zone.id).length;
+        const row = document.createElement('div');
+        row.className = 'gz-zone-row' + (zone.visible ? '' : ' gz-hidden');
+        row.dataset.zoneId = zone.id;
+
+        // Colour swatch
+        const swatch = document.createElement('div');
+        swatch.className = 'gz-swatch';
+        swatch.style.background = zone.color;
+        swatch.title = 'Click to change colour';
+        swatch.addEventListener('click', () => {
+            // Cycle through zone colours
+            const idx = ZONE_COLOURS.indexOf(zone.color);
+            zone.color = ZONE_COLOURS[(idx + 1) % ZONE_COLOURS.length];
+            swatch.style.background = zone.color;
+            engine.requestRender();
+        });
+        row.appendChild(swatch);
+
+        // Editable name
+        const nameInput = document.createElement('input');
+        nameInput.className = 'gz-name';
+        nameInput.type = 'text';
+        nameInput.value = zone.name;
+        nameInput.title = zone.angle !== undefined ? 'Angle: ' + zone.angle + '°' : '';
+        nameInput.addEventListener('change', () => {
+            zone.name = nameInput.value.trim() || zone.name;
+        });
+        nameInput.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter') nameInput.blur();
+            ev.stopPropagation(); // prevent keyboard shortcuts
+        });
+        row.appendChild(nameInput);
+
+        // Grid count badge
+        const count = document.createElement('span');
+        count.className = 'gz-count';
+        count.textContent = gridCount + ' grid' + (gridCount !== 1 ? 's' : '');
+        row.appendChild(count);
+
+        // Visibility toggle
+        const vis = document.createElement('button');
+        vis.className = 'gz-vis';
+        vis.innerHTML = zone.visible ? '👁' : '—';
+        vis.title = zone.visible ? 'Hide zone' : 'Show zone';
+        vis.addEventListener('click', () => {
+            zone.visible = !zone.visible;
+            vis.innerHTML = zone.visible ? '👁' : '—';
+            vis.title = zone.visible ? 'Hide zone' : 'Show zone';
+            row.className = 'gz-zone-row' + (zone.visible ? '' : ' gz-hidden');
+            engine.requestRender();
+        });
+        row.appendChild(vis);
+
+        list.appendChild(row);
+    }
+}
+
+/** Toggle the grid zones panel open/closed */
+function toggleGridZonesPanel() {
+    const panel = document.getElementById('grid-zones-panel');
+    if (!panel) return;
+    const isVisible = !panel.classList.contains('hidden');
+    if (isVisible) {
+        panel.classList.add('hidden');
+    } else {
+        renderGridZonesPanel();
+        panel.classList.remove('hidden');
+    }
+}
+
+// Wire up the Zones button and close button
+document.addEventListener('DOMContentLoaded', () => {
+    const btnZones = document.getElementById('btn-grid-zones');
+    if (btnZones) {
+        btnZones.addEventListener('click', toggleGridZonesPanel);
+    }
+    const btnClose = document.getElementById('gz-close');
+    if (btnClose) {
+        btnClose.addEventListener('click', () => {
+            document.getElementById('grid-zones-panel').classList.add('hidden');
+        });
+    }
+});
 
 // ══════════════════════════════════════════════════════════

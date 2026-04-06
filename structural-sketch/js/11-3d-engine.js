@@ -547,23 +547,46 @@ function rebuild3DScene() {
         const gridLineMat = new THREE.LineBasicMaterial({ color: 0xCCCCCC, transparent: true, opacity: 0.25 });
 
         for (const g of structuralGrids) {
-            const pos = g.position * scale3d;
-            let pts;
-            if (g.axis === 'V') {
-                pts = [new THREE.Vector3(pos, -0.5, -2), new THREE.Vector3(pos, maxElev + 1, -2)];
+            let pts, labelPos;
+
+            if (typeof isOrthoGrid === 'function' && isOrthoGrid(g)) {
+                const pos = g.position * scale3d;
+                if (g.axis === 'V') {
+                    pts = [new THREE.Vector3(pos, -0.5, -2), new THREE.Vector3(pos, maxElev + 1, -2)];
+                    labelPos = new THREE.Vector3(pos, maxElev + 1.5, -2);
+                } else {
+                    pts = [new THREE.Vector3(-2, -0.5, pos), new THREE.Vector3(-2, maxElev + 1, pos)];
+                    labelPos = new THREE.Vector3(-2, maxElev + 1.5, pos);
+                }
+            } else if (typeof isAngledGrid === 'function' && isAngledGrid(g)) {
+                // Angled grid → vertical plane from (x1,y1) to (x2,y2)
+                const x1 = g.x1 * scale3d, y1 = g.y1 * scale3d;
+                const x2 = g.x2 * scale3d, y2 = g.y2 * scale3d;
+                // Draw two vertical edges of the plane
+                pts = [new THREE.Vector3(x1, -0.5, y1), new THREE.Vector3(x2, -0.5, y2)];
+                labelPos = new THREE.Vector3((x1 + x2) / 2, maxElev + 1.5, (y1 + y2) / 2);
+                // Also draw the top edge
+                const topPts = [new THREE.Vector3(x1, maxElev + 1, y1), new THREE.Vector3(x2, maxElev + 1, y2)];
+                const topGeo = new THREE.BufferGeometry().setFromPoints(topPts);
+                scene3d.add(new THREE.Line(topGeo, gridLineMat));
             } else {
-                pts = [new THREE.Vector3(-2, -0.5, pos), new THREE.Vector3(-2, maxElev + 1, pos)];
+                // Fallback for grids without type helpers loaded
+                const pos = (g.position || 0) * scale3d;
+                if (g.axis === 'V') {
+                    pts = [new THREE.Vector3(pos, -0.5, -2), new THREE.Vector3(pos, maxElev + 1, -2)];
+                    labelPos = new THREE.Vector3(pos, maxElev + 1.5, -2);
+                } else {
+                    pts = [new THREE.Vector3(-2, -0.5, pos), new THREE.Vector3(-2, maxElev + 1, pos)];
+                    labelPos = new THREE.Vector3(-2, maxElev + 1.5, pos);
+                }
             }
+
             const gGeo = new THREE.BufferGeometry().setFromPoints(pts);
             scene3d.add(new THREE.Line(gGeo, gridLineMat));
 
             const bubbleSprite = createTextSprite(g.label, '#AAAAAA', 22);
             if (bubbleSprite) {
-                if (g.axis === 'V') {
-                    bubbleSprite.position.set(pos, maxElev + 1.5, -2);
-                } else {
-                    bubbleSprite.position.set(-2, maxElev + 1.5, pos);
-                }
+                bubbleSprite.position.copy(labelPos);
                 scene3d.add(bubbleSprite);
             }
         }

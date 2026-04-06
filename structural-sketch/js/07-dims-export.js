@@ -293,26 +293,44 @@ document.getElementById('btn-export-pdf').addEventListener('click', async () => 
     const da = engine.coords.drawArea;
 
     for (const grid of structuralGrids) {
-        if (grid.axis === 'V') {
-            const sx = da.left + grid.position / c.drawingScale;
-            pdf.line(sx, da.top, sx, da.bottom);
-            // Bubble
-            const by = da.top - 5;
+        if (isOrthoGrid(grid)) {
+            // ── Classic orthogonal grid ──
+            if (grid.axis === 'V') {
+                const sx = da.left + grid.position / c.drawingScale;
+                pdf.line(sx, da.top, sx, da.bottom);
+                const by = da.top - 5;
+                pdf.setDrawColor(128);
+                pdf.setLineWidth(0.18);
+                pdf.circle(sx, by, 3);
+                pdf.setFontSize(6);
+                pdf.setTextColor(0);
+                pdf.text(grid.label, sx, by, { align: 'center', baseline: 'middle' });
+            } else {
+                const sy = da.top + grid.position / c.drawingScale;
+                pdf.line(da.left, sy, da.right, sy);
+                const bx = da.left - 5;
+                pdf.setDrawColor(128);
+                pdf.circle(bx, sy, 3);
+                pdf.setFontSize(6);
+                pdf.setTextColor(0);
+                pdf.text(grid.label, bx, sy, { align: 'center', baseline: 'middle' });
+            }
+        } else if (isAngledGrid(grid)) {
+            // ── Angled / finite-extent grid ──
+            const ep = gridEndpoints(grid);
+            pdf.line(ep.x1, ep.y1, ep.x2, ep.y2);
+            // Bubble at the top-most endpoint
+            const bubbleEnd = (ep.y1 <= ep.y2) ? { x: ep.x1, y: ep.y1 } : { x: ep.x2, y: ep.y2 };
+            const dx = ep.x2 - ep.x1, dy = ep.y2 - ep.y1;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            const ux = len > 0 ? dx / len : 0, uy = len > 0 ? dy / len : -1;
+            const bx = bubbleEnd.x - ux * 5, by = bubbleEnd.y - uy * 5;
             pdf.setDrawColor(128);
             pdf.setLineWidth(0.18);
-            pdf.circle(sx, by, 3);
+            pdf.circle(bx, by, 3);
             pdf.setFontSize(6);
             pdf.setTextColor(0);
-            pdf.text(grid.label, sx, by, { align: 'center', baseline: 'middle' });
-        } else {
-            const sy = da.top + grid.position / c.drawingScale;
-            pdf.line(da.left, sy, da.right, sy);
-            const bx = da.left - 5;
-            pdf.setDrawColor(128);
-            pdf.circle(bx, sy, 3);
-            pdf.setFontSize(6);
-            pdf.setTextColor(0);
-            pdf.text(grid.label, bx, sy, { align: 'center', baseline: 'middle' });
+            pdf.text(grid.label, bx, by, { align: 'center', baseline: 'middle' });
         }
     }
 
@@ -634,9 +652,8 @@ function getProjectJSON() {
         elements: project.elements,
         layers: project.layers,
         activeLayerId: project.activeLayerId,
-        structuralGrids: structuralGrids.map(g => ({
-            id: g.id, axis: g.axis, position: g.position, label: g.label
-        })),
+        structuralGrids: structuralGrids.map(g => serialiseGrid(g)),
+        gridZones: gridZones.map(z => ({ id: z.id, name: z.name, angle: z.angle, visible: z.visible, color: z.color })),
         gridLabelState: gridLabelState,
         nextId: _nextId,
         colNextNum: _colNextNum,
@@ -747,13 +764,23 @@ function loadProject(json) {
             }
         }
 
-        // Restore structural grids
+        // Restore structural grids (normalise for backward compat)
         structuralGrids.length = 0;
         if (data.structuralGrids) {
             for (const g of data.structuralGrids) {
-                structuralGrids.push(g);
+                structuralGrids.push(normaliseGrid(g));
             }
         }
+
+        // Restore grid zones
+        gridZones.length = 0;
+        if (data.gridZones) {
+            for (const z of data.gridZones) {
+                gridZones.push(z);
+            }
+        }
+        // Ensure main zone exists (backward compat — old saves won't have zones)
+        ensureMainZone();
 
         // Restore label state
         if (data.gridLabelState) {

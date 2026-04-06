@@ -519,9 +519,8 @@ saveProject = function() {
         elements: project.elements, // ALL elements, not filtered
         layers: project.layers,
         activeLayerId: project.activeLayerId,
-        structuralGrids: structuralGrids.map(g => ({
-            id: g.id, axis: g.axis, position: g.position, label: g.label
-        })),
+        structuralGrids: structuralGrids.map(g => serialiseGrid(g)),
+        gridZones: gridZones.map(z => ({ id: z.id, name: z.name, angle: z.angle, visible: z.visible, color: z.color })),
         gridLabelState: gridLabelState,
         nextId: _nextId,
         colNextNum: _colNextNum,
