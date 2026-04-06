@@ -681,14 +681,14 @@ const leaderState = {
 let activeLeaderInput = null;
 
 document.getElementById('btn-leader').addEventListener('click', () => setActiveTool('leader'));
-document.getElementById('btn-callout').addEventListener('click', () => setActiveTool('callout'));
 
 // Extend setActiveTool
 // E/Q = leader, W = cloud, S = section (T = callout mapped in 06-drawing-tools)
 window.addEventListener('keydown', (e) => {
     if (document.activeElement !== document.body) return;
     if (e.ctrlKey || e.metaKey) return;
-    if (e.key === 'e' || e.key === 'q') setActiveTool('leader');
+    if (e.key === 'e') setActiveTool('leader');
+    if (e.key === 'q') setActiveTool('callout');
     if (e.key === 'w') setActiveTool('cloud');
     // 'g' — reserved for future use
     if (e.key === 's') { e.preventDefault(); setActiveTool('section'); }
@@ -2172,6 +2172,281 @@ hitTestElement = function(sheetPos) {
             return el;
     }
     return prevHitTest3(sheetPos);
+};
+
+// ══════════════════════════════════════════════════════════
+// ── Text Box Tool (T) ────────────────────────────────────
+// Click to place → type text → Enter to commit
+// Same bordered box as callout but NO leader line or arrow.
+// Supports: drag, double-click edit, resize, word wrap.
+// ══════════════════════════════════════════════════════════
+
+let activeTextboxInput = null;
+const textboxState = {};
+
+document.getElementById('btn-textbox').addEventListener('click', () => setActiveTool('textbox'));
+document.getElementById('btn-callout').addEventListener('click', () => setActiveTool('callout'));
+
+// ── Helper: compute textbox geometry (like callout but centered on anchor) ──
+function getTextboxGeom(el, coords, zoom, ctx) {
+    const anchor = coords.realToScreen(el.x, el.y);
+    const fontSize = Math.max(7, (el.fontSize || CALLOUT_DEFAULTS.fontSize) * zoom);
+    const pad = Math.max(3, (el.padding || CALLOUT_DEFAULTS.padding) * zoom);
+    const boxWidthMM = el.boxWidth || CALLOUT_DEFAULTS.boxWidth;
+    const boxW = boxWidthMM * zoom;
+
+    ctx.font = `${el.fontBold ? 'bold ' : ''}${fontSize}px "Architects Daughter", cursive`;
+    const innerW = boxW - pad * 2;
+    const lines = wrapText(ctx, el.text || '', innerW > 10 ? innerW : 10);
+    const lineHeight = fontSize * 1.3;
+
+    let boxH;
+    if (el.boxHeight) {
+        boxH = el.boxHeight * zoom;
+    } else {
+        boxH = Math.max(CALLOUT_DEFAULTS.minBoxHeight * zoom, lines.length * lineHeight + pad * 2);
+    }
+
+    // Anchor is top-left of box
+    const boxX = anchor.x;
+    const boxY = anchor.y;
+
+    return { boxX, boxY, boxW, boxH, pad, fontSize, lines, lineHeight };
+}
+
+// Mousedown — single click to place textbox
+container.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    if (engine._spaceDown || engine._isPanning) return;
+    if (activeTool !== 'textbox') return;
+    if (pdfState.calibrating) return;
+    if (activeTextboxInput) return;
+
+    const rect = container.getBoundingClientRect();
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    const snap = findSnap(sx, sy);
+    const pos = snap ? { x: snap.x, y: snap.y } : engine.coords.screenToSheet(sx, sy);
+    const screenPos = engine.coords.sheetToScreen(pos.x, pos.y);
+
+    const ta = document.createElement('textarea');
+    ta.className = 'text-input-overlay';
+    ta.style.left = screenPos.x + 'px';
+    ta.style.top = screenPos.y + 'px';
+    ta.style.width = '150px';
+    ta.style.height = '50px';
+    ta.style.fontSize = '12px';
+    ta.style.resize = 'none';
+    ta.style.overflow = 'hidden';
+    ta.style.lineHeight = '1.3';
+    ta.placeholder = 'Type text...';
+    ta.style.border = '1px solid #2B7CD0';
+    ta.style.background = 'rgba(255,255,255,0.95)';
+    ta.style.fontFamily = '"Architects Daughter", cursive';
+    ta._sheetPos = { x: pos.x, y: pos.y };
+
+    container.appendChild(ta);
+    setTimeout(() => ta.focus(), 30);
+    activeTextboxInput = ta;
+
+    ta.addEventListener('keydown', (ev) => {
+        ev.stopPropagation();
+        if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); commitTextbox(); }
+        if (ev.key === 'Escape') { ev.preventDefault(); cancelTextbox(); }
+    });
+    ta.addEventListener('blur', () => {
+        setTimeout(() => { if (activeTextboxInput === ta) commitTextbox(); }, 150);
+    });
+});
+
+function commitTextbox() {
+    if (!activeTextboxInput) return;
+    const input = activeTextboxInput;
+    const text = input.value.trim();
+    activeTextboxInput = null;
+    if (input.parentNode) input.parentNode.removeChild(input);
+
+    if (!text) { engine.requestRender(); return; }
+
+    const realPos = engine.coords.sheetToReal(input._sheetPos.x, input._sheetPos.y);
+    const textSizeSelect = document.getElementById('text-size');
+    const fontSize = textSizeSelect ? parseFloat(textSizeSelect.value) : CALLOUT_DEFAULTS.fontSize;
+
+    const newTextbox = {
+        id: generateId(),
+        type: 'textbox',
+        layer: 'S-ANNO',
+        x: realPos.x, y: realPos.y,    // top-left anchor
+        text: text,
+        fontSize: fontSize,
+        fontBold: false,
+        boxWidth: CALLOUT_DEFAULTS.boxWidth,
+        boxHeight: null,
+        padding: CALLOUT_DEFAULTS.padding,
+    };
+
+    history.execute({
+        description: 'Add text box: ' + text,
+        execute() { project.elements.push(newTextbox); },
+        undo() {
+            const i = project.elements.indexOf(newTextbox);
+            if (i !== -1) project.elements.splice(i, 1);
+        }
+    });
+    engine.requestRender();
+}
+
+function cancelTextbox() {
+    if (!activeTextboxInput) return;
+    const input = activeTextboxInput;
+    activeTextboxInput = null;
+    if (input.parentNode) input.parentNode.removeChild(input);
+    engine.requestRender();
+}
+
+// ── Double-click to edit textbox ─────────────────────────
+// (Extends the existing dblclick handler — check for textbox too)
+container.addEventListener('dblclick', (e) => {
+    if (activeTool !== 'select') return;
+    const sheetPos = engine.getSheetPos(e);
+    const tolerance = 4 / engine.viewport.zoom;
+    const hit = hitTestElement(sheetPos, tolerance);
+    if (!hit || hit.type !== 'textbox') return;
+
+    // Enter edit mode (reuse calloutEditState)
+    calloutEditState.editing = true;
+    calloutEditState.el = hit;
+    selectedElement = hit;
+
+    const geom = getTextboxGeom(hit, engine.coords, engine.viewport.zoom, engine.ctx);
+
+    const ta = document.createElement('textarea');
+    ta.className = 'text-input-overlay';
+    ta.style.position = 'absolute';
+    ta.style.left = geom.boxX + 'px';
+    ta.style.top = geom.boxY + 'px';
+    ta.style.width = geom.boxW + 'px';
+    ta.style.height = geom.boxH + 'px';
+    ta.style.fontSize = geom.fontSize + 'px';
+    ta.style.fontFamily = '"Architects Daughter", cursive';
+    ta.style.fontWeight = hit.fontBold ? 'bold' : 'normal';
+    ta.style.lineHeight = '1.3';
+    ta.style.padding = geom.pad + 'px';
+    ta.style.border = '2px solid #2B7CD0';
+    ta.style.background = 'rgba(255,255,255,0.97)';
+    ta.style.resize = 'none';
+    ta.style.overflow = 'hidden';
+    ta.style.boxSizing = 'border-box';
+    ta.style.outline = 'none';
+    ta.style.zIndex = '100';
+    ta.value = hit.text;
+
+    container.appendChild(ta);
+    calloutEditState.textarea = ta;
+    setTimeout(() => { ta.focus(); ta.select(); }, 30);
+
+    ta.addEventListener('keydown', (ev) => {
+        ev.stopPropagation();
+        if (ev.key === 'Escape') { ev.preventDefault(); exitCalloutEdit(true); }
+    });
+    ta.addEventListener('blur', () => {
+        setTimeout(() => { if (calloutEditState.editing && calloutEditState.textarea === ta) exitCalloutEdit(true); }, 200);
+    });
+
+    engine.requestRender();
+});
+
+// ── Textbox Rendering (chain after calloutDraw) ──────────
+
+const prevCalloutDraw = calloutDraw;
+const textboxDraw = function(ctx, eng) {
+    prevCalloutDraw(ctx, eng);
+
+    const coords = eng.coords;
+    const zoom = eng.viewport.zoom;
+
+    for (const el of project.getVisibleElements()) {
+        if (el.type !== 'textbox') continue;
+
+        const layer = project.layers[el.layer];
+        if (!layer || !layer.visible) continue;
+
+        const isSelected = (selectedElement === el);
+        const isEditing = (calloutEditState.editing && calloutEditState.el === el);
+        const color = isSelected ? '#2B7CD0' : layer.color;
+
+        const geom = getTextboxGeom(el, coords, zoom, ctx);
+
+        if (!isEditing) {
+            // White fill
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+            ctx.fillRect(geom.boxX, geom.boxY, geom.boxW, geom.boxH);
+
+            // Thin border
+            ctx.strokeStyle = color;
+            ctx.lineWidth = Math.max(0.5, 0.18 * zoom);
+            ctx.setLineDash([]);
+            ctx.strokeRect(geom.boxX, geom.boxY, geom.boxW, geom.boxH);
+
+            // Word-wrapped text
+            if (el.text) {
+                ctx.fillStyle = color;
+                ctx.font = `${el.fontBold ? 'bold ' : ''}${geom.fontSize}px "Architects Daughter", cursive`;
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                for (let i = 0; i < geom.lines.length; i++) {
+                    ctx.fillText(geom.lines[i], geom.boxX + geom.pad, geom.boxY + geom.pad + i * geom.lineHeight);
+                }
+            }
+        } else {
+            // In edit mode: just draw border
+            ctx.strokeStyle = '#2B7CD0';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([]);
+            ctx.strokeRect(geom.boxX, geom.boxY, geom.boxW, geom.boxH);
+        }
+
+        // Selection handles
+        if (isSelected && !isEditing) {
+            ctx.fillStyle = '#2B7CD0';
+            const anchor = coords.realToScreen(el.x, el.y);
+            ctx.fillRect(anchor.x - 3, anchor.y - 3, 6, 6);
+        }
+
+        // Resize handles in edit mode
+        if (isEditing) {
+            const hs = 5;
+            ctx.fillStyle = '#2B7CD0';
+            ctx.fillRect(geom.boxX + geom.boxW - hs, geom.boxY + geom.boxH - hs, hs * 2, hs * 2);
+            ctx.fillRect(geom.boxX - hs, geom.boxY + geom.boxH - hs, hs * 2, hs * 2);
+            ctx.fillRect(geom.boxX + geom.boxW - hs, geom.boxY - hs, hs * 2, hs * 2);
+        }
+    }
+};
+
+// Replace in render callbacks
+const cbIdx5 = engine._renderCallbacks.indexOf(calloutDraw);
+if (cbIdx5 !== -1) engine._renderCallbacks[cbIdx5] = textboxDraw;
+
+// ── Textbox hit-testing ──────────────────────────────────
+const prevHitTest4 = hitTestElement;
+hitTestElement = function(sheetPos) {
+    const tolerance = 6 / engine.viewport.zoom;
+    const zoom = engine.viewport.zoom;
+    for (let i = project.elements.length - 1; i >= 0; i--) {
+        const el = project.elements[i];
+        if (el.type !== 'textbox') continue;
+        const layer = project.layers[el.layer];
+        if (!layer || !layer.visible) continue;
+
+        const geom = getTextboxGeom(el, engine.coords, zoom, engine.ctx);
+        const boxTL = engine.coords.screenToSheet(geom.boxX, geom.boxY);
+        const boxBR = engine.coords.screenToSheet(geom.boxX + geom.boxW, geom.boxY + geom.boxH);
+
+        if (sheetPos.x >= boxTL.x - tolerance && sheetPos.x <= boxBR.x + tolerance &&
+            sheetPos.y >= boxTL.y - tolerance && sheetPos.y <= boxBR.y + tolerance)
+            return el;
+    }
+    return prevHitTest4(sheetPos);
 };
 
 // ── Hatch PDF Export Patch ────────────────────────────────

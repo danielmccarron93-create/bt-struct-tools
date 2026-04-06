@@ -80,6 +80,14 @@ function setActiveTool(tool) {
         }
     }
 
+    // Text box tool
+    if (tool !== 'textbox' && typeof textboxState !== 'undefined') {
+        if (typeof activeTextboxInput !== 'undefined' && activeTextboxInput) {
+            if (activeTextboxInput.parentNode) activeTextboxInput.parentNode.removeChild(activeTextboxInput);
+            activeTextboxInput = null;
+        }
+    }
+
     // Cloud tool
     if (tool !== 'cloud') {
         cloudState.drawing = false;
@@ -247,6 +255,9 @@ function setActiveTool(tool) {
     if (document.getElementById('btn-callout')) {
         document.getElementById('btn-callout').classList.toggle('active', tool === 'callout');
     }
+    if (document.getElementById('btn-textbox')) {
+        document.getElementById('btn-textbox').classList.toggle('active', tool === 'textbox');
+    }
     if (document.getElementById('btn-cloud')) {
         document.getElementById('btn-cloud').classList.toggle('active', tool === 'cloud');
     }
@@ -346,7 +357,7 @@ function setActiveTool(tool) {
     const cursorTools = ['line', 'text', 'polyline', 'rect', 'dim', 'measure',
                          'leader', 'cloud', 'cloudpoly', 'section', 'chaindim',
                          'notes-panel', 'table', 'slab-callout', 'edge', 'fall', 'step',
-                         'rlmarker', 'secref', 'reftag', 'stripFooting', 'wall', 'detail', 'bracingWall', 'buildingEnvelope', 'ridgeLine', 'roofSkeleton', 'callout'];
+                         'rlmarker', 'secref', 'reftag', 'stripFooting', 'wall', 'detail', 'bracingWall', 'buildingEnvelope', 'ridgeLine', 'roofSkeleton', 'callout', 'textbox'];
     // Column and footing get 'none' cursor — canvas preview replaces it
     const previewTools = ['column', 'footing'];
     if (previewTools.includes(tool)) {
@@ -388,7 +399,8 @@ function setActiveTool(tool) {
         ridgeLine: 'Ridge Line',
         roofSkeleton: 'Roof Skeleton',
         detail: 'Detail Callout',
-        callout: 'Callout'
+        callout: 'Callout',
+        textbox: 'Text Box'
     };
     document.getElementById('status-tool').textContent = names[tool] || tool;
 
@@ -492,7 +504,7 @@ window.addEventListener('keydown', (e) => {
     if (e.key === 'v') setActiveTool('select');
     if (e.key === 'l') setActiveTool('line');
     if (e.key === 'c') setActiveTool('column');
-    if (e.key === 't') setActiveTool('callout');
+    if (e.key === 't') setActiveTool('textbox');
     if (e.key === 'b') setActiveTool('bracingWall');
     if (e.key === 'e') setActiveTool('buildingEnvelope');
     if (e.key === 'Escape') {
