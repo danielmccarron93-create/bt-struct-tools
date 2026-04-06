@@ -1041,7 +1041,7 @@ const phase9Draw = function(ctx, eng) {
 
             // Text at end with underline
             if (el.text) {
-                const fontSize = Math.max(7, (el.fontSize || 3.5) * zoom);
+                const fontSize = (el.fontSize || CALLOUT_DEFAULTS.fontSize) * zoom;
                 ctx.font = `${fontSize}px "Architects Daughter", cursive`;
                 ctx.fillStyle = color;
 
@@ -1608,13 +1608,15 @@ const CALLOUT_DEFAULTS = {
     minBoxWidth: 10,    // sheet-mm — minimum resize width
     minBoxHeight: 6,    // sheet-mm — minimum resize height
     padding: 2,         // sheet-mm — inner padding
-    fontSize: 3.5,      // sheet-mm
+    fontSize: 5,        // sheet-mm (was 3.5, bumped for readability)
 };
 
 const calloutState = {
-    placing: false,
-    startPoint: null,   // arrow tip, sheet-mm
-    currentEnd: null,   // preview endpoint, sheet-mm
+    phase: 0,           // 0=idle, 1=placed arrow tip, 2=dragging box
+    arrowPt: null,      // arrow tip, sheet-mm (set on first click)
+    boxStart: null,     // box top-left, sheet-mm (set on second mousedown)
+    boxEnd: null,       // box bottom-right, sheet-mm (updated on mousemove)
+    currentEnd: null,   // preview endpoint while in phase 1
 };
 let activeCalloutInput = null;
 
@@ -1666,8 +1668,8 @@ function wrapText(ctx, text, maxWidth) {
 function getCalloutBoxGeom(el, coords, zoom, ctx) {
     const end = coords.realToScreen(el.x2, el.y2);
     const tip = coords.realToScreen(el.x1, el.y1);
-    const fontSize = Math.max(7, (el.fontSize || CALLOUT_DEFAULTS.fontSize) * zoom);
-    const pad = Math.max(3, (el.padding || CALLOUT_DEFAULTS.padding) * zoom);
+    const fontSize = (el.fontSize || CALLOUT_DEFAULTS.fontSize) * zoom;
+    const pad = (el.padding || CALLOUT_DEFAULTS.padding) * zoom;
     const boxWidthMM = el.boxWidth || CALLOUT_DEFAULTS.boxWidth;
     const boxW = boxWidthMM * zoom;
 
@@ -1708,15 +1710,19 @@ function getCalloutBoxGeom(el, coords, zoom, ctx) {
     return { boxX, boxY, boxW, boxH, pad, fontSize, lines, lineHeight, leaderEnd, textLeft };
 }
 
-// Mousemove — update preview
+// Mousemove — update preview (phase 1: leader preview, phase 2: box drag)
 container.addEventListener('mousemove', (e) => {
-    if (activeTool === 'callout') {
+    if (activeTool !== 'callout') return;
+    if (calloutState.phase === 1) {
         calloutState.currentEnd = getCalloutPos(e);
+        engine.requestRender();
+    } else if (calloutState.phase === 2) {
+        calloutState.boxEnd = getCalloutPos(e);
         engine.requestRender();
     }
 });
 
-// Mousedown — first click = arrow tip, second click = text box position
+// Mousedown — phase 0: set arrow tip, phase 1: start box drag
 container.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;
     if (engine._spaceDown || engine._isPanning) return;
@@ -1726,56 +1732,91 @@ container.addEventListener('mousedown', (e) => {
 
     const pos = getCalloutPos(e);
 
-    if (!calloutState.placing) {
+    if (calloutState.phase === 0) {
         // First click — set arrow tip
-        calloutState.placing = true;
-        calloutState.startPoint = pos;
-    } else {
-        // Second click — show textarea input at this position
-        const endPos = pos;
-        const screenEnd = engine.coords.sheetToScreen(endPos.x, endPos.y);
-
-        const ta = document.createElement('textarea');
-        ta.className = 'text-input-overlay';
-        ta.style.left = screenEnd.x + 'px';
-        ta.style.top = (screenEnd.y - 30) + 'px';
-        ta.style.width = '150px';
-        ta.style.height = '50px';
-        ta.style.fontSize = '12px';
-        ta.style.resize = 'none';
-        ta.style.overflow = 'hidden';
-        ta.style.lineHeight = '1.3';
-        ta.placeholder = 'Callout text...';
-        ta.style.border = '1px solid #2B7CD0';
-        ta.style.background = 'rgba(255,255,255,0.95)';
-        ta.style.fontFamily = '"Architects Daughter", cursive';
-        ta._arrowPt = { x: calloutState.startPoint.x, y: calloutState.startPoint.y };
-        ta._endPt = { x: endPos.x, y: endPos.y };
-
-        container.appendChild(ta);
-        setTimeout(() => ta.focus(), 30);
-        activeCalloutInput = ta;
-
-        ta.addEventListener('keydown', (ev) => {
-            ev.stopPropagation();
-            if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); commitCallout(); }
-            if (ev.key === 'Escape') { ev.preventDefault(); cancelCallout(); }
-        });
-        ta.addEventListener('blur', () => {
-            setTimeout(() => { if (activeCalloutInput === ta) commitCallout(); }, 150);
-        });
-
-        calloutState.placing = false;
-        calloutState.startPoint = null;
+        calloutState.phase = 1;
+        calloutState.arrowPt = pos;
+    } else if (calloutState.phase === 1) {
+        // Second mousedown — start dragging box from this corner
+        calloutState.phase = 2;
+        calloutState.boxStart = pos;
+        calloutState.boxEnd = pos;
     }
+});
+
+// Mouseup — if in phase 2, finish box drag and show textarea
+window.addEventListener('mouseup', (e) => {
+    if (activeTool !== 'callout' || calloutState.phase !== 2) return;
+    if (activeCalloutInput) return;
+
+    const boxStart = calloutState.boxStart;
+    const boxEnd = calloutState.boxEnd || boxStart;
+
+    // Calculate box bounds in sheet-mm
+    const x1 = Math.min(boxStart.x, boxEnd.x);
+    const y1 = Math.min(boxStart.y, boxEnd.y);
+    const x2 = Math.max(boxStart.x, boxEnd.x);
+    const y2 = Math.max(boxStart.y, boxEnd.y);
+    const draggedW = x2 - x1;
+    const draggedH = y2 - y1;
+
+    // Use dragged size if large enough, otherwise use defaults
+    const boxWidthMM = draggedW > 3 ? draggedW : CALLOUT_DEFAULTS.boxWidth;
+    const boxHeightMM = draggedH > 3 ? draggedH : null;
+
+    // Anchor point for the callout is the top-left of the box
+    const anchorPt = { x: x1, y: y1 };
+    const screenTL = engine.coords.sheetToScreen(x1, y1);
+    const screenBR = engine.coords.sheetToScreen(x2, y2);
+
+    const ta = document.createElement('textarea');
+    ta.className = 'text-input-overlay';
+    ta.style.left = screenTL.x + 'px';
+    ta.style.top = screenTL.y + 'px';
+    ta.style.width = Math.max(100, screenBR.x - screenTL.x) + 'px';
+    ta.style.height = Math.max(40, screenBR.y - screenTL.y) + 'px';
+    ta.style.fontSize = (CALLOUT_DEFAULTS.fontSize * engine.viewport.zoom) + 'px';
+    ta.style.resize = 'none';
+    ta.style.overflow = 'hidden';
+    ta.style.lineHeight = '1.3';
+    ta.placeholder = 'Callout text...';
+    ta.style.border = '1px solid #2B7CD0';
+    ta.style.background = 'rgba(255,255,255,0.95)';
+    ta.style.fontFamily = '"Architects Daughter", cursive';
+    ta.style.padding = (CALLOUT_DEFAULTS.padding * engine.viewport.zoom) + 'px';
+    ta.style.boxSizing = 'border-box';
+    ta._arrowPt = { x: calloutState.arrowPt.x, y: calloutState.arrowPt.y };
+    ta._anchorPt = anchorPt;
+    ta._boxWidthMM = boxWidthMM;
+    ta._boxHeightMM = boxHeightMM;
+
+    container.appendChild(ta);
+    setTimeout(() => ta.focus(), 30);
+    activeCalloutInput = ta;
+
+    ta.addEventListener('keydown', (ev) => {
+        ev.stopPropagation();
+        if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); commitCallout(); }
+        if (ev.key === 'Escape') { ev.preventDefault(); cancelCallout(); }
+    });
+    ta.addEventListener('blur', () => {
+        setTimeout(() => { if (activeCalloutInput === ta) commitCallout(); }, 150);
+    });
+
+    calloutState.phase = 0;
+    calloutState.arrowPt = null;
+    calloutState.boxStart = null;
+    calloutState.boxEnd = null;
 });
 
 // Right-click cancel
 container.addEventListener('contextmenu', (e) => {
-    if (activeTool === 'callout' && calloutState.placing) {
+    if (activeTool === 'callout' && calloutState.phase > 0) {
         e.preventDefault();
-        calloutState.placing = false;
-        calloutState.startPoint = null;
+        calloutState.phase = 0;
+        calloutState.arrowPt = null;
+        calloutState.boxStart = null;
+        calloutState.boxEnd = null;
         engine.requestRender();
     }
 });
@@ -1790,7 +1831,7 @@ function commitCallout() {
     if (!text) { engine.requestRender(); return; }
 
     const arrowReal = engine.coords.sheetToReal(input._arrowPt.x, input._arrowPt.y);
-    const endReal = engine.coords.sheetToReal(input._endPt.x, input._endPt.y);
+    const anchorReal = engine.coords.sheetToReal(input._anchorPt.x, input._anchorPt.y);
     const textSizeSelect = document.getElementById('text-size');
     const fontSize = textSizeSelect ? parseFloat(textSizeSelect.value) : CALLOUT_DEFAULTS.fontSize;
 
@@ -1799,12 +1840,12 @@ function commitCallout() {
         type: 'callout',
         layer: 'S-ANNO',
         x1: arrowReal.x, y1: arrowReal.y,  // arrow tip
-        x2: endReal.x, y2: endReal.y,       // text box anchor
+        x2: anchorReal.x, y2: anchorReal.y, // text box anchor (top-left)
         text: text,
         fontSize: fontSize,
         fontBold: false,
-        boxWidth: CALLOUT_DEFAULTS.boxWidth,
-        boxHeight: null,                     // null = auto-height
+        boxWidth: input._boxWidthMM || CALLOUT_DEFAULTS.boxWidth,
+        boxHeight: input._boxHeightMM || null,
         padding: CALLOUT_DEFAULTS.padding,
     };
 
@@ -2095,8 +2136,9 @@ const calloutDraw = function(ctx, eng) {
     }
 
     // ── Callout preview while placing ──
-    if (activeTool === 'callout' && calloutState.placing && calloutState.startPoint && calloutState.currentEnd) {
-        const tip = coords.sheetToScreen(calloutState.startPoint.x, calloutState.startPoint.y);
+    // Phase 1: arrow placed, showing leader preview to cursor
+    if (activeTool === 'callout' && calloutState.phase === 1 && calloutState.arrowPt && calloutState.currentEnd) {
+        const tip = coords.sheetToScreen(calloutState.arrowPt.x, calloutState.arrowPt.y);
         const end = coords.sheetToScreen(calloutState.currentEnd.x, calloutState.currentEnd.y);
 
         // Preview line
@@ -2120,17 +2162,49 @@ const calloutDraw = function(ctx, eng) {
         ctx.closePath();
         ctx.fill();
 
-        // Preview text box outline
-        const previewBoxW = CALLOUT_DEFAULTS.boxWidth * zoom;
-        const previewBoxH = 15 * zoom;
-        const textLeft = end.x > tip.x;
-        const boxX = textLeft ? end.x : end.x - previewBoxW;
-        const boxY = end.y - previewBoxH / 2;
+        // Dot at arrow tip
+        ctx.beginPath(); ctx.arc(tip.x, tip.y, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1.0;
+    }
 
+    // Phase 2: dragging box — show leader + dashed box outline
+    if (activeTool === 'callout' && calloutState.phase === 2 && calloutState.arrowPt && calloutState.boxStart && calloutState.boxEnd) {
+        const tip = coords.sheetToScreen(calloutState.arrowPt.x, calloutState.arrowPt.y);
+        const bs = calloutState.boxStart;
+        const be = calloutState.boxEnd;
+        const sx1 = coords.sheetToScreen(Math.min(bs.x, be.x), Math.min(bs.y, be.y));
+        const sx2 = coords.sheetToScreen(Math.max(bs.x, be.x), Math.max(bs.y, be.y));
+        const boxW = sx2.x - sx1.x;
+        const boxH = sx2.y - sx1.y;
+        const boxCX = sx1.x + boxW / 2;
+        const boxCY = sx1.y + boxH / 2;
+
+        // Preview leader line to nearest box edge
+        ctx.strokeStyle = '#2B7CD0';
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.6;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(tip.x, tip.y);
+        ctx.lineTo(boxCX, boxCY);
+        ctx.stroke();
+
+        // Preview arrowhead
+        const angle = Math.atan2(tip.y - boxCY, tip.x - boxCX);
+        const arrowLen = 8;
+        ctx.fillStyle = '#2B7CD0';
+        ctx.beginPath();
+        ctx.moveTo(tip.x, tip.y);
+        ctx.lineTo(tip.x - arrowLen * Math.cos(angle - 0.4), tip.y - arrowLen * Math.sin(angle - 0.4));
+        ctx.lineTo(tip.x - arrowLen * Math.cos(angle + 0.4), tip.y - arrowLen * Math.sin(angle + 0.4));
+        ctx.closePath();
+        ctx.fill();
+
+        // Preview box outline (dashed)
         ctx.strokeStyle = '#2B7CD0';
         ctx.lineWidth = 1;
         ctx.setLineDash([4, 3]);
-        ctx.strokeRect(boxX, boxY, previewBoxW, previewBoxH);
+        ctx.strokeRect(sx1.x, sx1.y, boxW, boxH);
         ctx.setLineDash([]);
 
         // Dot at arrow tip
@@ -2140,8 +2214,8 @@ const calloutDraw = function(ctx, eng) {
 };
 
 // Replace in render callbacks
-const cbIdx4 = engine._renderCallbacks.indexOf(phase9Draw);
-if (cbIdx4 !== -1) engine._renderCallbacks[cbIdx4] = calloutDraw;
+const cbIdx_callout = engine._renderCallbacks.indexOf(phase9Draw);
+if (cbIdx_callout !== -1) engine._renderCallbacks[cbIdx_callout] = calloutDraw;
 
 // ── Callout hit-testing ──────────────────────────────────
 const prevHitTest3 = hitTestElement;
@@ -2182,7 +2256,11 @@ hitTestElement = function(sheetPos) {
 // ══════════════════════════════════════════════════════════
 
 let activeTextboxInput = null;
-const textboxState = {};
+const textboxState = {
+    phase: 0,        // 0=idle, 1=dragging box
+    boxStart: null,  // top-left corner, sheet-mm
+    boxEnd: null,    // bottom-right corner, sheet-mm
+};
 
 document.getElementById('btn-textbox').addEventListener('click', () => setActiveTool('textbox'));
 document.getElementById('btn-callout').addEventListener('click', () => setActiveTool('callout'));
@@ -2190,8 +2268,8 @@ document.getElementById('btn-callout').addEventListener('click', () => setActive
 // ── Helper: compute textbox geometry (like callout but centered on anchor) ──
 function getTextboxGeom(el, coords, zoom, ctx) {
     const anchor = coords.realToScreen(el.x, el.y);
-    const fontSize = Math.max(7, (el.fontSize || CALLOUT_DEFAULTS.fontSize) * zoom);
-    const pad = Math.max(3, (el.padding || CALLOUT_DEFAULTS.padding) * zoom);
+    const fontSize = (el.fontSize || CALLOUT_DEFAULTS.fontSize) * zoom;
+    const pad = (el.padding || CALLOUT_DEFAULTS.padding) * zoom;
     const boxWidthMM = el.boxWidth || CALLOUT_DEFAULTS.boxWidth;
     const boxW = boxWidthMM * zoom;
 
@@ -2214,7 +2292,15 @@ function getTextboxGeom(el, coords, zoom, ctx) {
     return { boxX, boxY, boxW, boxH, pad, fontSize, lines, lineHeight };
 }
 
-// Mousedown — single click to place textbox
+// Helper to get sheet position for textbox tool
+function getTextboxPos(e) {
+    const rect = container.getBoundingClientRect();
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    const snap = findSnap(sx, sy);
+    return snap ? { x: snap.x, y: snap.y } : engine.coords.screenToSheet(sx, sy);
+}
+
+// Mousedown — start dragging box from this corner
 container.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;
     if (engine._spaceDown || engine._isPanning) return;
@@ -2222,19 +2308,49 @@ container.addEventListener('mousedown', (e) => {
     if (pdfState.calibrating) return;
     if (activeTextboxInput) return;
 
-    const rect = container.getBoundingClientRect();
-    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
-    const snap = findSnap(sx, sy);
-    const pos = snap ? { x: snap.x, y: snap.y } : engine.coords.screenToSheet(sx, sy);
-    const screenPos = engine.coords.sheetToScreen(pos.x, pos.y);
+    const pos = getTextboxPos(e);
+    textboxState.phase = 1;
+    textboxState.boxStart = pos;
+    textboxState.boxEnd = pos;
+});
+
+// Mousemove — update box preview while dragging
+container.addEventListener('mousemove', (e) => {
+    if (activeTool !== 'textbox' || textboxState.phase !== 1) return;
+    textboxState.boxEnd = getTextboxPos(e);
+    engine.requestRender();
+});
+
+// Mouseup — finish box drag and show textarea
+window.addEventListener('mouseup', (e) => {
+    if (activeTool !== 'textbox' || textboxState.phase !== 1) return;
+    if (activeTextboxInput) return;
+
+    const bs = textboxState.boxStart;
+    const be = textboxState.boxEnd || bs;
+
+    const x1 = Math.min(bs.x, be.x);
+    const y1 = Math.min(bs.y, be.y);
+    const x2 = Math.max(bs.x, be.x);
+    const y2 = Math.max(bs.y, be.y);
+    const draggedW = x2 - x1;
+    const draggedH = y2 - y1;
+
+    // Use dragged size if large enough, otherwise use defaults
+    const boxWidthMM = draggedW > 3 ? draggedW : CALLOUT_DEFAULTS.boxWidth;
+    const boxHeightMM = draggedH > 3 ? draggedH : null;
+
+    const anchorPt = { x: x1, y: y1 };
+    const screenTL = engine.coords.sheetToScreen(x1, y1);
+    const screenBR = engine.coords.sheetToScreen(x2, y2);
 
     const ta = document.createElement('textarea');
     ta.className = 'text-input-overlay';
-    ta.style.left = screenPos.x + 'px';
-    ta.style.top = screenPos.y + 'px';
-    ta.style.width = '150px';
-    ta.style.height = '50px';
-    ta.style.fontSize = '12px';
+    ta.style.left = screenTL.x + 'px';
+    ta.style.top = screenTL.y + 'px';
+    ta.style.width = Math.max(100, screenBR.x - screenTL.x) + 'px';
+    ta.style.height = Math.max(40, screenBR.y - screenTL.y) + 'px';
+    ta.style.fontSize = (CALLOUT_DEFAULTS.fontSize * engine.viewport.zoom) + 'px';
     ta.style.resize = 'none';
     ta.style.overflow = 'hidden';
     ta.style.lineHeight = '1.3';
@@ -2242,7 +2358,11 @@ container.addEventListener('mousedown', (e) => {
     ta.style.border = '1px solid #2B7CD0';
     ta.style.background = 'rgba(255,255,255,0.95)';
     ta.style.fontFamily = '"Architects Daughter", cursive';
-    ta._sheetPos = { x: pos.x, y: pos.y };
+    ta.style.padding = (CALLOUT_DEFAULTS.padding * engine.viewport.zoom) + 'px';
+    ta.style.boxSizing = 'border-box';
+    ta._anchorPt = anchorPt;
+    ta._boxWidthMM = boxWidthMM;
+    ta._boxHeightMM = boxHeightMM;
 
     container.appendChild(ta);
     setTimeout(() => ta.focus(), 30);
@@ -2256,6 +2376,21 @@ container.addEventListener('mousedown', (e) => {
     ta.addEventListener('blur', () => {
         setTimeout(() => { if (activeTextboxInput === ta) commitTextbox(); }, 150);
     });
+
+    textboxState.phase = 0;
+    textboxState.boxStart = null;
+    textboxState.boxEnd = null;
+});
+
+// Right-click cancel for textbox
+container.addEventListener('contextmenu', (e) => {
+    if (activeTool === 'textbox' && textboxState.phase > 0) {
+        e.preventDefault();
+        textboxState.phase = 0;
+        textboxState.boxStart = null;
+        textboxState.boxEnd = null;
+        engine.requestRender();
+    }
 });
 
 function commitTextbox() {
@@ -2267,7 +2402,7 @@ function commitTextbox() {
 
     if (!text) { engine.requestRender(); return; }
 
-    const realPos = engine.coords.sheetToReal(input._sheetPos.x, input._sheetPos.y);
+    const realPos = engine.coords.sheetToReal(input._anchorPt.x, input._anchorPt.y);
     const textSizeSelect = document.getElementById('text-size');
     const fontSize = textSizeSelect ? parseFloat(textSizeSelect.value) : CALLOUT_DEFAULTS.fontSize;
 
@@ -2279,8 +2414,8 @@ function commitTextbox() {
         text: text,
         fontSize: fontSize,
         fontBold: false,
-        boxWidth: CALLOUT_DEFAULTS.boxWidth,
-        boxHeight: null,
+        boxWidth: input._boxWidthMM || CALLOUT_DEFAULTS.boxWidth,
+        boxHeight: input._boxHeightMM || null,
         padding: CALLOUT_DEFAULTS.padding,
     };
 
@@ -2421,11 +2556,29 @@ const textboxDraw = function(ctx, eng) {
             ctx.fillRect(geom.boxX + geom.boxW - hs, geom.boxY - hs, hs * 2, hs * 2);
         }
     }
+
+    // ── Textbox preview while dragging to size ──
+    if (activeTool === 'textbox' && textboxState.phase === 1 && textboxState.boxStart && textboxState.boxEnd) {
+        const bs = textboxState.boxStart;
+        const be = textboxState.boxEnd;
+        const sx1 = coords.sheetToScreen(Math.min(bs.x, be.x), Math.min(bs.y, be.y));
+        const sx2 = coords.sheetToScreen(Math.max(bs.x, be.x), Math.max(bs.y, be.y));
+        const bw = sx2.x - sx1.x;
+        const bh = sx2.y - sx1.y;
+
+        ctx.strokeStyle = '#2B7CD0';
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.6;
+        ctx.setLineDash([4, 3]);
+        ctx.strokeRect(sx1.x, sx1.y, bw, bh);
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1.0;
+    }
 };
 
 // Replace in render callbacks
-const cbIdx5 = engine._renderCallbacks.indexOf(calloutDraw);
-if (cbIdx5 !== -1) engine._renderCallbacks[cbIdx5] = textboxDraw;
+const cbIdx_textbox = engine._renderCallbacks.indexOf(calloutDraw);
+if (cbIdx_textbox !== -1) engine._renderCallbacks[cbIdx_textbox] = textboxDraw;
 
 // ── Textbox hit-testing ──────────────────────────────────
 const prevHitTest4 = hitTestElement;
