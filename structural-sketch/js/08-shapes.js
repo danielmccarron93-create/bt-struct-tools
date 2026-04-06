@@ -1,0 +1,1600 @@
+// ── PHASE 8: POLYLINE + RECTANGLE + COPY/PASTE ───────────
+// ══════════════════════════════════════════════════════════
+
+// ── Polyline Tool ────────────────────────────────────────
+
+const polyToolState = {
+    points: [],       // array of { x, y } in sheet-mm
+    currentEnd: null, // preview endpoint
+};
+
+// Wire polyline button + keyboard
+document.getElementById('btn-polyline').addEventListener('click', () => setActiveTool('polyline'));
+
+// P = polyline, R = rect
+window.addEventListener('keydown', (e) => {
+    if (document.activeElement !== document.body) return;
+    if (e.ctrlKey || e.metaKey) return;
+    if (e.key === 'p') setActiveTool('polyline');
+    if (e.key === 'r') setActiveTool('rect');
+});
+
+function getPolyToolPos(e) {
+    const rect = container.getBoundingClientRect();
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    const snap = findSnap(sx, sy);
+    let pos = snap ? { x: snap.x, y: snap.y } : engine.coords.screenToSheet(sx, sy);
+    if (polyToolState.points.length > 0) {
+        const last = polyToolState.points[polyToolState.points.length - 1];
+        pos = applyOrtho(pos.x, pos.y, last.x, last.y);
+    }
+    return pos;
+}
+
+container.addEventListener('mousemove', (e) => {
+    if (activeTool === 'polyline') {
+        polyToolState.currentEnd = getPolyToolPos(e);
+        engine.requestRender();
+    }
+});
+
+container.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    if (engine._spaceDown || engine._isPanning) return;
+    if (activeTool !== 'polyline') return;
+    if (pdfState.calibrating) return;
+
+    const pos = getPolyToolPos(e);
+    polyToolState.points.push(pos);
+    engine.requestRender();
+});
+
+// Right-click or Escape finishes polyline
+container.addEventListener('contextmenu', (e) => {
+    if (activeTool === 'polyline' && polyToolState.points.length >= 2) {
+        e.preventDefault();
+        commitPolyline();
+    } else if (activeTool === 'polyline') {
+        e.preventDefault();
+        polyToolState.points = [];
+        engine.requestRender();
+    }
+});
+
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && activeTool === 'polyline' && polyToolState.points.length >= 2) {
+        commitPolyline();
+    }
+});
+
+function commitPolyline() {
+    const pts = polyToolState.points;
+    if (pts.length < 2) return;
+
+    const layerId = getActiveLayer();
+    const realPoints = pts.map(p => engine.coords.sheetToReal(p.x, p.y));
+
+    // Auto-detect if the polyline is closed (first/last point within 2mm)
+    const fp = realPoints[0], lp = realPoints[realPoints.length - 1];
+    const closeDist = Math.sqrt(Math.pow(fp.x - lp.x, 2) + Math.pow(fp.y - lp.y, 2));
+    const isClosed = closeDist < 2 * CONFIG.drawingScale; // within ~2mm on sheet
+
+    const newPoly = {
+        id: generateId(),
+        type: 'polyline',
+        layer: layerId,
+        points: realPoints,
+        closed: isClosed || false,
+    };
+
+    history.execute({
+        description: 'Draw polyline',
+        execute() { project.elements.push(newPoly); },
+        undo() {
+            const i = project.elements.indexOf(newPoly);
+            if (i !== -1) project.elements.splice(i, 1);
+        }
+    });
+
+    polyToolState.points = [];
+    polyToolState.currentEnd = null;
+    engine.requestRender();
+}
+
+// ── Slab Tool (polyline-based with hatch and thickness callout) ─────────
+
+const slabToolState = {
+    points: [],       // sheet-mm vertices
+    currentEnd: null, // preview next vertex
+};
+
+function getSlabToolPos(e) {
+    const rect = container.getBoundingClientRect();
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    const snap = findSnap(sx, sy);
+    let pos = snap ? { x: snap.x, y: snap.y } : engine.coords.screenToSheet(sx, sy);
+    if (slabToolState.points.length > 0) {
+        const last = slabToolState.points[slabToolState.points.length - 1];
+        pos = applyOrtho(pos.x, pos.y, last.x, last.y);
+    }
+    return pos;
+}
+
+container.addEventListener('mousemove', (e) => {
+    if (activeTool === 'slab') {
+        slabToolState.currentEnd = getSlabToolPos(e);
+        engine.requestRender();
+    }
+});
+
+container.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    if (engine._spaceDown || engine._isPanning) return;
+    if (activeTool !== 'slab') return;
+    if (pdfState.calibrating) return;
+
+    const pos = getSlabToolPos(e);
+    slabToolState.points.push(pos);
+    engine.requestRender();
+});
+
+// Double-click closes the slab polygon
+container.addEventListener('dblclick', (e) => {
+    if (activeTool === 'slab' && slabToolState.points.length >= 3) {
+        e.preventDefault();
+        e.stopPropagation();
+        // Remove the last point (double-click adds a duplicate from the second mousedown)
+        slabToolState.points.pop();
+        if (slabToolState.points.length >= 3) {
+            commitSlab();
+        }
+    }
+});
+
+// Right-click or Escape also finishes slab
+container.addEventListener('contextmenu', (e) => {
+    if (activeTool === 'slab' && slabToolState.points.length >= 3) {
+        e.preventDefault();
+        commitSlab();
+    } else if (activeTool === 'slab') {
+        e.preventDefault();
+        slabToolState.points = [];
+        engine.requestRender();
+    }
+});
+
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && activeTool === 'slab' && slabToolState.points.length >= 3) {
+        commitSlab();
+    }
+});
+
+function commitSlab() {
+    const pts = slabToolState.points;
+    if (pts.length < 3) return;
+
+    const layerId = 'S-SLAB'; // Always use S-SLAB layer for slabs
+    const realPoints = pts.map(p => engine.coords.sheetToReal(p.x, p.y));
+
+    // Close the slab polygon by adding first point at the end (if not already close)
+    const fp = realPoints[0], lp = realPoints[realPoints.length - 1];
+    const closeDist = Math.sqrt(Math.pow(fp.x - lp.x, 2) + Math.pow(fp.y - lp.y, 2));
+    if (closeDist > 2 * CONFIG.drawingScale) {
+        realPoints.push(fp); // explicitly close
+    }
+
+    const newSlab = {
+        id: generateId(),
+        type: 'polyline',
+        layer: layerId,
+        points: realPoints,
+        closed: true,
+        hatch: 'concrete',
+        fillColor: '#888888',
+        fillOpacity: 0.15,
+        slabThickness: 200, // default thickness in mm
+    };
+
+    history.execute({
+        description: 'Draw slab',
+        execute() { project.elements.push(newSlab); },
+        undo() {
+            const i = project.elements.indexOf(newSlab);
+            if (i !== -1) project.elements.splice(i, 1);
+        }
+    });
+
+    slabToolState.points = [];
+    slabToolState.currentEnd = null;
+    engine.requestRender();
+}
+
+// ── Rectangle Tool (drag-release) ────────────────────────
+
+const rectToolState = {
+    dragging: false,
+    startPoint: null,
+    currentEnd: null,
+};
+
+document.getElementById('btn-rect').addEventListener('click', () => setActiveTool('rect'));
+
+function getRectToolPos(e) {
+    const rect = container.getBoundingClientRect();
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    const snap = findSnap(sx, sy);
+    let pos = snap ? { x: snap.x, y: snap.y } : engine.coords.screenToSheet(sx, sy);
+
+    // Shift constrains to square
+    if (_shiftDown && rectToolState.startPoint) {
+        const s = rectToolState.startPoint;
+        const dx = pos.x - s.x;
+        const dy = pos.y - s.y;
+        const side = Math.max(Math.abs(dx), Math.abs(dy));
+        pos = { x: s.x + side * Math.sign(dx), y: s.y + side * Math.sign(dy) };
+    }
+    return pos;
+}
+
+// Mousedown — start dragging
+container.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    if (engine._spaceDown || engine._isPanning) return;
+    if (activeTool !== 'rect') return;
+    if (pdfState.calibrating) return;
+
+    rectToolState.dragging = true;
+    rectToolState.startPoint = getRectToolPos(e);
+    rectToolState.currentEnd = rectToolState.startPoint;
+});
+
+// Mousemove — update preview
+window.addEventListener('mousemove', (e) => {
+    if (activeTool !== 'rect' || !rectToolState.dragging) return;
+    rectToolState.currentEnd = getRectToolPos(e);
+    engine.requestRender();
+});
+
+// Mouseup — commit rectangle
+window.addEventListener('mouseup', (e) => {
+    if (activeTool !== 'rect' || !rectToolState.dragging) return;
+    rectToolState.dragging = false;
+
+    const s = rectToolState.startPoint;
+    const end = getRectToolPos(e);
+
+    // Minimum size check (at least 1mm on sheet)
+    const dxSheet = Math.abs(end.x - s.x);
+    const dySheet = Math.abs(end.y - s.y);
+    if (dxSheet < 1 && dySheet < 1) {
+        rectToolState.startPoint = null;
+        rectToolState.currentEnd = null;
+        engine.requestRender();
+        return;
+    }
+
+    const r1 = engine.coords.sheetToReal(s.x, s.y);
+    const r2 = engine.coords.sheetToReal(end.x, s.y);
+    const r3 = engine.coords.sheetToReal(end.x, end.y);
+    const r4 = engine.coords.sheetToReal(s.x, end.y);
+
+    const layerId = getActiveLayer();
+    const newRect = {
+        id: generateId(),
+        type: 'polyline',
+        layer: layerId,
+        points: [r1, r2, r3, r4],
+        closed: true,
+    };
+
+    history.execute({
+        description: 'Draw rectangle',
+        execute() { project.elements.push(newRect); },
+        undo() {
+            const i = project.elements.indexOf(newRect);
+            if (i !== -1) project.elements.splice(i, 1);
+        }
+    });
+
+    rectToolState.startPoint = null;
+    rectToolState.currentEnd = null;
+    engine.requestRender();
+});
+
+container.addEventListener('contextmenu', (e) => {
+    if (activeTool === 'rect' && rectToolState.dragging) {
+        e.preventDefault();
+        rectToolState.dragging = false;
+        rectToolState.startPoint = null;
+        rectToolState.currentEnd = null;
+        engine.requestRender();
+    }
+});
+
+// ── Polyline + Rectangle Rendering ───────────────────────
+
+// Patch into the wrapped drawElements
+const prevWrappedDraw = wrappedDrawElements;
+const extDrawElements = function(ctx, eng) {
+    prevWrappedDraw(ctx, eng);
+
+    const coords = eng.coords;
+    const zoom = eng.viewport.zoom;
+
+    // Draw polylines
+    for (const el of project.getVisibleElements()) {
+        if (el.type !== 'polyline') continue;
+        const layer = project.layers[el.layer];
+        if (!layer) continue;
+        const isSelected = (selectedElement === el);
+        const pts = el.points;
+        if (pts.length < 2) continue;
+
+        ctx.strokeStyle = isSelected ? '#2B7CD0' : layer.color;
+        ctx.lineWidth = Math.max(1, layer.lineWeight * zoom);
+        const pattern = DASH_PATTERNS[layer.pattern] || [];
+        ctx.setLineDash(pattern.length > 0 ? pattern.map(d => d * zoom) : []);
+
+        ctx.beginPath();
+        const p0 = coords.realToScreen(pts[0].x, pts[0].y);
+        ctx.moveTo(p0.x, p0.y);
+        for (let i = 1; i < pts.length; i++) {
+            const p = coords.realToScreen(pts[i].x, pts[i].y);
+            ctx.lineTo(p.x, p.y);
+        }
+        if (el.closed) ctx.closePath();
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Selection: show vertices
+        if (isSelected) {
+            ctx.fillStyle = '#2B7CD0';
+            for (const pt of pts) {
+                const sp = coords.realToScreen(pt.x, pt.y);
+                ctx.fillRect(sp.x - 3, sp.y - 3, 6, 6);
+            }
+        }
+    }
+
+    // Polyline preview
+    if (activeTool === 'polyline' && polyToolState.points.length > 0) {
+        const layerId = getActiveLayer();
+        const layer = project.layers[layerId];
+
+        ctx.strokeStyle = layer ? layer.color : '#000';
+        ctx.lineWidth = Math.max(1, (layer ? layer.lineWeight : 0.35) * zoom);
+        ctx.globalAlpha = 0.6;
+        const pattern = DASH_PATTERNS[layer ? layer.pattern : 'solid'] || [];
+        ctx.setLineDash(pattern.length > 0 ? pattern.map(d => d * zoom) : []);
+
+        ctx.beginPath();
+        const fp = coords.sheetToScreen(polyToolState.points[0].x, polyToolState.points[0].y);
+        ctx.moveTo(fp.x, fp.y);
+        for (let i = 1; i < polyToolState.points.length; i++) {
+            const p = coords.sheetToScreen(polyToolState.points[i].x, polyToolState.points[i].y);
+            ctx.lineTo(p.x, p.y);
+        }
+        if (polyToolState.currentEnd) {
+            const ep = coords.sheetToScreen(polyToolState.currentEnd.x, polyToolState.currentEnd.y);
+            ctx.lineTo(ep.x, ep.y);
+        }
+        ctx.stroke();
+        ctx.globalAlpha = 1.0;
+        ctx.setLineDash([]);
+
+        // Vertex dots
+        ctx.fillStyle = '#2B7CD0';
+        for (const pt of polyToolState.points) {
+            const sp = coords.sheetToScreen(pt.x, pt.y);
+            ctx.beginPath(); ctx.arc(sp.x, sp.y, 3, 0, Math.PI * 2); ctx.fill();
+        }
+    }
+
+    // Slab preview
+    if (activeTool === 'slab' && slabToolState.points.length > 0) {
+        const layer = project.layers['S-SLAB'];
+
+        ctx.strokeStyle = layer ? layer.color : '#000';
+        ctx.lineWidth = Math.max(1, (layer ? layer.lineWeight : 0.35) * zoom);
+        ctx.globalAlpha = 0.6;
+        const pattern = DASH_PATTERNS[layer ? layer.pattern : 'solid'] || [];
+        ctx.setLineDash(pattern.length > 0 ? pattern.map(d => d * zoom) : []);
+
+        // Draw lines connecting vertices
+        ctx.beginPath();
+        const fp = coords.sheetToScreen(slabToolState.points[0].x, slabToolState.points[0].y);
+        ctx.moveTo(fp.x, fp.y);
+        for (let i = 1; i < slabToolState.points.length; i++) {
+            const p = coords.sheetToScreen(slabToolState.points[i].x, slabToolState.points[i].y);
+            ctx.lineTo(p.x, p.y);
+        }
+
+        // Preview line from last vertex to cursor
+        if (slabToolState.currentEnd) {
+            const ep = coords.sheetToScreen(slabToolState.currentEnd.x, slabToolState.currentEnd.y);
+            ctx.lineTo(ep.x, ep.y);
+            // Dashed closing line from cursor back to first point
+            ctx.setLineDash([5, 5]);
+            ctx.lineTo(fp.x, fp.y);
+        }
+        ctx.stroke();
+        ctx.globalAlpha = 1.0;
+        ctx.setLineDash([]);
+
+        // Vertex dots
+        ctx.fillStyle = '#2B7CD0';
+        for (const pt of slabToolState.points) {
+            const sp = coords.sheetToScreen(pt.x, pt.y);
+            ctx.beginPath(); ctx.arc(sp.x, sp.y, 3, 0, Math.PI * 2); ctx.fill();
+        }
+    }
+
+    // Rectangle preview
+    if (activeTool === 'rect' && rectToolState.dragging && rectToolState.startPoint && rectToolState.currentEnd) {
+        const s = rectToolState.startPoint;
+        const e = rectToolState.currentEnd;
+        const sp1 = coords.sheetToScreen(s.x, s.y);
+        const sp2 = coords.sheetToScreen(e.x, e.y);
+
+        ctx.strokeStyle = '#2B7CD0';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 3]);
+        ctx.strokeRect(
+            Math.min(sp1.x, sp2.x), Math.min(sp1.y, sp2.y),
+            Math.abs(sp2.x - sp1.x), Math.abs(sp2.y - sp1.y)
+        );
+        ctx.setLineDash([]);
+
+        // Show dimensions
+        const r1 = coords.sheetToReal(s.x, s.y);
+        const r2 = coords.sheetToReal(e.x, e.y);
+        const w = Math.abs(r2.x - r1.x), h = Math.abs(r2.y - r1.y);
+        const fmtD = (mm) => mm >= 1000 ? (mm/1000).toFixed(1) + 'm' : Math.round(mm) + '';
+
+        ctx.font = 'bold 11px "Segoe UI", Arial, sans-serif';
+        ctx.fillStyle = '#2B7CD0';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(fmtD(w), (sp1.x + sp2.x) / 2, Math.min(sp1.y, sp2.y) - 4);
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'left';
+        ctx.fillText(fmtD(h), Math.max(sp1.x, sp2.x) + 6, (sp1.y + sp2.y) / 2);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+    }
+};
+
+// Replace in render callbacks
+const cbIdx2 = engine._renderCallbacks.indexOf(wrappedDrawElements);
+if (cbIdx2 !== -1) engine._renderCallbacks[cbIdx2] = extDrawElements;
+
+// ── Polyline hit-testing (patch hitTestElement) ───────────
+
+/** Point-in-polygon test (ray casting algorithm) using sheet-mm coords */
+function pointInPolygon(px, py, sheetPts) {
+    let inside = false;
+    for (let i = 0, j = sheetPts.length - 1; i < sheetPts.length; j = i++) {
+        const xi = sheetPts[i].x, yi = sheetPts[i].y;
+        const xj = sheetPts[j].x, yj = sheetPts[j].y;
+        if (((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) {
+            inside = !inside;
+        }
+    }
+    return inside;
+}
+
+// ── Polyline drag support (patch drag handlers) ──────────
+
+// Extend the mousedown to handle polyline drag start
+const origDragMousedown = container._selectMousedown;
+container.addEventListener('mousedown', (e) => {
+    if (e.button !== 0 || engine._spaceDown || engine._isPanning) return;
+    if (activeTool !== 'select') return;
+    if (!selectedElement || selectedElement.type !== 'polyline') return;
+    if (!dragState.dragging) return; // already started by the main handler
+
+    // Store polyline original points
+    dragState.origCoords = {
+        points: selectedElement.points.map(p => ({ x: p.x, y: p.y }))
+    };
+});
+
+// Patch the mousemove drag for polylines
+const origDragMove = window._dragMoveHandler;
+window.addEventListener('mousemove', (e) => {
+    if (!dragState.dragging || !dragState.el || dragState.el.type !== 'polyline' && dragState.el.type !== 'cloud') return;
+    if (!dragState.origCoords || !dragState.origCoords.points) {
+        // Store original if not yet stored
+        dragState.origCoords = { points: dragState.el.points.map(p => ({ x: p.x, y: p.y })) };
+    }
+    const sheetPos = engine.getSheetPos(e);
+    const dx = (sheetPos.x - dragState.startSheet.x) * CONFIG.drawingScale;
+    const dy = (sheetPos.y - dragState.startSheet.y) * CONFIG.drawingScale;
+
+    for (let i = 0; i < dragState.el.points.length; i++) {
+        dragState.el.points[i].x = dragState.origCoords.points[i].x + dx;
+        dragState.el.points[i].y = dragState.origCoords.points[i].y + dy;
+    }
+    engine.requestRender();
+});
+
+// Patch mouseup for polyline undo
+window.addEventListener('mouseup', (e) => {
+    if (!dragState.dragging || !dragState.el || dragState.el.type !== 'polyline' && dragState.el.type !== 'cloud') return;
+    if (!dragState.origCoords || !dragState.origCoords.points) return;
+
+    const el = dragState.el;
+    const origPts = dragState.origCoords.points;
+    const newPts = el.points.map(p => ({ x: p.x, y: p.y }));
+    const moved = origPts.some((p, i) => Math.abs(p.x - newPts[i].x) > 0.1 || Math.abs(p.y - newPts[i].y) > 0.1);
+
+    if (moved) {
+        history.undoStack.push({
+            description: 'Move polyline',
+            execute() { el.points.forEach((p, i) => { p.x = newPts[i].x; p.y = newPts[i].y; }); },
+            undo() { el.points.forEach((p, i) => { p.x = origPts[i].x; p.y = origPts[i].y; }); }
+        });
+        history.redoStack.length = 0;
+    }
+});
+
+// Also need polyline support in the main drag start
+// Patch: when selecting a polyline, start drag with points
+const origSelectDown = container.__selectHandler;
+// This is handled by the existing drag start which checks for polyline type
+
+// ── Copy / Paste ─────────────────────────────────────────
+
+let clipboard = null;
+
+window.addEventListener('keydown', (e) => {
+    if (document.activeElement !== document.body) return;
+
+    // Ctrl+C = Copy
+    if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedElement) {
+        e.preventDefault();
+        clipboard = JSON.parse(JSON.stringify(selectedElement));
+        if (typeof updatePasteButton === 'function') updatePasteButton();
+        console.log('[Copy] Copied ' + clipboard.type);
+    }
+
+    // Ctrl+V = Paste (offset by 5mm on sheet, assign to active level)
+    if ((e.ctrlKey || e.metaKey) && e.key === 'v' && clipboard && !Array.isArray(clipboard)) {
+        e.preventDefault();
+        const pasted = JSON.parse(JSON.stringify(clipboard));
+        pasted.id = generateId();
+
+        // Assign to current active level (enables cross-level paste)
+        const activeLevel = typeof getActiveLevel === 'function' ? getActiveLevel() : null;
+        if (activeLevel) pasted.level = activeLevel.id;
+
+        // Clear tag offsets on paste (fresh positioning)
+        delete pasted._tagOffsetX;
+        delete pasted._tagOffsetY;
+
+        // Offset to avoid overlap
+        const offsetReal = 5 * CONFIG.drawingScale; // 5mm sheet offset
+
+        if (pasted.type === 'line' || pasted.type === 'dimension' || pasted.type === 'leader' || pasted.type === 'edge' || pasted.type === 'fallarrow' || pasted.type === 'step') {
+            pasted.x1 += offsetReal; pasted.y1 += offsetReal;
+            pasted.x2 += offsetReal; pasted.y2 += offsetReal;
+        } else if (pasted.type === 'polyline' || pasted.type === 'cloud') {
+            for (const pt of pasted.points) { pt.x += offsetReal; pt.y += offsetReal; }
+        } else if (pasted.type === 'column') {
+            pasted.x += offsetReal; pasted.y += offsetReal;
+            pasted.tag = 'SC' + _colNextNum++;
+        } else if (pasted.type === 'wall') {
+            pasted.x1 += offsetReal; pasted.y1 += offsetReal;
+            pasted.x2 += offsetReal; pasted.y2 += offsetReal;
+            // Re-tag wall
+            if (pasted.wallType === '190 Block' || pasted.wallType === '140 Block' || pasted.wallType === '90 Block') {
+                pasted.tag = 'BW' + _wallBwNum++;
+            } else {
+                pasted.tag = 'CW' + _wallCwNum++;
+            }
+        } else if (pasted.type === 'beam') {
+            pasted.x1 += offsetReal; pasted.y1 += offsetReal;
+            pasted.x2 += offsetReal; pasted.y2 += offsetReal;
+        } else if (pasted.type === 'slab') {
+            if (pasted.points) {
+                for (const pt of pasted.points) { pt.x += offsetReal; pt.y += offsetReal; }
+            }
+        } else if (pasted.type === 'padfooting') {
+            pasted.x += offsetReal; pasted.y += offsetReal;
+            pasted.tag = 'PF' + _ftgNextNum++;
+        } else if (pasted.type === 'stripfooting') {
+            pasted.x1 += offsetReal; pasted.y1 += offsetReal;
+            pasted.x2 += offsetReal; pasted.y2 += offsetReal;
+        } else {
+            // Generic fallback for types with x/y
+            if ('x' in pasted) pasted.x += offsetReal;
+            if ('y' in pasted) pasted.y += offsetReal;
+        }
+
+        history.execute({
+            description: 'Paste ' + pasted.type,
+            execute() { project.elements.push(pasted); },
+            undo() {
+                const i = project.elements.indexOf(pasted);
+                if (i !== -1) project.elements.splice(i, 1);
+            }
+        });
+
+        selectedElement = pasted;
+        engine.requestRender();
+        console.log('[Paste] Pasted ' + pasted.type + ' to level ' + (pasted.level || '?'));
+    }
+});
+
+// ── Polyline endpoint snap ───────────────────────────────
+// Patch findSnap to include polyline endpoints/midpoints
+const origFindSnap = findSnap;
+findSnap = function(screenX, screenY) {
+    const sheetPos = engine.coords.screenToSheet(screenX, screenY);
+    const radiusMM = snapState.snapRadius / engine.viewport.zoom;
+    let best = origFindSnap(screenX, screenY);
+    let bestDist = best ? Math.sqrt(Math.pow(sheetPos.x - best.x, 2) + Math.pow(sheetPos.y - best.y, 2)) : radiusMM;
+
+    if (!snapState.enabled) return best;
+
+    for (const el of project.getVisibleElements()) {
+        if (el.type !== 'polyline') continue;
+        for (const pt of el.points) {
+            const sp = engine.coords.realToSheet(pt.x, pt.y);
+            const d = Math.sqrt(Math.pow(sheetPos.x - sp.x, 2) + Math.pow(sheetPos.y - sp.y, 2));
+            if (d < bestDist) { bestDist = d; best = { x: sp.x, y: sp.y, type: SNAP_TYPES.ENDPOINT }; }
+        }
+        // Midpoints of each segment
+        if (snapState.midpointSnap) {
+            for (let i = 0; i < el.points.length - 1; i++) {
+                const p1 = engine.coords.realToSheet(el.points[i].x, el.points[i].y);
+                const p2 = engine.coords.realToSheet(el.points[i+1].x, el.points[i+1].y);
+                const mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2;
+                const d = Math.sqrt(Math.pow(sheetPos.x - mx, 2) + Math.pow(sheetPos.y - my, 2));
+                if (d < bestDist) { bestDist = d; best = { x: mx, y: my, type: SNAP_TYPES.MIDPOINT }; }
+            }
+        }
+    }
+    return best;
+};
+
+// ── Polyline PDF export ──────────────────────────────────
+// Patch: add polyline export to the existing PDF export button handler
+// We'll hook this via the existing export — polylines are handled in the
+// element loop when el.type === 'line' check fails, so we need to add support.
+// For now, polylines export as individual line segments in the PDF.
+// (The existing export iterates project.getVisibleElements())
+
+// ══════════════════════════════════════════════════════════
+// ── PHASE 9: LEADER LINES + REVISION CLOUDS ─────────────
+// ══════════════════════════════════════════════════════════
+
+// ── Leader Line Tool ─────────────────────────────────────
+// Click arrow point → click elbow/end → type label text
+
+const leaderState = {
+    placing: false,
+    startPoint: null,   // arrow tip, sheet-mm
+    currentEnd: null,   // preview end
+};
+
+let activeLeaderInput = null;
+
+document.getElementById('btn-leader').addEventListener('click', () => setActiveTool('leader'));
+
+// Extend setActiveTool
+// E/Q = leader, W/G = cloud, S = section
+window.addEventListener('keydown', (e) => {
+    if (document.activeElement !== document.body) return;
+    if (e.ctrlKey || e.metaKey) return;
+    if (e.key === 'e' || e.key === 'q') setActiveTool('leader');
+    if (e.key === 'w') setActiveTool('cloud');
+    if (e.key === 'g') { setActiveTool('grids'); activateGridTool(); }
+    if (e.key === 's') { e.preventDefault(); setActiveTool('section'); }
+});
+
+function getLeaderPos(e) {
+    const rect = container.getBoundingClientRect();
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    const snap = findSnap(sx, sy);
+    let pos = snap ? { x: snap.x, y: snap.y } : engine.coords.screenToSheet(sx, sy);
+    if (leaderState.placing && leaderState.startPoint) {
+        pos = applyOrtho(pos.x, pos.y, leaderState.startPoint.x, leaderState.startPoint.y);
+    }
+    return pos;
+}
+
+container.addEventListener('mousemove', (e) => {
+    if (activeTool === 'leader') {
+        leaderState.currentEnd = getLeaderPos(e);
+        engine.requestRender();
+    }
+});
+
+container.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    if (engine._spaceDown || engine._isPanning) return;
+    if (activeTool !== 'leader') return;
+    if (pdfState.calibrating) return;
+
+    if (activeLeaderInput) return; // don't start new while typing
+
+    const pos = getLeaderPos(e);
+
+    if (!leaderState.placing) {
+        leaderState.placing = true;
+        leaderState.startPoint = pos;
+    } else {
+        // Second click — show text input at the end point
+        const endPos = pos;
+        const screenEnd = engine.coords.sheetToScreen(endPos.x, endPos.y);
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'text-input-overlay';
+        input.style.left = screenEnd.x + 'px';
+        input.style.top = (screenEnd.y - 14) + 'px';
+        input.style.width = '120px';
+        input.style.fontSize = '12px';
+        input.placeholder = 'Label...';
+        input._arrowPt = { x: leaderState.startPoint.x, y: leaderState.startPoint.y };
+        input._endPt = { x: endPos.x, y: endPos.y };
+
+        container.appendChild(input);
+        setTimeout(() => input.focus(), 30);
+        activeLeaderInput = input;
+
+        input.addEventListener('keydown', (ev) => {
+            ev.stopPropagation();
+            if (ev.key === 'Enter') { ev.preventDefault(); commitLeader(); }
+            if (ev.key === 'Escape') { ev.preventDefault(); cancelLeader(); }
+        });
+        input.addEventListener('blur', () => {
+            setTimeout(() => { if (activeLeaderInput === input) commitLeader(); }, 150);
+        });
+
+        leaderState.placing = false;
+        leaderState.startPoint = null;
+    }
+});
+
+container.addEventListener('contextmenu', (e) => {
+    if (activeTool === 'leader' && leaderState.placing) {
+        e.preventDefault();
+        leaderState.placing = false;
+        leaderState.startPoint = null;
+        engine.requestRender();
+    }
+});
+
+function commitLeader() {
+    if (!activeLeaderInput) return;
+    const input = activeLeaderInput;
+    const text = input.value.trim();
+    activeLeaderInput = null;
+    if (input.parentNode) input.parentNode.removeChild(input);
+
+    if (!text) { engine.requestRender(); return; }
+
+    const arrowReal = engine.coords.sheetToReal(input._arrowPt.x, input._arrowPt.y);
+    const endReal = engine.coords.sheetToReal(input._endPt.x, input._endPt.y);
+    const textSizeSelect = document.getElementById('text-size');
+    const fontSize = textSizeSelect ? parseFloat(textSizeSelect.value) : 3.5;
+
+    const newLeader = {
+        id: generateId(),
+        type: 'leader',
+        layer: 'S-ANNO',
+        x1: arrowReal.x, y1: arrowReal.y,  // arrow tip
+        x2: endReal.x, y2: endReal.y,       // text anchor
+        text: text,
+        fontSize: fontSize,
+    };
+
+    history.execute({
+        description: 'Add leader: ' + text,
+        execute() { project.elements.push(newLeader); },
+        undo() {
+            const i = project.elements.indexOf(newLeader);
+            if (i !== -1) project.elements.splice(i, 1);
+        }
+    });
+    engine.requestRender();
+}
+
+function cancelLeader() {
+    if (!activeLeaderInput) return;
+    const input = activeLeaderInput;
+    activeLeaderInput = null;
+    if (input.parentNode) input.parentNode.removeChild(input);
+    engine.requestRender();
+}
+
+// ── Revision Cloud Tool (drag-rectangle) ─────────────────
+// Drag to define a rectangular cloud area — renders as cloud bumps
+
+const cloudState = {
+    drawing: false,
+    startPoint: null,
+    currentEnd: null,
+    points: [],       // for backward compat with rendering/drag
+};
+
+document.getElementById('btn-cloud').addEventListener('click', () => setActiveTool('cloud'));
+
+function getCloudPos(e) {
+    const rect = container.getBoundingClientRect();
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    const snap = findSnap(sx, sy);
+    return snap ? { x: snap.x, y: snap.y } : engine.coords.screenToSheet(sx, sy);
+}
+
+// Mousedown — start drag
+container.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    if (engine._spaceDown || engine._isPanning) return;
+    if (activeTool !== 'cloud') return;
+    if (pdfState.calibrating) return;
+
+    cloudState.drawing = true;
+    cloudState.startPoint = getCloudPos(e);
+    cloudState.currentEnd = cloudState.startPoint;
+});
+
+// Mousemove — update preview
+window.addEventListener('mousemove', (e) => {
+    if (activeTool !== 'cloud' || !cloudState.drawing) return;
+    cloudState.currentEnd = getCloudPos(e);
+    engine.requestRender();
+});
+
+// Mouseup — commit cloud
+window.addEventListener('mouseup', (e) => {
+    if (activeTool !== 'cloud' || !cloudState.drawing) return;
+    cloudState.drawing = false;
+
+    const s = cloudState.startPoint;
+    const end = getCloudPos(e);
+
+    // Minimum size check
+    if (Math.abs(end.x - s.x) < 2 && Math.abs(end.y - s.y) < 2) {
+        cloudState.startPoint = null;
+        cloudState.currentEnd = null;
+        engine.requestRender();
+        return;
+    }
+
+    // Create 4 corner points (closed rectangle) in real-world coords
+    const r1 = engine.coords.sheetToReal(s.x, s.y);
+    const r2 = engine.coords.sheetToReal(end.x, s.y);
+    const r3 = engine.coords.sheetToReal(end.x, end.y);
+    const r4 = engine.coords.sheetToReal(s.x, end.y);
+
+    const newCloud = {
+        id: generateId(),
+        type: 'cloud',
+        layer: 'S-ANNO',
+        points: [r1, r2, r3, r4, { ...r1 }], // closed path
+    };
+
+    history.execute({
+        description: 'Draw revision cloud',
+        execute() { project.elements.push(newCloud); },
+        undo() {
+            const i = project.elements.indexOf(newCloud);
+            if (i !== -1) project.elements.splice(i, 1);
+        }
+    });
+
+    cloudState.startPoint = null;
+    cloudState.currentEnd = null;
+    engine.requestRender();
+});
+
+container.addEventListener('contextmenu', (e) => {
+    if (activeTool === 'cloud' && cloudState.drawing) {
+        e.preventDefault();
+        cloudState.drawing = false;
+        cloudState.startPoint = null;
+        cloudState.currentEnd = null;
+        engine.requestRender();
+    }
+});
+
+// ── Polygon Cloud Tool ───────────────────────────────────
+// Click vertices to define a polygon cloud, right-click/Esc to close
+
+const cloudPolyState = {
+    points: [],       // sheet-mm vertices
+    currentEnd: null, // preview next vertex
+};
+
+document.getElementById('btn-cloud-poly').addEventListener('click', () => setActiveTool('cloudpoly'));
+
+// Extend setActiveTool for cloudpoly
+// Shift+W = polygon cloud
+window.addEventListener('keydown', (e) => {
+    if (document.activeElement !== document.body) return;
+    if (e.ctrlKey || e.metaKey) return;
+    if (e.key === 'W') setActiveTool('cloudpoly'); // Shift+W (uppercase)
+});
+
+function getCloudPolyPos(e) {
+    const rect = container.getBoundingClientRect();
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    const snap = findSnap(sx, sy);
+    let pos = snap ? { x: snap.x, y: snap.y } : engine.coords.screenToSheet(sx, sy);
+    if (cloudPolyState.points.length > 0) {
+        const last = cloudPolyState.points[cloudPolyState.points.length - 1];
+        pos = applyOrtho(pos.x, pos.y, last.x, last.y);
+    }
+    return pos;
+}
+
+container.addEventListener('mousemove', (e) => {
+    if (activeTool === 'cloudpoly') {
+        cloudPolyState.currentEnd = getCloudPolyPos(e);
+        engine.requestRender();
+    }
+});
+
+container.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    if (engine._spaceDown || engine._isPanning) return;
+    if (activeTool !== 'cloudpoly') return;
+    if (pdfState.calibrating) return;
+
+    const pos = getCloudPolyPos(e);
+    cloudPolyState.points.push(pos);
+    engine.requestRender();
+});
+
+// Right-click or Escape closes the polygon cloud
+container.addEventListener('contextmenu', (e) => {
+    if (activeTool === 'cloudpoly' && cloudPolyState.points.length >= 3) {
+        e.preventDefault();
+        commitCloudPoly();
+    } else if (activeTool === 'cloudpoly') {
+        e.preventDefault();
+        cloudPolyState.points = [];
+        engine.requestRender();
+    }
+});
+
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && activeTool === 'cloudpoly' && cloudPolyState.points.length >= 3) {
+        commitCloudPoly();
+    }
+});
+
+function commitCloudPoly() {
+    const pts = cloudPolyState.points;
+    if (pts.length < 3) return;
+
+    // Close the path
+    const closedPts = [...pts, { ...pts[0] }];
+    const realPts = closedPts.map(p => engine.coords.sheetToReal(p.x, p.y));
+
+    const newCloud = {
+        id: generateId(),
+        type: 'cloud',
+        layer: 'S-ANNO',
+        points: realPts,
+    };
+
+    history.execute({
+        description: 'Draw polygon cloud',
+        execute() { project.elements.push(newCloud); },
+        undo() {
+            const i = project.elements.indexOf(newCloud);
+            if (i !== -1) project.elements.splice(i, 1);
+        }
+    });
+
+    cloudPolyState.points = [];
+    cloudPolyState.currentEnd = null;
+    engine.requestRender();
+}
+
+// ── Leader + Cloud Rendering ─────────────────────────────
+
+const prevExtDraw = extDrawElements;
+const phase9Draw = function(ctx, eng) {
+    prevExtDraw(ctx, eng);
+
+    const coords = eng.coords;
+    const zoom = eng.viewport.zoom;
+
+    for (const el of project.getVisibleElements()) {
+        const isSelected = (selectedElement === el);
+
+        // ── Leader lines ──
+        if (el.type === 'leader') {
+            const layer = project.layers[el.layer];
+            if (!layer || !layer.visible) continue;
+
+            const tip = coords.realToScreen(el.x1, el.y1);
+            const end = coords.realToScreen(el.x2, el.y2);
+            const color = isSelected ? '#2B7CD0' : layer.color;
+
+            // Leader line
+            ctx.strokeStyle = color;
+            ctx.lineWidth = Math.max(1, 0.25 * zoom);
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.moveTo(tip.x, tip.y);
+            ctx.lineTo(end.x, end.y);
+            ctx.stroke();
+
+            // Arrowhead at tip
+            const angle = Math.atan2(tip.y - end.y, tip.x - end.x);
+            const arrowLen = Math.max(6, 2.5 * zoom);
+            const arrowW = Math.PI / 7;
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(tip.x, tip.y);
+            ctx.lineTo(tip.x - arrowLen * Math.cos(angle - arrowW), tip.y - arrowLen * Math.sin(angle - arrowW));
+            ctx.lineTo(tip.x - arrowLen * Math.cos(angle + arrowW), tip.y - arrowLen * Math.sin(angle + arrowW));
+            ctx.closePath();
+            ctx.fill();
+
+            // Text at end with underline
+            if (el.text) {
+                const fontSize = Math.max(7, (el.fontSize || 3.5) * zoom);
+                ctx.font = `${fontSize}px "Architects Daughter", cursive`;
+                ctx.fillStyle = color;
+
+                // Position text: to the right or left of endpoint depending on direction
+                const textLeft = end.x > tip.x;
+                ctx.textAlign = textLeft ? 'left' : 'right';
+                ctx.textBaseline = 'bottom';
+                const textX = textLeft ? end.x + 3 : end.x - 3;
+                ctx.fillText(el.text, textX, end.y - 2);
+
+                // Underline
+                const metrics = ctx.measureText(el.text);
+                const ulX1 = textLeft ? end.x : end.x - metrics.width - 3;
+                const ulX2 = textLeft ? end.x + metrics.width + 3 : end.x;
+                ctx.strokeStyle = color;
+                ctx.lineWidth = Math.max(0.5, 0.18 * zoom);
+                ctx.beginPath();
+                ctx.moveTo(ulX1, end.y);
+                ctx.lineTo(ulX2, end.y);
+                ctx.stroke();
+            }
+
+            // Selection handles
+            if (isSelected) {
+                ctx.fillStyle = '#2B7CD0';
+                ctx.fillRect(tip.x - 3, tip.y - 3, 6, 6);
+                ctx.fillRect(end.x - 3, end.y - 3, 6, 6);
+            }
+        }
+
+        // ── Revision clouds ──
+        if (el.type === 'cloud') {
+            const layer = project.layers[el.layer];
+            if (!layer || !layer.visible) continue;
+
+            const pts = el.points;
+            if (pts.length < 3) continue;
+            const color = isSelected ? '#2B7CD0' : '#CC0000'; // clouds typically red
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = Math.max(1.5, 0.35 * zoom);
+            ctx.setLineDash([]);
+
+            // Draw cloud bumps: arcs between consecutive points
+            const bumpSize = 3 * zoom; // radius of each arc bump
+            ctx.beginPath();
+            for (let i = 0; i < pts.length - 1; i++) {
+                const p1 = coords.realToScreen(pts[i].x, pts[i].y);
+                const p2 = coords.realToScreen(pts[i + 1].x, pts[i + 1].y);
+
+                const segDx = p2.x - p1.x;
+                const segDy = p2.y - p1.y;
+                const segLen = Math.sqrt(segDx * segDx + segDy * segDy);
+                if (segLen < 2) continue;
+
+                // Number of bumps for this segment
+                const numBumps = Math.max(1, Math.round(segLen / (bumpSize * 1.8)));
+                const stepX = segDx / numBumps;
+                const stepY = segDy / numBumps;
+
+                for (let b = 0; b < numBumps; b++) {
+                    const bx1 = p1.x + stepX * b;
+                    const by1 = p1.y + stepY * b;
+                    const bx2 = p1.x + stepX * (b + 1);
+                    const by2 = p1.y + stepY * (b + 1);
+                    const mx = (bx1 + bx2) / 2;
+                    const my = (by1 + by2) / 2;
+
+                    // Arc bulging outward (perpendicular to segment direction)
+                    const perpX = -stepY / numBumps;
+                    const perpY = stepX / numBumps;
+                    const perpLen = Math.sqrt(perpX * perpX + perpY * perpY);
+                    const bulge = bumpSize * 0.6;
+                    const cpx = mx + (perpX / perpLen) * bulge;
+                    const cpy = my + (perpY / perpLen) * bulge;
+
+                    if (b === 0 && i === 0) ctx.moveTo(bx1, by1);
+                    ctx.quadraticCurveTo(cpx, cpy, bx2, by2);
+                }
+            }
+            ctx.stroke();
+
+            if (isSelected) {
+                ctx.strokeStyle = '#2B7CD0';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([4, 3]);
+                // Bounding box
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                for (const pt of pts) {
+                    const sp = coords.realToScreen(pt.x, pt.y);
+                    minX = Math.min(minX, sp.x); minY = Math.min(minY, sp.y);
+                    maxX = Math.max(maxX, sp.x); maxY = Math.max(maxY, sp.y);
+                }
+                ctx.strokeRect(minX - 4, minY - 4, maxX - minX + 8, maxY - minY + 8);
+                ctx.setLineDash([]);
+            }
+        }
+    }
+
+    // Leader preview
+    if (activeTool === 'leader' && leaderState.placing && leaderState.startPoint && leaderState.currentEnd) {
+        const tip = coords.sheetToScreen(leaderState.startPoint.x, leaderState.startPoint.y);
+        const end = coords.sheetToScreen(leaderState.currentEnd.x, leaderState.currentEnd.y);
+
+        ctx.strokeStyle = '#2B7CD0';
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.6;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(tip.x, tip.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.stroke();
+
+        // Preview arrowhead
+        const angle = Math.atan2(tip.y - end.y, tip.x - end.x);
+        const arrowLen = 8;
+        ctx.fillStyle = '#2B7CD0';
+        ctx.beginPath();
+        ctx.moveTo(tip.x, tip.y);
+        ctx.lineTo(tip.x - arrowLen * Math.cos(angle - 0.4), tip.y - arrowLen * Math.sin(angle - 0.4));
+        ctx.lineTo(tip.x - arrowLen * Math.cos(angle + 0.4), tip.y - arrowLen * Math.sin(angle + 0.4));
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+
+        ctx.fillStyle = '#2B7CD0';
+        ctx.beginPath(); ctx.arc(tip.x, tip.y, 3, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Cloud preview while dragging rectangle
+    if (activeTool === 'cloud' && cloudState.drawing && cloudState.startPoint && cloudState.currentEnd) {
+        const s = cloudState.startPoint;
+        const e = cloudState.currentEnd;
+        const sp1 = coords.sheetToScreen(s.x, s.y);
+        const sp2 = coords.sheetToScreen(e.x, e.y);
+
+        // Draw cloud bumps along rectangle edges
+        const x1 = Math.min(sp1.x, sp2.x), y1 = Math.min(sp1.y, sp2.y);
+        const x2 = Math.max(sp1.x, sp2.x), y2 = Math.max(sp1.y, sp2.y);
+        const corners = [{x:x1,y:y1},{x:x2,y:y1},{x:x2,y:y2},{x:x1,y:y2},{x:x1,y:y1}];
+
+        ctx.strokeStyle = '#CC0000';
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.5;
+        ctx.setLineDash([]);
+
+        const bumpR = 3 * zoom;
+        ctx.beginPath();
+        for (let ci = 0; ci < corners.length - 1; ci++) {
+            const cp1 = corners[ci], cp2 = corners[ci+1];
+            const sdx = cp2.x - cp1.x, sdy = cp2.y - cp1.y;
+            const sLen = Math.sqrt(sdx*sdx + sdy*sdy);
+            if (sLen < 2) continue;
+            const nBumps = Math.max(1, Math.round(sLen / (bumpR * 1.8)));
+            const stX = sdx/nBumps, stY = sdy/nBumps;
+            for (let b = 0; b < nBumps; b++) {
+                const bx1 = cp1.x + stX*b, by1 = cp1.y + stY*b;
+                const bx2 = cp1.x + stX*(b+1), by2 = cp1.y + stY*(b+1);
+                const mx = (bx1+bx2)/2, my = (by1+by2)/2;
+                const pxDir = -stY/nBumps, pyDir = stX/nBumps;
+                const pLen = Math.sqrt(pxDir*pxDir + pyDir*pyDir) || 1;
+                const cpx = mx + (pxDir/pLen) * bumpR * 0.6;
+                const cpy = my + (pyDir/pLen) * bumpR * 0.6;
+                if (b === 0 && ci === 0) ctx.moveTo(bx1, by1);
+                ctx.quadraticCurveTo(cpx, cpy, bx2, by2);
+            }
+        }
+        ctx.stroke();
+        ctx.globalAlpha = 1.0;
+
+        // Show dimensions
+        const r1 = coords.sheetToReal(s.x, s.y);
+        const r2 = coords.sheetToReal(e.x, e.y);
+        const cw = Math.abs(r2.x - r1.x), ch = Math.abs(r2.y - r1.y);
+        const fmtCD = (mm) => mm >= 1000 ? (mm/1000).toFixed(1) + 'm' : Math.round(mm) + '';
+        ctx.font = 'bold 11px "Segoe UI", Arial, sans-serif';
+        ctx.fillStyle = '#CC0000';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(fmtCD(cw), (sp1.x+sp2.x)/2, Math.min(sp1.y,sp2.y) - 4);
+        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.fillText(fmtCD(ch), Math.max(sp1.x,sp2.x) + 6, (sp1.y+sp2.y)/2);
+        ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    }
+
+    // Polygon cloud preview
+    if (activeTool === 'cloudpoly' && cloudPolyState.points.length > 0) {
+        const bumpR = 3 * zoom;
+        const allPts = [...cloudPolyState.points];
+        if (cloudPolyState.currentEnd) allPts.push(cloudPolyState.currentEnd);
+
+        // Draw placed edges as cloud bumps
+        ctx.strokeStyle = '#CC0000';
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.5;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        let first = true;
+        for (let ci = 0; ci < allPts.length - 1; ci++) {
+            const cp1s = coords.sheetToScreen(allPts[ci].x, allPts[ci].y);
+            const cp2s = coords.sheetToScreen(allPts[ci+1].x, allPts[ci+1].y);
+            const sdx = cp2s.x - cp1s.x, sdy = cp2s.y - cp1s.y;
+            const sLen = Math.sqrt(sdx*sdx + sdy*sdy);
+            if (sLen < 2) continue;
+            const nBumps = Math.max(1, Math.round(sLen / (bumpR * 1.8)));
+            const stX = sdx/nBumps, stY = sdy/nBumps;
+            for (let b = 0; b < nBumps; b++) {
+                const bx1 = cp1s.x + stX*b, by1 = cp1s.y + stY*b;
+                const bx2 = cp1s.x + stX*(b+1), by2 = cp1s.y + stY*(b+1);
+                const mx = (bx1+bx2)/2, my = (by1+by2)/2;
+                const pxD = -stY/nBumps, pyD = stX/nBumps;
+                const pLen = Math.sqrt(pxD*pxD + pyD*pyD) || 1;
+                const cpx = mx + (pxD/pLen) * bumpR * 0.6;
+                const cpy = my + (pyD/pLen) * bumpR * 0.6;
+                if (first) { ctx.moveTo(bx1, by1); first = false; }
+                ctx.quadraticCurveTo(cpx, cpy, bx2, by2);
+            }
+        }
+        // Dashed closing line back to start
+        if (cloudPolyState.points.length >= 3 && cloudPolyState.currentEnd) {
+            const lastPt = coords.sheetToScreen(cloudPolyState.currentEnd.x, cloudPolyState.currentEnd.y);
+            const firstPt = coords.sheetToScreen(cloudPolyState.points[0].x, cloudPolyState.points[0].y);
+            ctx.stroke(); // finish the bumps
+            ctx.setLineDash([4, 3]);
+            ctx.beginPath();
+            ctx.moveTo(lastPt.x, lastPt.y);
+            ctx.lineTo(firstPt.x, firstPt.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        } else {
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1.0;
+
+        // Vertex dots
+        ctx.fillStyle = '#CC0000';
+        for (const pt of cloudPolyState.points) {
+            const sp = coords.sheetToScreen(pt.x, pt.y);
+            ctx.beginPath(); ctx.arc(sp.x, sp.y, 3, 0, Math.PI * 2); ctx.fill();
+        }
+    }
+};
+
+// Replace in render callbacks
+const cbIdx3 = engine._renderCallbacks.indexOf(extDrawElements);
+if (cbIdx3 !== -1) engine._renderCallbacks[cbIdx3] = phase9Draw;
+
+// ── Leader + Cloud drag support ──────────────────────────
+
+// Leaders use x1,y1,x2,y2 like lines — already handled by existing drag.
+// Clouds use points array like polylines — handled by polyline drag patch.
+// Just need to ensure the drag start stores the right coords:
+const origDragDown2 = container._origDragDown;
+// Patch: in the mousedown for select, polyline origCoords is already handled
+// for clouds since they have .points like polylines. Leaders have x1/y1/x2/y2
+// like lines, so they're already handled. Nothing extra needed.
+
+// ── Leader + Cloud PDF export ────────────────────────────
+// Patch into the existing PDF export element loop
+
+// We need to hook the export. The simplest approach is to note that
+// the export already loops project.getVisibleElements() — we just need
+// to add handlers for 'leader' and 'cloud' types there.
+
+// Find and patch the export click handler's element loop:
+const origExportBtn = document.getElementById('btn-export-pdf');
+const origExportHandler = origExportBtn._origHandler;
+// Since we can't easily patch inline, leaders and clouds will be exported
+// in a future update. For now they render on screen and save/load in JSON.
+
+// ══════════════════════════════════════════════════════════
+// ── PHASE 10: HATCH/FILL PATTERNS ────────────────────────
+// ══════════════════════════════════════════════════════════
+
+// ── Hatch Pattern Definitions ────────────────────────────
+
+/**
+ * Draw a hatch pattern inside a polygon defined by screen-space points.
+ * Each pattern function takes (ctx, points[], zoom, color, opacity).
+ */
+const HATCH_RENDERERS = {
+
+    /** Concrete: Australian standard - scattered triangles */
+    concrete(ctx, screenPts, zoom, color, opacity) {
+        ctx.save();
+        clipToPolygon(ctx, screenPts);
+        ctx.globalAlpha = opacity;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.max(0.5, 0.12 * zoom);
+
+        const bounds = polyBounds(screenPts);
+        const spacing = Math.max(6, 3.5 * zoom);
+        const triSize = Math.max(1.5, 0.8 * zoom);
+
+        for (let x = bounds.x; x < bounds.x + bounds.w; x += spacing) {
+            for (let y = bounds.y; y < bounds.y + bounds.h; y += spacing) {
+                // Pseudo-random offset and rotation
+                const ox = ((x * 7 + y * 13) % spacing) * 0.4 - spacing * 0.2;
+                const oy = ((x * 11 + y * 3) % spacing) * 0.4 - spacing * 0.2;
+                const angle = ((x * 17 + y * 23) % 628) / 100; // 0 to ~2PI
+                const px = x + ox, py = y + oy;
+
+                // Draw small triangle
+                ctx.beginPath();
+                ctx.moveTo(px + triSize * Math.cos(angle), py + triSize * Math.sin(angle));
+                ctx.lineTo(px + triSize * Math.cos(angle + 2.1), py + triSize * Math.sin(angle + 2.1));
+                ctx.lineTo(px + triSize * Math.cos(angle + 4.2), py + triSize * Math.sin(angle + 4.2));
+                ctx.closePath();
+                ctx.stroke();
+            }
+        }
+        ctx.restore();
+    },
+
+    /** Blockwork: 45° cross-hatch (both directions) */
+    blockwork(ctx, screenPts, zoom, color, opacity) {
+        ctx.save();
+        clipToPolygon(ctx, screenPts);
+        ctx.globalAlpha = opacity;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.max(0.5, 0.15 * zoom);
+
+        const bounds = polyBounds(screenPts);
+        const spacing = Math.max(5, 3 * zoom);
+        const diag = bounds.w + bounds.h;
+
+        // 45° lines
+        ctx.beginPath();
+        for (let d = -diag; d < diag; d += spacing) {
+            ctx.moveTo(bounds.x + d, bounds.y);
+            ctx.lineTo(bounds.x + d + bounds.h, bounds.y + bounds.h);
+        }
+        // -45° lines
+        for (let d = -diag; d < diag; d += spacing) {
+            ctx.moveTo(bounds.x + d, bounds.y + bounds.h);
+            ctx.lineTo(bounds.x + d + bounds.h, bounds.y);
+        }
+        ctx.stroke();
+        ctx.restore();
+    },
+
+    /** Timber: wavy grain lines at ~0° (horizontal) */
+    timber(ctx, screenPts, zoom, color, opacity) {
+        ctx.save();
+        clipToPolygon(ctx, screenPts);
+        ctx.globalAlpha = opacity;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.max(0.5, 0.15 * zoom);
+
+        const bounds = polyBounds(screenPts);
+        const spacing = Math.max(4, 2 * zoom);
+        const waveAmp = spacing * 0.25;
+        const waveFreq = 0.03 / Math.max(0.3, zoom * 0.3);
+
+        ctx.beginPath();
+        for (let y = bounds.y; y < bounds.y + bounds.h; y += spacing) {
+            ctx.moveTo(bounds.x, y);
+            for (let x = bounds.x; x < bounds.x + bounds.w; x += 2) {
+                const wy = y + Math.sin((x + y * 0.5) * waveFreq) * waveAmp;
+                ctx.lineTo(x, wy);
+            }
+        }
+        ctx.stroke();
+        ctx.restore();
+    },
+
+    /** Solid fill */
+    solid(ctx, screenPts, zoom, color, opacity) {
+        ctx.save();
+        ctx.globalAlpha = opacity;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(screenPts[0].x, screenPts[0].y);
+        for (let i = 1; i < screenPts.length; i++) {
+            ctx.lineTo(screenPts[i].x, screenPts[i].y);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+    }
+};
+
+/** Clip canvas to a polygon defined by screen-space points */
+function clipToPolygon(ctx, pts) {
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.closePath();
+    ctx.clip();
+}
+
+/** Get bounding box of screen-space points */
+function polyBounds(pts) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const p of pts) {
+        if (p.x < minX) minX = p.x; if (p.y < minY) minY = p.y;
+        if (p.x > maxX) maxX = p.x; if (p.y > maxY) maxY = p.y;
+    }
+    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+}
+
+/** Calculate centroid of polygon points (in same coordinate system as input) */
+function polyCentroid(pts) {
+    if (!pts || pts.length === 0) return { x: 0, y: 0 };
+    let cx = 0, cy = 0;
+    for (const p of pts) {
+        cx += p.x;
+        cy += p.y;
+    }
+    return { x: cx / pts.length, y: cy / pts.length };
+}
+
+// ── Hatch/Fill Rendering ─────────────────────────────────
+
+function drawHatchFills(ctx, eng) {
+    const coords = eng.coords;
+    const zoom = eng.viewport.zoom;
+
+    for (const el of project.getVisibleElements()) {
+        if (!el.hatch || el.hatch === 'none') continue;
+        if (el.type !== 'polyline') continue;
+        if (!el.points || el.points.length < 3) continue;
+
+        const renderer = HATCH_RENDERERS[el.hatch];
+        if (!renderer) continue;
+
+        // Convert to screen points
+        const screenPts = el.points.map(p => coords.realToScreen(p.x, p.y));
+        const color = el.fillColor || '#CCCCCC';
+        const opacity = el.fillOpacity !== undefined ? el.fillOpacity : 0.3;
+
+        renderer(ctx, screenPts, zoom, color, opacity);
+    }
+}
+
+/** Draw thickness callouts for slab elements */
+function drawSlabCallouts(ctx, eng) {
+    const coords = eng.coords;
+    const zoom = eng.viewport.zoom;
+
+    for (const el of project.getVisibleElements()) {
+        // Only draw callouts for slab polylines with thickness
+        if (el.type !== 'polyline' || el.layer !== 'S-SLAB' || !el.slabThickness) continue;
+        if (!el.points || el.points.length < 3) continue;
+
+        // Calculate centroid in real coords
+        const centroid = polyCentroid(el.points);
+        const screenCentroid = coords.realToScreen(centroid.x, centroid.y);
+
+        // Callout — clean square box with bold italic number, no brackets
+        const thickness = el.slabThickness;
+        const text = String(thickness);
+        const fontSize = Math.max(10, 5 * zoom);
+        ctx.font = `bold italic ${fontSize}px "Segoe UI", Arial, sans-serif`;
+        const metrics = ctx.measureText(text);
+        const textWidth = metrics.width;
+
+        // Square box sized to fit text with generous padding
+        const boxSize = Math.max(textWidth, fontSize) + Math.max(6, 3.5 * zoom);
+
+        ctx.save();
+
+        // White background — clean square
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(screenCentroid.x - boxSize / 2, screenCentroid.y - boxSize / 2, boxSize, boxSize);
+
+        // Thin black border
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = Math.max(0.5, 0.18 * zoom);
+        ctx.strokeRect(screenCentroid.x - boxSize / 2, screenCentroid.y - boxSize / 2, boxSize, boxSize);
+
+        // Number text — bold italic, centred
+        ctx.fillStyle = '#000000';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, screenCentroid.x, screenCentroid.y);
+
+        ctx.restore();
+    }
+}
+
+// Register hatch renderer — draw BEFORE elements (so outlines are on top)
+// Insert at position 3 (after pdf, statusbar, grids but before elements)
+engine._renderCallbacks.splice(3, 0, drawHatchFills);
+
+// Register slab callout renderer — draw AFTER elements (on top)
+engine._renderCallbacks.push(drawSlabCallouts);
+
+// ── Hatch/Fill UI Controls ───────────────────────────────
+
+const hatchSelect = document.getElementById('hatch-pattern');
+const fillColorInput = document.getElementById('fill-color');
+const fillOpacitySlider = document.getElementById('fill-opacity');
+const fillOpacityVal = document.getElementById('fill-opacity-val');
+
+// Apply hatch to selected element (polyline with 3+ points)
+hatchSelect.addEventListener('change', () => {
+    if (!selectedElement || selectedElement.type !== 'polyline' || !selectedElement.points || selectedElement.points.length < 3) return;
+    const el = selectedElement;
+    const oldHatch = el.hatch;
+    const newHatch = hatchSelect.value;
+    const color = fillColorInput.value;
+    const opacity = parseInt(fillOpacitySlider.value) / 100;
+
+    history.execute({
+        description: 'Set hatch: ' + newHatch,
+        execute() {
+            el.hatch = newHatch;
+            el.fillColor = color;
+            el.fillOpacity = opacity;
+        },
+        undo() {
+            el.hatch = oldHatch;
+            if (!oldHatch || oldHatch === 'none') {
+                delete el.fillColor;
+                delete el.fillOpacity;
+            }
+        }
+    });
+    engine.requestRender();
+});
+
+// Update fill colour on selected element
+fillColorInput.addEventListener('input', () => {
+    if (!selectedElement || selectedElement.type !== 'polyline' || !selectedElement.points || selectedElement.points.length < 3) return;
+    if (!selectedElement.hatch || selectedElement.hatch === 'none') return;
+    selectedElement.fillColor = fillColorInput.value;
+    engine.requestRender();
+});
+
+// Update fill opacity
+fillOpacitySlider.addEventListener('input', () => {
+    fillOpacityVal.textContent = fillOpacitySlider.value + '%';
+    if (!selectedElement || selectedElement.type !== 'polyline' || !selectedElement.points || selectedElement.points.length < 3) return;
+    if (!selectedElement.hatch || selectedElement.hatch === 'none') return;
+    selectedElement.fillOpacity = parseInt(fillOpacitySlider.value) / 100;
+    engine.requestRender();
+});
+
+// Sync UI when selecting a polyline with hatch
+engine.onRender(() => {
+    if (selectedElement && selectedElement.type === 'polyline' && selectedElement.hatch) {
+        hatchSelect.value = selectedElement.hatch;
+        if (selectedElement.fillColor) fillColorInput.value = selectedElement.fillColor;
+        if (selectedElement.fillOpacity !== undefined) {
+            fillOpacitySlider.value = Math.round(selectedElement.fillOpacity * 100);
+            fillOpacityVal.textContent = Math.round(selectedElement.fillOpacity * 100) + '%';
+        }
+    }
+});
+
+// ── Hatch PDF Export Patch ────────────────────────────────
+// Note: hatches are complex patterns — the PDF export currently renders
+// outlines only. Solid fills can be added; pattern hatches would need
+// pdf-level pattern support which is a future enhancement.
+
+// ══════════════════════════════════════════════════════════

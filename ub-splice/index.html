@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UB Splice — Coming Soon</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --cyan: #00AEEF; --ink: #181818; --muted: #aaa; --bg: #f2f2ef; }
+    html, body {
+      height: 100%; background: var(--bg);
+      font-family: 'Barlow', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; color: var(--ink);
+    }
+    .wm {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800; font-size: 18px;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      margin-bottom: 24px; color: var(--muted);
+    }
+    .rule { width: 50px; height: 2px; background: var(--cyan); margin-bottom: 24px; }
+    h1 {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700; font-size: 28px;
+      letter-spacing: 0.09em; text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    p {
+      font-size: 13px; color: var(--muted); font-weight: 300;
+      letter-spacing: 0.08em; margin-bottom: 28px;
+    }
+    a {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 12px; font-weight: 600;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--cyan); text-decoration: none;
+      border: 1px solid var(--cyan); padding: 8px 24px;
+      border-radius: 3px; transition: all 0.2s;
+    }
+    a:hover { background: var(--cyan); color: #fff; }
+  </style>
+</head>
+<body>
+  <div class="wm">Bligh Tanner</div>
+  <div class="rule"></div>
+  <h1>UB Splice</h1>
+  <p>Moment splice checker + live 3D visualiser — coming soon</p>
+  <a href="../">Back to Tools</a>
+</body>
+</html>
