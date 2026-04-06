@@ -2004,6 +2004,19 @@ container.addEventListener('mousedown', (e) => {
         if (hit.type === 'line' || hit.type === 'dimension' || hit.type === 'leader' || hit.type === 'callout' || hit.type === 'wall' || hit.type === 'stripFooting' || hit.type === 'bracingWall') {
             dragState.origCoords = { x1: hit.x1, y1: hit.y1, x2: hit.x2, y2: hit.y2 };
 
+            // Callout: check if near arrow tip (node 0) — otherwise drag text box only (node 1)
+            // This gives Bluebeam-style behaviour: drag body = move text box, arrow stays put
+            if (hit.type === 'callout') {
+                const nodeTol = 6 / engine.viewport.zoom;
+                const p1 = engine.coords.realToSheet(hit.x1, hit.y1);
+                const d1 = Math.sqrt(Math.pow(sheetPos.x - p1.x, 2) + Math.pow(sheetPos.y - p1.y, 2));
+                if (d1 < nodeTol) {
+                    dragState.nodeIndex = 0; // dragging arrow tip
+                } else {
+                    dragState.nodeIndex = 1; // dragging text box (default for callout)
+                }
+            }
+
             // Check if near an endpoint — if so, drag just that node
             if (hit.type === 'wall' || hit.type === 'line' || hit.type === 'stripFooting' || hit.type === 'bracingWall') {
                 const nodeTol = 6 / engine.viewport.zoom; // screen pixels converted to sheet-mm

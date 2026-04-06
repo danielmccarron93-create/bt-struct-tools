@@ -1594,10 +1594,22 @@ engine.onRender(() => {
 });
 
 // ══════════════════════════════════════════════════════════
-// ── Callout Tool (G) ─────────────────────────────────────
+// ── Callout Tool (T) ─────────────────────────────────────
 // Click arrow tip → click text box position → type label → Enter
-// Renders as: bordered text box + leader line with filled arrowhead
+// Renders: bordered text box with word-wrapped text + leader line
+//          with filled arrowhead. Double-click to edit/resize.
+// Drag behaviour (Bluebeam-style):
+//   - Drag body = move text box only, arrow tip stays fixed
+//   - Drag arrow tip handle = re-aim arrow, text box stays fixed
 // ══════════════════════════════════════════════════════════
+
+const CALLOUT_DEFAULTS = {
+    boxWidth: 30,       // sheet-mm — default text box width
+    minBoxWidth: 10,    // sheet-mm — minimum resize width
+    minBoxHeight: 6,    // sheet-mm — minimum resize height
+    padding: 2,         // sheet-mm — inner padding
+    fontSize: 3.5,      // sheet-mm
+};
 
 const calloutState = {
     placing: false,
@@ -1606,11 +1618,94 @@ const calloutState = {
 };
 let activeCalloutInput = null;
 
+// ── Callout edit mode (double-click) ─────────────────────
+let calloutEditState = {
+    editing: false,
+    el: null,           // element being edited
+    textarea: null,     // DOM textarea overlay
+    resizing: false,    // true while dragging a resize handle
+    resizeCorner: null, // which corner is being dragged
+    resizeStart: null,  // { x, y } screen coords at drag start
+    origBoxWidth: 0,    // original boxWidth before resize
+    origBoxHeight: 0,   // original boxHeight before resize
+};
+
 function getCalloutPos(e) {
     const rect = container.getBoundingClientRect();
     const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
     const snap = findSnap(sx, sy);
     return snap ? { x: snap.x, y: snap.y } : engine.coords.screenToSheet(sx, sy);
+}
+
+// ── Helper: wrap text into lines that fit a given pixel width ──
+function wrapText(ctx, text, maxWidth) {
+    const lines = [];
+    const paragraphs = text.split('\n');
+    for (const para of paragraphs) {
+        const words = para.split(/\s+/);
+        if (words.length === 0 || (words.length === 1 && words[0] === '')) {
+            lines.push('');
+            continue;
+        }
+        let currentLine = words[0];
+        for (let i = 1; i < words.length; i++) {
+            const test = currentLine + ' ' + words[i];
+            if (ctx.measureText(test).width <= maxWidth) {
+                currentLine = test;
+            } else {
+                lines.push(currentLine);
+                currentLine = words[i];
+            }
+        }
+        lines.push(currentLine);
+    }
+    return lines;
+}
+
+// ── Helper: compute callout box geometry in screen coords ──
+function getCalloutBoxGeom(el, coords, zoom, ctx) {
+    const end = coords.realToScreen(el.x2, el.y2);
+    const tip = coords.realToScreen(el.x1, el.y1);
+    const fontSize = Math.max(7, (el.fontSize || CALLOUT_DEFAULTS.fontSize) * zoom);
+    const pad = Math.max(3, (el.padding || CALLOUT_DEFAULTS.padding) * zoom);
+    const boxWidthMM = el.boxWidth || CALLOUT_DEFAULTS.boxWidth;
+    const boxW = boxWidthMM * zoom;
+
+    ctx.font = `${el.fontBold ? 'bold ' : ''}${fontSize}px "Architects Daughter", cursive`;
+    const innerW = boxW - pad * 2;
+    const lines = wrapText(ctx, el.text || '', innerW > 10 ? innerW : 10);
+    const lineHeight = fontSize * 1.3;
+
+    // If boxHeight is fixed (user resized), use it; otherwise auto-height
+    let boxH;
+    if (el.boxHeight) {
+        boxH = el.boxHeight * zoom;
+    } else {
+        boxH = Math.max((CALLOUT_DEFAULTS.minBoxHeight) * zoom, lines.length * lineHeight + pad * 2);
+    }
+
+    // Anchor: text box sits with its nearest edge touching the endpoint
+    const textLeft = end.x > tip.x;
+    const boxX = textLeft ? end.x : end.x - boxW;
+    const boxY = end.y - boxH / 2;
+
+    // Smart leader landing: connect to nearest box edge midpoint
+    const boxCX = boxX + boxW / 2;
+    const boxCY = boxY + boxH / 2;
+    const candidates = [
+        { x: boxX, y: boxCY },           // left edge mid
+        { x: boxX + boxW, y: boxCY },    // right edge mid
+        { x: boxCX, y: boxY },           // top edge mid
+        { x: boxCX, y: boxY + boxH },    // bottom edge mid
+    ];
+    let leaderEnd = end;
+    let bestDist = Infinity;
+    for (const c of candidates) {
+        const d = Math.sqrt(Math.pow(tip.x - c.x, 2) + Math.pow(tip.y - c.y, 2));
+        if (d < bestDist) { bestDist = d; leaderEnd = c; }
+    }
+
+    return { boxX, boxY, boxW, boxH, pad, fontSize, lines, lineHeight, leaderEnd, textLeft };
 }
 
 // Mousemove — update preview
@@ -1636,34 +1731,38 @@ container.addEventListener('mousedown', (e) => {
         calloutState.placing = true;
         calloutState.startPoint = pos;
     } else {
-        // Second click — show text input at this position
+        // Second click — show textarea input at this position
         const endPos = pos;
         const screenEnd = engine.coords.sheetToScreen(endPos.x, endPos.y);
 
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'text-input-overlay';
-        input.style.left = screenEnd.x + 'px';
-        input.style.top = (screenEnd.y - 14) + 'px';
-        input.style.width = '150px';
-        input.style.fontSize = '12px';
-        input.placeholder = 'Callout text...';
-        input.style.border = '1px solid #2B7CD0';
-        input.style.background = 'rgba(255,255,255,0.95)';
-        input._arrowPt = { x: calloutState.startPoint.x, y: calloutState.startPoint.y };
-        input._endPt = { x: endPos.x, y: endPos.y };
+        const ta = document.createElement('textarea');
+        ta.className = 'text-input-overlay';
+        ta.style.left = screenEnd.x + 'px';
+        ta.style.top = (screenEnd.y - 30) + 'px';
+        ta.style.width = '150px';
+        ta.style.height = '50px';
+        ta.style.fontSize = '12px';
+        ta.style.resize = 'none';
+        ta.style.overflow = 'hidden';
+        ta.style.lineHeight = '1.3';
+        ta.placeholder = 'Callout text...';
+        ta.style.border = '1px solid #2B7CD0';
+        ta.style.background = 'rgba(255,255,255,0.95)';
+        ta.style.fontFamily = '"Architects Daughter", cursive';
+        ta._arrowPt = { x: calloutState.startPoint.x, y: calloutState.startPoint.y };
+        ta._endPt = { x: endPos.x, y: endPos.y };
 
-        container.appendChild(input);
-        setTimeout(() => input.focus(), 30);
-        activeCalloutInput = input;
+        container.appendChild(ta);
+        setTimeout(() => ta.focus(), 30);
+        activeCalloutInput = ta;
 
-        input.addEventListener('keydown', (ev) => {
+        ta.addEventListener('keydown', (ev) => {
             ev.stopPropagation();
-            if (ev.key === 'Enter') { ev.preventDefault(); commitCallout(); }
+            if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); commitCallout(); }
             if (ev.key === 'Escape') { ev.preventDefault(); cancelCallout(); }
         });
-        input.addEventListener('blur', () => {
-            setTimeout(() => { if (activeCalloutInput === input) commitCallout(); }, 150);
+        ta.addEventListener('blur', () => {
+            setTimeout(() => { if (activeCalloutInput === ta) commitCallout(); }, 150);
         });
 
         calloutState.placing = false;
@@ -1693,7 +1792,7 @@ function commitCallout() {
     const arrowReal = engine.coords.sheetToReal(input._arrowPt.x, input._arrowPt.y);
     const endReal = engine.coords.sheetToReal(input._endPt.x, input._endPt.y);
     const textSizeSelect = document.getElementById('text-size');
-    const fontSize = textSizeSelect ? parseFloat(textSizeSelect.value) : 3.5;
+    const fontSize = textSizeSelect ? parseFloat(textSizeSelect.value) : CALLOUT_DEFAULTS.fontSize;
 
     const newCallout = {
         id: generateId(),
@@ -1703,6 +1802,10 @@ function commitCallout() {
         x2: endReal.x, y2: endReal.y,       // text box anchor
         text: text,
         fontSize: fontSize,
+        fontBold: false,
+        boxWidth: CALLOUT_DEFAULTS.boxWidth,
+        boxHeight: null,                     // null = auto-height
+        padding: CALLOUT_DEFAULTS.padding,
     };
 
     history.execute({
@@ -1724,6 +1827,176 @@ function cancelCallout() {
     engine.requestRender();
 }
 
+// ── Double-click to enter callout edit mode ──────────────
+container.addEventListener('dblclick', (e) => {
+    if (activeTool !== 'select') return;
+    const sheetPos = engine.getSheetPos(e);
+    const tolerance = 4 / engine.viewport.zoom;
+    const hit = hitTestElement(sheetPos, tolerance);
+    if (!hit || hit.type !== 'callout') return;
+
+    // Enter edit mode
+    calloutEditState.editing = true;
+    calloutEditState.el = hit;
+    selectedElement = hit;
+
+    const geom = getCalloutBoxGeom(hit, engine.coords, engine.viewport.zoom, engine.ctx);
+
+    // Create textarea overlay positioned over the box
+    const ta = document.createElement('textarea');
+    ta.className = 'text-input-overlay';
+    ta.style.position = 'absolute';
+    ta.style.left = geom.boxX + 'px';
+    ta.style.top = geom.boxY + 'px';
+    ta.style.width = geom.boxW + 'px';
+    ta.style.height = geom.boxH + 'px';
+    ta.style.fontSize = geom.fontSize + 'px';
+    ta.style.fontFamily = '"Architects Daughter", cursive';
+    ta.style.fontWeight = hit.fontBold ? 'bold' : 'normal';
+    ta.style.lineHeight = '1.3';
+    ta.style.padding = geom.pad + 'px';
+    ta.style.border = '2px solid #2B7CD0';
+    ta.style.background = 'rgba(255,255,255,0.97)';
+    ta.style.resize = 'none';
+    ta.style.overflow = 'hidden';
+    ta.style.boxSizing = 'border-box';
+    ta.style.outline = 'none';
+    ta.style.zIndex = '100';
+    ta.value = hit.text;
+
+    container.appendChild(ta);
+    calloutEditState.textarea = ta;
+    setTimeout(() => { ta.focus(); ta.select(); }, 30);
+
+    // Prevent tool shortcuts while editing
+    ta.addEventListener('keydown', (ev) => {
+        ev.stopPropagation();
+        if (ev.key === 'Escape') { ev.preventDefault(); exitCalloutEdit(true); }
+    });
+    ta.addEventListener('blur', () => {
+        setTimeout(() => { if (calloutEditState.editing && calloutEditState.textarea === ta) exitCalloutEdit(true); }, 200);
+    });
+
+    engine.requestRender();
+});
+
+function exitCalloutEdit(commit) {
+    if (!calloutEditState.editing) return;
+    const el = calloutEditState.el;
+    const ta = calloutEditState.textarea;
+
+    if (commit && ta && el) {
+        const newText = ta.value.trim();
+        if (newText && newText !== el.text) {
+            const oldText = el.text;
+            history.execute({
+                description: 'Edit callout text',
+                execute() { el.text = newText; },
+                undo() { el.text = oldText; }
+            });
+        }
+        // Pick up font size from dropdown if changed during edit
+        const textSizeSelect = document.getElementById('text-size');
+        if (textSizeSelect) {
+            const newSize = parseFloat(textSizeSelect.value);
+            if (newSize && newSize !== el.fontSize) {
+                const oldSize = el.fontSize;
+                history.execute({
+                    description: 'Change callout font size',
+                    execute() { el.fontSize = newSize; },
+                    undo() { el.fontSize = oldSize; }
+                });
+            }
+        }
+    }
+
+    if (ta && ta.parentNode) ta.parentNode.removeChild(ta);
+    calloutEditState.editing = false;
+    calloutEditState.el = null;
+    calloutEditState.textarea = null;
+    calloutEditState.resizing = false;
+    engine.requestRender();
+}
+
+// ── Resize handles: mousedown on corner starts resize ────
+container.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    if (!calloutEditState.editing) return;
+    const el = calloutEditState.el;
+    if (!el) return;
+
+    const geom = getCalloutBoxGeom(el, engine.coords, engine.viewport.zoom, engine.ctx);
+    const mx = e.clientX - container.getBoundingClientRect().left;
+    const my = e.clientY - container.getBoundingClientRect().top;
+    const handleSize = 8;
+
+    // Check corners: bottom-right and bottom-left
+    const corners = [
+        { name: 'br', x: geom.boxX + geom.boxW, y: geom.boxY + geom.boxH },
+        { name: 'bl', x: geom.boxX, y: geom.boxY + geom.boxH },
+        { name: 'tr', x: geom.boxX + geom.boxW, y: geom.boxY },
+    ];
+
+    for (const c of corners) {
+        if (Math.abs(mx - c.x) < handleSize && Math.abs(my - c.y) < handleSize) {
+            calloutEditState.resizing = true;
+            calloutEditState.resizeCorner = c.name;
+            calloutEditState.resizeStart = { x: mx, y: my };
+            calloutEditState.origBoxWidth = el.boxWidth || CALLOUT_DEFAULTS.boxWidth;
+            calloutEditState.origBoxHeight = el.boxHeight || (geom.boxH / engine.viewport.zoom);
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+    }
+});
+
+window.addEventListener('mousemove', (e) => {
+    if (!calloutEditState.resizing) return;
+    const el = calloutEditState.el;
+    if (!el) return;
+
+    const mx = e.clientX - container.getBoundingClientRect().left;
+    const my = e.clientY - container.getBoundingClientRect().top;
+    const zoom = engine.viewport.zoom;
+    const dx = (mx - calloutEditState.resizeStart.x) / zoom;
+    const dy = (my - calloutEditState.resizeStart.y) / zoom;
+
+    const corner = calloutEditState.resizeCorner;
+    if (corner === 'br' || corner === 'tr') {
+        el.boxWidth = Math.max(CALLOUT_DEFAULTS.minBoxWidth, calloutEditState.origBoxWidth + dx);
+    }
+    if (corner === 'bl') {
+        el.boxWidth = Math.max(CALLOUT_DEFAULTS.minBoxWidth, calloutEditState.origBoxWidth - dx);
+    }
+    if (corner === 'br' || corner === 'bl') {
+        el.boxHeight = Math.max(CALLOUT_DEFAULTS.minBoxHeight, calloutEditState.origBoxHeight + dy);
+    }
+    if (corner === 'tr') {
+        el.boxHeight = Math.max(CALLOUT_DEFAULTS.minBoxHeight, calloutEditState.origBoxHeight - dy);
+    }
+
+    // Update textarea overlay to match
+    const geom = getCalloutBoxGeom(el, engine.coords, zoom, engine.ctx);
+    const ta = calloutEditState.textarea;
+    if (ta) {
+        ta.style.left = geom.boxX + 'px';
+        ta.style.top = geom.boxY + 'px';
+        ta.style.width = geom.boxW + 'px';
+        ta.style.height = geom.boxH + 'px';
+    }
+
+    engine.requestRender();
+});
+
+window.addEventListener('mouseup', (e) => {
+    if (calloutEditState.resizing) {
+        calloutEditState.resizing = false;
+        calloutEditState.resizeCorner = null;
+        engine.requestRender();
+    }
+});
+
 // ── Callout Rendering + Preview ──────────────────────────
 
 const prevPhase9Draw = phase9Draw;
@@ -1741,21 +2014,23 @@ const calloutDraw = function(ctx, eng) {
         if (!layer || !layer.visible) continue;
 
         const isSelected = (selectedElement === el);
+        const isEditing = (calloutEditState.editing && calloutEditState.el === el);
         const tip = coords.realToScreen(el.x1, el.y1);
-        const end = coords.realToScreen(el.x2, el.y2);
         const color = isSelected ? '#2B7CD0' : layer.color;
 
-        // ── Leader line ──
+        const geom = getCalloutBoxGeom(el, coords, zoom, ctx);
+
+        // ── Leader line (tip to smart landing point on box edge) ──
         ctx.strokeStyle = color;
         ctx.lineWidth = Math.max(1, 0.25 * zoom);
         ctx.setLineDash([]);
         ctx.beginPath();
         ctx.moveTo(tip.x, tip.y);
-        ctx.lineTo(end.x, end.y);
+        ctx.lineTo(geom.leaderEnd.x, geom.leaderEnd.y);
         ctx.stroke();
 
         // ── Filled arrowhead at tip ──
-        const angle = Math.atan2(tip.y - end.y, tip.x - end.x);
+        const angle = Math.atan2(tip.y - geom.leaderEnd.y, tip.x - geom.leaderEnd.x);
         const arrowLen = Math.max(6, 2.5 * zoom);
         const arrowW = Math.PI / 7;
         ctx.fillStyle = color;
@@ -1766,44 +2041,56 @@ const calloutDraw = function(ctx, eng) {
         ctx.closePath();
         ctx.fill();
 
-        // ── Text box with border ──
-        if (el.text) {
-            const fontSize = Math.max(7, (el.fontSize || 3.5) * zoom);
-            ctx.font = `${fontSize}px "Architects Daughter", cursive`;
-
-            const metrics = ctx.measureText(el.text);
-            const padX = Math.max(4, 1.5 * zoom);
-            const padY = Math.max(3, 1.0 * zoom);
-            const boxW = metrics.width + padX * 2;
-            const boxH = fontSize + padY * 2;
-
-            // Position box: anchor from the line endpoint
-            const textLeft = end.x > tip.x;
-            const boxX = textLeft ? end.x : end.x - boxW;
-            const boxY = end.y - boxH / 2;
-
-            // White fill behind text
+        // ── Text box (skip drawing text if in edit mode — textarea handles it) ──
+        if (!isEditing) {
+            // White fill
             ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
-            ctx.fillRect(boxX, boxY, boxW, boxH);
+            ctx.fillRect(geom.boxX, geom.boxY, geom.boxW, geom.boxH);
 
             // Thin border
             ctx.strokeStyle = color;
             ctx.lineWidth = Math.max(0.5, 0.18 * zoom);
             ctx.setLineDash([]);
-            ctx.strokeRect(boxX, boxY, boxW, boxH);
+            ctx.strokeRect(geom.boxX, geom.boxY, geom.boxW, geom.boxH);
 
-            // Text
-            ctx.fillStyle = color;
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(el.text, boxX + padX, boxY + boxH / 2);
+            // Word-wrapped text
+            if (el.text) {
+                ctx.fillStyle = color;
+                ctx.font = `${el.fontBold ? 'bold ' : ''}${geom.fontSize}px "Architects Daughter", cursive`;
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                for (let i = 0; i < geom.lines.length; i++) {
+                    ctx.fillText(geom.lines[i], geom.boxX + geom.pad, geom.boxY + geom.pad + i * geom.lineHeight);
+                }
+            }
+        } else {
+            // In edit mode: just draw the box border (textarea is on top)
+            ctx.strokeStyle = '#2B7CD0';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([]);
+            ctx.strokeRect(geom.boxX, geom.boxY, geom.boxW, geom.boxH);
         }
 
         // ── Selection handles ──
-        if (isSelected) {
+        if (isSelected && !isEditing) {
             ctx.fillStyle = '#2B7CD0';
+            // Arrow tip handle
             ctx.fillRect(tip.x - 3, tip.y - 3, 6, 6);
+            // Text box anchor handle
+            const end = coords.realToScreen(el.x2, el.y2);
             ctx.fillRect(end.x - 3, end.y - 3, 6, 6);
+        }
+
+        // ── Resize handles (in edit mode) ──
+        if (isEditing) {
+            const hs = 5; // handle half-size
+            ctx.fillStyle = '#2B7CD0';
+            // Bottom-right
+            ctx.fillRect(geom.boxX + geom.boxW - hs, geom.boxY + geom.boxH - hs, hs * 2, hs * 2);
+            // Bottom-left
+            ctx.fillRect(geom.boxX - hs, geom.boxY + geom.boxH - hs, hs * 2, hs * 2);
+            // Top-right
+            ctx.fillRect(geom.boxX + geom.boxW - hs, geom.boxY - hs, hs * 2, hs * 2);
         }
     }
 
@@ -1834,8 +2121,8 @@ const calloutDraw = function(ctx, eng) {
         ctx.fill();
 
         // Preview text box outline
-        const previewBoxW = 80;
-        const previewBoxH = 20;
+        const previewBoxW = CALLOUT_DEFAULTS.boxWidth * zoom;
+        const previewBoxH = 15 * zoom;
         const textLeft = end.x > tip.x;
         const boxX = textLeft ? end.x : end.x - previewBoxW;
         const boxY = end.y - previewBoxH / 2;
@@ -1857,10 +2144,8 @@ const cbIdx4 = engine._renderCallbacks.indexOf(phase9Draw);
 if (cbIdx4 !== -1) engine._renderCallbacks[cbIdx4] = calloutDraw;
 
 // ── Callout hit-testing ──────────────────────────────────
-// Patch hitTestElement to detect callout elements
 const prevHitTest3 = hitTestElement;
 hitTestElement = function(sheetPos) {
-    // Check callouts first (they render on top)
     const tolerance = 6 / engine.viewport.zoom;
     for (let i = project.elements.length - 1; i >= 0; i--) {
         const el = project.elements[i];
@@ -1875,27 +2160,16 @@ hitTestElement = function(sheetPos) {
         if (pointToSegmentDist(sheetPos.x, sheetPos.y, p1.x, p1.y, p2.x, p2.y) < tolerance + 2)
             return el;
 
-        // Hit on text box area
-        if (el.text) {
-            const zoom = engine.viewport.zoom;
-            const fontSize = Math.max(7, (el.fontSize || 3.5) * zoom);
-            const screenEnd = engine.coords.sheetToScreen(p2.x, p2.y);
-            const ctx = engine.ctx;
-            ctx.font = `${fontSize}px "Architects Daughter", cursive`;
-            const metrics = ctx.measureText(el.text);
-            const padX = Math.max(4, 1.5 * zoom);
-            const padY = Math.max(3, 1.0 * zoom);
-            const boxW = (metrics.width + padX * 2) / zoom;
-            const boxH = (fontSize + padY * 2) / zoom;
+        // Hit on text box area (compute box bounds in sheet-mm)
+        const zoom = engine.viewport.zoom;
+        const geom = getCalloutBoxGeom(el, engine.coords, zoom, engine.ctx);
+        // Convert screen box back to sheet coords
+        const boxTL = engine.coords.screenToSheet(geom.boxX, geom.boxY);
+        const boxBR = engine.coords.screenToSheet(geom.boxX + geom.boxW, geom.boxY + geom.boxH);
 
-            const textLeft = p2.x > p1.x;
-            const boxSheetX = textLeft ? p2.x : p2.x - boxW;
-            const boxSheetY = p2.y - boxH / 2;
-
-            if (sheetPos.x >= boxSheetX - tolerance && sheetPos.x <= boxSheetX + boxW + tolerance &&
-                sheetPos.y >= boxSheetY - tolerance && sheetPos.y <= boxSheetY + boxH + tolerance)
-                return el;
-        }
+        if (sheetPos.x >= boxTL.x - tolerance && sheetPos.x <= boxBR.x + tolerance &&
+            sheetPos.y >= boxTL.y - tolerance && sheetPos.y <= boxBR.y + tolerance)
+            return el;
     }
     return prevHitTest3(sheetPos);
 };
