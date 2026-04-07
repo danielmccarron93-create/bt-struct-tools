@@ -996,8 +996,16 @@ function getObj2DBounds(obj, block) {
     const s = SHS_DB[obj.section]; if (!s) return null;
     const hB=s.B/2, hl=obj.length/2;
     if (vk === 'elevation') return {u1:obj.x-hl, u2:obj.x+hl, v1:obj.y-hB, v2:obj.y+hB};
-    if (vk === 'sectionA') return {u1:obj.z-hB, u2:obj.z+hB, v1:obj.y-hB, v2:obj.y+hB};
-    return {u1:obj.x-hl, u2:obj.x+hl, v1:obj.z-hB, v2:obj.z+hB};
+    // sectionA & planB: rotation-aware projected bounds (matches drawing code)
+    const rotR = (obj.rot || 0) * Math.PI / 180;
+    const cr = Math.abs(Math.cos(rotR)), sr = Math.abs(Math.sin(rotR));
+    if (vk === 'sectionA') {
+      const outerHalfY = hB * cr + hl * sr;
+      return {u1:obj.z-hB, u2:obj.z+hB, v1:obj.y-outerHalfY, v2:obj.y+outerHalfY};
+    }
+    // planB
+    const outerHalfX = hl * cr + hB * sr;
+    return {u1:obj.x-outerHalfX, u2:obj.x+outerHalfX, v1:obj.z-hB, v2:obj.z+hB};
   }
   if (obj.type === 'plate') {
     if (obj.polyPts) return getPolyPlateBounds(obj, vk);
@@ -1196,12 +1204,29 @@ function getGrips(obj, block) {
         grips.push({ type: 'end-left', u: b.u1, v: mv, cursor: 'ew-resize' });
         grips.push({ type: 'end-right', u: b.u2, v: mv, cursor: 'ew-resize' });
       }
-      // SHS in plan shows cross-section (B×B), no length to drag
+      if (obj.type === 'shs') {
+        // SHS in plan: rotation-aware — only show length grips when member length
+        // has a meaningful projection along the X axis (cos component > threshold).
+        // For vertical columns (rot≈90°), planB shows a B×B cross-section — no length to drag.
+        const rotR = (obj.rot || 0) * Math.PI / 180;
+        const absCr = Math.abs(Math.cos(rotR));
+        if (absCr > 0.25) { // length visibly extends along X when |cos(rot)| > ~15°
+          grips.push({ type: 'end-left', u: b.u1, v: mv, cursor: 'ew-resize' });
+          grips.push({ type: 'end-right', u: b.u2, v: mv, cursor: 'ew-resize' });
+        }
+        // No grips when length is predominantly vertical (out of plan view)
+      }
     }
-    // In sectionA — UB shows cross-section only, SHS shows full height
+    // In sectionA — UB shows cross-section only, SHS shows rotation-aware projection
     if (vk === 'sectionA' && obj.type === 'shs') {
-      grips.push({ type: 'end-top', u: mu, v: b.v2, cursor: 'ns-resize' });
-      grips.push({ type: 'end-bot', u: mu, v: b.v1, cursor: 'ns-resize' });
+      // Only show end grips when member length is visibly projected along Y (sin component)
+      // rot≈90° (column): sin≈1, full length visible. rot≈0° (beam): sin≈0, cross-section only.
+      const rotR = (obj.rot || 0) * Math.PI / 180;
+      const absSr = Math.abs(Math.sin(rotR));
+      if (absSr > 0.25) {
+        grips.push({ type: 'end-top', u: mu, v: b.v2, cursor: 'ns-resize' });
+        grips.push({ type: 'end-bot', u: mu, v: b.v1, cursor: 'ns-resize' });
+      }
     }
 
     // Rotation handle — small circle above the bounding box
@@ -1216,13 +1241,24 @@ function getGrips(obj, block) {
 // Hit-test grips: returns the grip descriptor if cursor is near one, else null
 function hitTestGrip(block, px, py) {
   const real = px2real(block, px, py);
-  const gripRadiusPx = 7; // pixel tolerance for grip hit
+  const gripRadiusPx = 8; // pixel tolerance for grip hit (slightly larger for small sections)
   const gripRadiusReal = gripRadiusPx * drawingScale / viewport.zoom;
 
   for (const obj of selected3D) {
     const grips = getGrips(obj, block);
+    // For rotated objects in elevation, un-rotate the test point around the object centre
+    // so it matches the un-rotated grip coordinates (grips are stored in un-rotated frame)
+    let tu = real.u, tv = real.v;
+    const rot = obj.rot || 0;
+    if (Math.abs(rot) > 0.01 && block.viewKey === 'elevation') {
+      const cu = obj.x, cv = obj.y;
+      const rad = rot * Math.PI / 180;
+      const dx = real.u - cu, dy = real.v - cv;
+      tu = cu + dx * Math.cos(rad) + dy * Math.sin(rad);
+      tv = cv - dx * Math.sin(rad) + dy * Math.cos(rad);
+    }
     for (const g of grips) {
-      if (Math.hypot(real.u - g.u, real.v - g.v) < gripRadiusReal) {
+      if (Math.hypot(tu - g.u, tv - g.v) < gripRadiusReal) {
         return { ...g, obj, block };
       }
     }
@@ -1340,30 +1376,89 @@ function applyGripDrag(gripInfo, currentU, currentV) {
     }
   }
   if (obj.type === 'shs') {
+    const rotR = (obj.rot || 0) * Math.PI / 180;
+    const cr = Math.cos(rotR), sr = Math.sin(rotR);
+    const absCr = Math.abs(cr), absSr = Math.abs(sr);
+    const s = SHS_DB[obj.section]; if (!s) return;
+    const hB = s.B / 2, hl = obj.length / 2;
+
     if (vk === 'elevation') {
-      // Length is along X axis (horizontal default, matching UB convention)
+      // Rotation-aware: project cursor onto member axis direction to get new length.
+      // Member axis in world coords = (cos(rot), sin(rot)).
+      // This keeps the opposite end anchored for any rotation angle.
       if (type === 'end-right') {
-        const left = obj.x - obj.length / 2;
-        const newLen = Math.max(20, currentU - left);
-        obj.x = left + newLen / 2;
+        // Keep left end fixed in world coordinates
+        const fixedX = obj.x - hl * cr;
+        const fixedY = obj.y - hl * sr;
+        // Project cursor onto member axis from fixed end
+        const newLen = Math.max(20, (currentU - fixedX) * cr + (currentV - fixedY) * sr);
+        obj.x = fixedX + (newLen / 2) * cr;
+        obj.y = fixedY + (newLen / 2) * sr;
         obj.length = newLen;
       } else if (type === 'end-left') {
-        const right = obj.x + obj.length / 2;
-        const newLen = Math.max(20, right - currentU);
-        obj.x = right - newLen / 2;
+        // Keep right end fixed in world coordinates
+        const fixedX = obj.x + hl * cr;
+        const fixedY = obj.y + hl * sr;
+        // Project from fixed end in negative direction
+        const newLen = Math.max(20, (fixedX - currentU) * cr + (fixedY - currentV) * sr);
+        obj.x = fixedX - (newLen / 2) * cr;
+        obj.y = fixedY - (newLen / 2) * sr;
         obj.length = newLen;
       }
     } else if (vk === 'sectionA') {
-      // Length is along Y axis in section view
+      // Rotation-aware: projected length along Y = hl * |sin(rot)|, section along Y = hB * |cos(rot)|
+      // Dragging end-top/bot changes the member length by mapping the Y delta back to length
       if (type === 'end-top') {
-        const bot = obj.y - obj.length / 2;
-        const newLen = Math.max(20, currentV - bot);
-        obj.y = bot + newLen / 2;
-        obj.length = newLen;
+        // top end of projected member
+        const projHalfY = hB * absCr + hl * absSr;
+        const bot = obj.y - projHalfY;
+        const newProjH = Math.max(s.B + 10, currentV - bot);
+        // Solve for length: newProjH/2 = hB*|cos|+newHl*|sin| → newHl = (newProjH/2 - hB*|cos|)/|sin|
+        if (absSr > 0.01) {
+          const newHl = (newProjH / 2 - hB * absCr) / absSr;
+          const newLen = Math.max(20, newHl * 2);
+          const oldProjHalfY = hB * absCr + (obj.length / 2) * absSr;
+          const oldBot = obj.y - oldProjHalfY;
+          // Keep bottom end fixed: recompute centre
+          const newProjHalfY = hB * absCr + (newLen / 2) * absSr;
+          obj.y = oldBot + newProjHalfY;
+          obj.length = newLen;
+        }
       } else if (type === 'end-bot') {
-        const top = obj.y + obj.length / 2;
-        const newLen = Math.max(20, top - currentV);
-        obj.y = top - newLen / 2;
+        const projHalfY = hB * absCr + hl * absSr;
+        const top = obj.y + projHalfY;
+        const newProjH = Math.max(s.B + 10, top - currentV);
+        if (absSr > 0.01) {
+          const newHl = (newProjH / 2 - hB * absCr) / absSr;
+          const newLen = Math.max(20, newHl * 2);
+          const oldProjHalfY = hB * absCr + (obj.length / 2) * absSr;
+          const oldTop = obj.y + oldProjHalfY;
+          // Keep top end fixed: recompute centre
+          const newProjHalfY = hB * absCr + (newLen / 2) * absSr;
+          obj.y = oldTop - newProjHalfY;
+          obj.length = newLen;
+        }
+      }
+    } else if (vk === 'planB') {
+      // PlanB grips only shown when cos component > 0.25 (see getGrips),
+      // so length has meaningful projection along X. Map X drag back to length.
+      if (type === 'end-right') {
+        const projHalfX = hl * absCr + hB * absSr;
+        const left = obj.x - projHalfX;
+        const newProjW = Math.max(s.B + 10, currentU - left);
+        const newHl = Math.max(10, (newProjW / 2 - hB * absSr) / absCr);
+        const newLen = newHl * 2;
+        const newProjHalfX = newHl * absCr + hB * absSr;
+        obj.x = left + newProjHalfX;
+        obj.length = newLen;
+      } else if (type === 'end-left') {
+        const projHalfX = hl * absCr + hB * absSr;
+        const right = obj.x + projHalfX;
+        const newProjW = Math.max(s.B + 10, right - currentU);
+        const newHl = Math.max(10, (newProjW / 2 - hB * absSr) / absCr);
+        const newLen = newHl * 2;
+        const newProjHalfX = newHl * absCr + hB * absSr;
+        obj.x = right - newProjHalfX;
         obj.length = newLen;
       }
     }
@@ -3462,17 +3557,18 @@ function drawSelHighlight(blk, obj, cs) {
       ctx.beginPath(); ctx.moveTo(topMid.x, topMid.y); ctx.lineTo(gp.x, gp.y); ctx.stroke();
       ctx.setLineDash([]);
     } else {
-      // Resize/extend handle: filled diamond
+      // Resize/extend handle: filled diamond (5px for visibility on small sections)
+      const gs = 5;
       ctx.fillStyle = selCol;
       ctx.beginPath();
-      ctx.moveTo(gp.x, gp.y - 4);
-      ctx.lineTo(gp.x + 4, gp.y);
-      ctx.lineTo(gp.x, gp.y + 4);
-      ctx.lineTo(gp.x - 4, gp.y);
+      ctx.moveTo(gp.x, gp.y - gs);
+      ctx.lineTo(gp.x + gs, gp.y);
+      ctx.lineTo(gp.x, gp.y + gs);
+      ctx.lineTo(gp.x - gs, gp.y);
       ctx.closePath();
       ctx.fill();
       // White outline for contrast
-      ctx.strokeStyle = colorAlpha('#ffffff', 0.6); ctx.lineWidth = 0.8;
+      ctx.strokeStyle = colorAlpha('#ffffff', 0.7); ctx.lineWidth = 1.0;
       ctx.stroke();
     }
   });
@@ -4353,6 +4449,7 @@ function initEvents() {
     // Grip drag (resize/extend)
     if (activeGrip && gripStart && !rotateMode && activeBlock) {
       const real = px2real(activeBlock, px, py);
+      // Pass raw world coordinates — applyGripDrag handles rotation internally
       applyGripDrag(activeGrip, real.u, real.v);
       requestRender(); return;
     }
