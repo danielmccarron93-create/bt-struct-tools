@@ -175,11 +175,9 @@ function extractAnalysisNodes() {
 
     // ── Label nodes from structural grids ──
     if (typeof structuralGrids !== 'undefined' && structuralGrids.length > 0) {
-        const orthoGrids = structuralGrids.filter(g => typeof isOrthoGrid === 'function' ? isOrthoGrid(g) : !g.type || g.type === 'ortho');
-        const angledGrids = structuralGrids.filter(g => typeof isAngledGrid === 'function' ? isAngledGrid(g) : g.type === 'angled');
-        const vGrids = orthoGrids.filter(g => g.axis === 'V')
+        const vGrids = structuralGrids.filter(g => g.axis === 'V')
             .sort((a, b) => a.position - b.position);
-        const hGrids = orthoGrids.filter(g => g.axis === 'H')
+        const hGrids = structuralGrids.filter(g => g.axis === 'H')
             .sort((a, b) => a.position - b.position);
 
         for (const node of nodes) {
@@ -201,24 +199,6 @@ function extractAnalysisNodes() {
                 if (Math.abs(g.position - yMM) < tol) {
                     hLabel = g.label;
                     break;
-                }
-            }
-
-            // Check angled grids — find nearest by point-to-line distance
-            if (!vLabel && !hLabel) {
-                for (const g of angledGrids) {
-                    // Use real-world mm coordinates for angled grids
-                    const dx = g.x2 - g.x1, dy = g.y2 - g.y1;
-                    const lenSq = dx * dx + dy * dy;
-                    if (lenSq < 0.01) continue;
-                    let t = ((xMM - g.x1) * dx + (yMM - g.y1) * dy) / lenSq;
-                    t = Math.max(0, Math.min(1, t));
-                    const nx = g.x1 + t * dx, ny = g.y1 + t * dy;
-                    const dist = Math.sqrt((xMM - nx) ** 2 + (yMM - ny) ** 2);
-                    if (dist < tol) {
-                        vLabel = g.label; // use as primary label
-                        break;
-                    }
                 }
             }
 
@@ -584,7 +564,240 @@ function buildSelfWeightCase() {
         name: 'G1 - Self Weight',
         type: 'dead',
         gravity: { x: 0, y: 0, z: -1.0 },  // -1g in Z direction
+        memberLoads: [],
     };
+}
+
+
+// ──────────────────────────────────────────────────────────
+// §6b  FLOOR LOAD CASES (Slice 7)
+// ──────────────────────────────────────────────────────────
+
+/**
+ * AS 1170.0 load combination factors.
+ *
+ * ψs = 0.7 (short-term factor for floors, AS 1170.0 Table 4.1)
+ * ψl = 0.4 (long-term factor for floors, AS 1170.0 Table 4.1)
+ */
+const AS1170_FACTORS = {
+    psi_s: 0.7,
+    psi_l: 0.4,
+};
+
+/**
+ * Build floor load cases (G2 — superimposed dead, Q1 — imposed live)
+ * by resolving floor zones onto beam members as UDLs.
+ *
+ * For each beam member:
+ *   1. Compute tributary width via calculateTributaryWidth()
+ *   2. Sample G and Q from floor zones at beam midpoint
+ *   3. w_G = G_kPa × tribWidth_m  (kN/m)
+ *   4. w_Q = Q_kPa × tribWidth_m  (kN/m)
+ *
+ * Returns array of load case objects:
+ *   [
+ *     { id:2, name:'G2 - Floor Dead Load', type:'dead', memberLoads:[...] },
+ *     { id:3, name:'Q1 - Floor Live Load', type:'live', memberLoads:[...] },
+ *   ]
+ *
+ * Each memberLoad: { memberId, type:'UDL', axis:'GZ', value_kNm, comment }
+ *
+ * @param {Array} members — from extractAnalysisMembers()
+ * @returns {Array} load cases (may be empty if no FloorLoadResolver or no zones)
+ */
+function buildFloorLoadCases(members) {
+    // Guard: need FloorLoadResolver available
+    if (typeof FloorLoadResolver === 'undefined' ||
+        typeof FloorLoadResolver.resolveZonesFromElements !== 'function' ||
+        typeof FloorLoadResolver.getLoadAtPoint !== 'function') {
+        return [];
+    }
+
+    // Guard: need calculateTributaryWidth (from 22-beam-design.js)
+    if (typeof calculateTributaryWidth !== 'function') {
+        return [];
+    }
+
+    // Resolve floor zones from project data
+    var floorLoadSchedule = (project.scheduleTypes && project.scheduleTypes.floorLoad) || {};
+    var zones = FloorLoadResolver.resolveZonesFromElements(project.elements, floorLoadSchedule);
+
+    // Default loads if no zone covers a point (use 0 — only export explicit zone loads)
+    var defaultG = 0;
+    var defaultQ = 0;
+
+    var g2Loads = [];  // G2 member UDLs
+    var q1Loads = [];  // Q1 member UDLs
+
+    for (var i = 0; i < members.length; i++) {
+        var mem = members[i];
+        if (mem.type !== 'beam') continue;
+
+        var el = mem.sourceElement;
+        if (!el) continue;
+
+        // ── Tributary width ──
+        var tribResult = calculateTributaryWidth(el);
+        var tribWidth_mm = tribResult.tribWidth || 0;
+        if (tribWidth_mm < 1) continue; // no tributary area → skip
+
+        var tribWidth_m = tribWidth_mm / 1000;
+
+        // ── Sample loads at beam midpoint ──
+        var mx = (el.x1 + el.x2) / 2;
+        var my = (el.y1 + el.y2) / 2;
+        var loadHit = FloorLoadResolver.getLoadAtPoint(mx, my, zones, defaultG, defaultQ);
+
+        var G_kPa = loadHit.G_kPa || 0;
+        var Q_kPa = loadHit.Q_kPa || 0;
+
+        // ── Convert area load → line load ──
+        var wG_kNm = G_kPa * tribWidth_m;  // kN/m
+        var wQ_kNm = Q_kPa * tribWidth_m;  // kN/m
+
+        var comment = (mem.tag || 'B' + mem.id) +
+            ' trib=' + tribWidth_m.toFixed(2) + 'm';
+
+        if (wG_kNm > 0.001) {
+            g2Loads.push({
+                memberId: mem.id,
+                type: 'UDL',
+                axis: 'GZ',          // Global Z (gravity direction)
+                value_kNm: -wG_kNm,  // Negative = downward in SpaceGass convention
+                comment: comment + ' G=' + G_kPa.toFixed(2) + 'kPa',
+            });
+        }
+
+        if (wQ_kNm > 0.001) {
+            q1Loads.push({
+                memberId: mem.id,
+                type: 'UDL',
+                axis: 'GZ',
+                value_kNm: -wQ_kNm,
+                comment: comment + ' Q=' + Q_kPa.toFixed(2) + 'kPa',
+            });
+        }
+    }
+
+    var cases = [];
+
+    // Only add load cases that have actual loads
+    if (g2Loads.length > 0) {
+        cases.push({
+            id: 2,
+            name: 'G2 - Floor Dead Load',
+            type: 'dead',
+            memberLoads: g2Loads,
+        });
+    }
+
+    if (q1Loads.length > 0) {
+        cases.push({
+            id: 3,
+            name: 'Q1 - Floor Live Load',
+            type: 'live',
+            memberLoads: q1Loads,
+        });
+    }
+
+    return cases;
+}
+
+
+/**
+ * Build AS 1170.0 load combinations.
+ * Only includes combinations that reference existing load cases.
+ *
+ * Standard combinations for floors (AS/NZS 1170.0 Cl 4.2.2):
+ *   ULS-1:  1.35 × (G1 + G2)                    — dead only
+ *   ULS-2:  1.2 × (G1 + G2) + 1.5 × Q1          — dead + live
+ *   SLS-S:  1.0 × (G1 + G2) + ψs × Q1 = 0.7Q1   — short-term serviceability
+ *   SLS-L:  1.0 × (G1 + G2) + ψl × Q1 = 0.4Q1   — long-term serviceability
+ *
+ * @param {Array} loadCases — array of load case objects with .id and .name
+ * @returns {Array} combination definitions
+ */
+function buildAS1170Combinations(loadCases) {
+    var caseIds = {};
+    for (var i = 0; i < loadCases.length; i++) {
+        caseIds[loadCases[i].name.substring(0, 2)] = loadCases[i].id;
+    }
+
+    var hasG1 = !!caseIds['G1'];
+    var hasG2 = !!caseIds['G2'];
+    var hasQ1 = !!caseIds['Q1'];
+
+    // If we don't have floor loads at all, skip combinations
+    if (!hasG2 && !hasQ1) return [];
+
+    var combos = [];
+    var comboId = 101;
+
+    // Build factor string for SpaceGass: "factor*caseId+factor*caseId"
+    function buildFactorStr(factors) {
+        var parts = [];
+        for (var j = 0; j < factors.length; j++) {
+            parts.push(factors[j][0].toFixed(2) + '*' + factors[j][1]);
+        }
+        return parts.join(' + ');
+    }
+
+    // ULS-1: 1.35(G1+G2) — dead only governs when live is absent/pattern
+    if (hasG1 || hasG2) {
+        var factors = [];
+        if (hasG1) factors.push([1.35, caseIds['G1']]);
+        if (hasG2) factors.push([1.35, caseIds['G2']]);
+        combos.push({
+            id: comboId++,
+            name: 'ULS-1: 1.35G (AS 1170.0 Cl 4.2.2)',
+            factors: factors,
+            factorStr: buildFactorStr(factors),
+        });
+    }
+
+    // ULS-2: 1.2(G1+G2) + 1.5×Q1 — typically governing ULS
+    if (hasQ1) {
+        var factors = [];
+        if (hasG1) factors.push([1.2, caseIds['G1']]);
+        if (hasG2) factors.push([1.2, caseIds['G2']]);
+        factors.push([1.5, caseIds['Q1']]);
+        combos.push({
+            id: comboId++,
+            name: 'ULS-2: 1.2G+1.5Q (AS 1170.0 Cl 4.2.2)',
+            factors: factors,
+            factorStr: buildFactorStr(factors),
+        });
+    }
+
+    // SLS-Short: 1.0(G1+G2) + 0.7×Q1
+    if (hasQ1) {
+        var factors = [];
+        if (hasG1) factors.push([1.0, caseIds['G1']]);
+        if (hasG2) factors.push([1.0, caseIds['G2']]);
+        factors.push([AS1170_FACTORS.psi_s, caseIds['Q1']]);
+        combos.push({
+            id: comboId++,
+            name: 'SLS-S: G+' + AS1170_FACTORS.psi_s + 'Q (AS 1170.0 Table 4.1)',
+            factors: factors,
+            factorStr: buildFactorStr(factors),
+        });
+    }
+
+    // SLS-Long: 1.0(G1+G2) + 0.4×Q1
+    if (hasQ1) {
+        var factors = [];
+        if (hasG1) factors.push([1.0, caseIds['G1']]);
+        if (hasG2) factors.push([1.0, caseIds['G2']]);
+        factors.push([AS1170_FACTORS.psi_l, caseIds['Q1']]);
+        combos.push({
+            id: comboId++,
+            name: 'SLS-L: G+' + AS1170_FACTORS.psi_l + 'Q (AS 1170.0 Table 4.1)',
+            factors: factors,
+            factorStr: buildFactorStr(factors),
+        });
+    }
+
+    return combos;
 }
 
 
@@ -601,7 +814,18 @@ function extractAnalysisModel() {
     const members = extractAnalysisMembers(nodeResult);
     const supports = identifySupports(nodeResult.nodes, members);
     const sections = buildSectionTable(members);
+
+    // ── Load cases ──
     const loadCases = [buildSelfWeightCase()];
+
+    // Floor load cases (G2, Q1) from floor zones → beam UDLs
+    const floorCases = buildFloorLoadCases(members);
+    for (let i = 0; i < floorCases.length; i++) {
+        loadCases.push(floorCases[i]);
+    }
+
+    // ── AS 1170.0 load combinations ──
+    const combinations = buildAS1170Combinations(loadCases);
 
     // Collect unique materials actually used
     const usedMaterials = new Map();
@@ -609,6 +833,14 @@ function extractAnalysisModel() {
         const key = mem.materialKey;
         if (!usedMaterials.has(key) && ANALYSIS_EXPORT.MATERIALS[key]) {
             usedMaterials.set(key, ANALYSIS_EXPORT.MATERIALS[key]);
+        }
+    }
+
+    // Count beams with floor loads applied
+    let loadedBeamCount = 0;
+    for (let i = 0; i < loadCases.length; i++) {
+        if (loadCases[i].memberLoads && loadCases[i].memberLoads.length > 0) {
+            loadedBeamCount = Math.max(loadedBeamCount, loadCases[i].memberLoads.length);
         }
     }
 
@@ -622,6 +854,9 @@ function extractAnalysisModel() {
         sectionCount: sections.size,
         materialCount: usedMaterials.size,
         levelCount: levelSystem.levels.length,
+        loadCaseCount: loadCases.length,
+        combinationCount: combinations.length,
+        loadedBeamCount: loadedBeamCount,
     };
 
     return {
@@ -631,6 +866,7 @@ function extractAnalysisModel() {
         sections: sections,
         materials: usedMaterials,
         loadCases: loadCases,
+        combinations: combinations,
         stats: stats,
         projectName: (project.projectInfo && project.projectInfo.name)
             || 'StructuralSketch Model',
@@ -673,6 +909,10 @@ function writeSpaceGassText(model) {
     lines.push(';   - Column ends: Fixed-Fixed — review and adjust');
     lines.push(';   - Supports: Pinned at column bases — review and adjust');
     lines.push(';   - Self-weight load case included (G1)');
+    if (model.stats.loadCaseCount > 1) {
+        lines.push(';   - Floor load cases: G2 (dead), Q1 (live) from floor zones');
+        lines.push(';   - AS 1170.0 combinations: 1.35G, 1.2G+1.5Q, G+0.7Q, G+0.4Q');
+    }
     lines.push(';   - All coordinates in metres');
     lines.push('; ══════════════════════════════════════════════════════════');
     lines.push('');
@@ -801,10 +1041,58 @@ function writeSpaceGassText(model) {
     }
     lines.push('');
 
-    // ── Self-Weight Load Case ──
-    lines.push('LOAD CASE');
-    lines.push('1  G1 - Self Weight  DEAD  GRAVITY  0  0  -9.81');
-    lines.push('');
+    // ── Load Cases ──
+    for (const lc of model.loadCases) {
+        lines.push('LOAD CASE');
+        if (lc.gravity) {
+            // Self-weight case — uses gravity multiplier
+            lines.push(
+                padr(lc.id, 4) + '  ' + lc.name + '  ' +
+                lc.type.toUpperCase() + '  GRAVITY  ' +
+                lc.gravity.x + '  ' + lc.gravity.y + '  ' +
+                (lc.gravity.z * 9.81).toFixed(2)
+            );
+        } else {
+            // Standard load case header
+            lines.push(
+                padr(lc.id, 4) + '  ' + lc.name + '  ' +
+                lc.type.toUpperCase()
+            );
+        }
+
+        // Member loads (UDLs from floor zones)
+        if (lc.memberLoads && lc.memberLoads.length > 0) {
+            lines.push('MEMBER LOAD');
+            for (const ml of lc.memberLoads) {
+                lines.push(
+                    padr(ml.memberId, 6) + '  ' +
+                    pad(ml.type, 6) + '  ' +
+                    pad(ml.axis, 4) + '  ' +
+                    padr(ml.value_kNm.toFixed(3), 10) + '  ' +
+                    '0.000       ' +
+                    padr('1.000', 8) +
+                    '  ; ' + (ml.comment || '')
+                );
+            }
+        }
+        lines.push('');
+    }
+
+    // ── Load Combinations (AS 1170.0) ──
+    if (model.combinations && model.combinations.length > 0) {
+        lines.push('; ── AS/NZS 1170.0 Load Combinations ──');
+        lines.push('; ψs = ' + AS1170_FACTORS.psi_s + ' (short-term, Table 4.1)');
+        lines.push('; ψl = ' + AS1170_FACTORS.psi_l + ' (long-term, Table 4.1)');
+        lines.push('COMBINATION');
+        for (const combo of model.combinations) {
+            lines.push(
+                padr(combo.id, 6) + '  ' +
+                pad(combo.factorStr, 40) +
+                '  ; ' + combo.name
+            );
+        }
+        lines.push('');
+    }
 
     lines.push('; ── End of SpaceGass Input File ──');
     lines.push('END');
@@ -1033,8 +1321,11 @@ function showAnalysisExportDialog() {
             <span><strong>Columns:</strong> ${model.stats.columnCount}</span>
             <span><strong>Supports:</strong> ${model.stats.supportCount}</span>
             <span><strong>Sections:</strong> ${model.stats.sectionCount}</span>
-            <span><strong>Materials:</strong> ${model.stats.materialCount}</span>
-            <span><strong>Levels:</strong> ${model.stats.levelCount}</span>
+            <span><strong>Load cases:</strong> ${model.stats.loadCaseCount}</span>
+            <span><strong>Combinations:</strong> ${model.stats.combinationCount}</span>
+            ${model.stats.loadedBeamCount > 0
+                ? '<span style="grid-column:span 2;"><strong>Beams with floor loads:</strong> ' + model.stats.loadedBeamCount + '</span>'
+                : ''}
         </div>
     `;
     dialog.appendChild(summary);
@@ -1046,12 +1337,18 @@ function showAnalysisExportDialog() {
         padding: 12px 14px; margin-bottom: 18px; font-size: 11.5px;
         line-height: 1.6; color: #7a6520;
     `;
+    var floorLoadNote = model.stats.loadCaseCount > 1
+        ? '• Floor loads from zones → beam UDLs (G2 dead, Q1 live)<br>' +
+          '• AS 1170.0 combinations: 1.35G, 1.2G+1.5Q, G+ψsQ, G+ψlQ<br>'
+        : '• No floor load zones detected — only self-weight (G1)<br>';
+
     assumptions.innerHTML = `
         <strong style="font-size:12px;">Assumptions (review in analysis software):</strong><br>
         • Beam ends: <strong>Pinned</strong> (simple connections) — Mz released<br>
         • Column ends: <strong>Fixed–Fixed</strong><br>
         • Column bases: <strong>Pinned supports</strong> (Fx, Fy, Fz restrained)<br>
         • Self-weight load case (G1) included<br>
+        ${floorLoadNote}
         • Steel: Grade 300, E = 200,000 MPa (AS 4100)<br>
         • Timber: GL17, E = 16,300 MPa (AS 1720.1)
     `;
@@ -1318,6 +1615,9 @@ window._analysisExport = {
     writeDXF: writeDXFStickModel,
     showDialog: showAnalysisExportDialog,
     config: ANALYSIS_EXPORT,
+    buildFloorLoadCases: buildFloorLoadCases,
+    buildAS1170Combinations: buildAS1170Combinations,
+    AS1170_FACTORS: AS1170_FACTORS,
 };
 
 console.log('[StructuralSketch] Analysis Export module loaded (Ctrl+Shift+E or 3D → Export Model)');

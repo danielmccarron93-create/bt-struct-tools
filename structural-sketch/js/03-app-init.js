@@ -219,6 +219,45 @@ project.scheduleTypes = {
         BR3: { bracingType: 'g', capacity: 3.4, minLength: 900, description: 'Ply 7mm F11 std nailing', color: '#000000' },
         BR4: { bracingType: 'nominal-1', capacity: 0.45, minLength: 450, description: 'Plasterboard 1 side', color: '#000000' },
         BR5: { bracingType: 'nominal-2', capacity: 0.75, minLength: 450, description: 'Plasterboard 2 sides', color: '#000000' },
+    },
+    // ── FLOOR DESIGNER (Slice 1 scaffolding) ──────────────
+    // Three new schedule categories for the integrated Floor Designer feature.
+    // See FLOOR_DESIGNER_PROTOTYPE.md in StructuralSketch/ for the full brief.
+
+    // Floor Loads — G/Q kPa pressure zones drawn as polygons on the plan.
+    // Span direction is stored in degrees (0 = joists run along +X, 90 = joists run along +Y).
+    // The floor-calc-engine (ported in Slice 3) works in radians; conversion happens at the boundary.
+    floorLoad: {
+        FL1: { G: 1.5, Q: 1.5, spanDirection: 0,  description: 'Residential floor (AS 1170.1 Cat A)', color: '#A7F3D0' },
+        FL2: { G: 2.0, Q: 3.0, spanDirection: 0,  description: 'Office floor (AS 1170.1 Cat B)',       color: '#FCD34D' },
+        FL3: { G: 2.5, Q: 4.0, spanDirection: 0,  description: 'Retail/assembly (AS 1170.1 Cat C)',   color: '#FCA5A5' },
+        FL4: { G: 0.5, Q: 0.25, spanDirection: 0, description: 'Roof — non-trafficable (AS 1170.1)',  color: '#93C5FD' },
+        FL5: { G: 1.2, Q: 1.5, spanDirection: 0,  description: '',                                    color: '#67E8F9' },
+    },
+
+    // Floor Bearers — steel beams directly supporting floor joists.
+    // Same field shape as `beam` category. Separate category so (a) bearers vs transfer beams can
+    // have independent sections, (b) tonnage reports can split the two totals, (c) Slice 5 SB→FB
+    // auto-promotion (when joists land on an SB beam) has a clean destination category.
+    floorBeam: {
+        FB1: { sectionType: '', size: '', description: '', grade: '300', color: '#FBBF24' },
+        FB2: { sectionType: '', size: '', description: '', grade: '300', color: '#F97316' },
+        FB3: { sectionType: '', size: '', description: '', grade: '300', color: '#FCD34D' },
+        FB4: { sectionType: '', size: '', description: '', grade: '300', color: '#FCA5A5' },
+        FB5: { sectionType: '', size: '', description: '', grade: '300', color: '#67E8F9' },
+    },
+
+    // Floor Joists — hySPAN LVL only for now (residential scope, AS 1684).
+    // TODO (Phase 6 per prototype brief): replace with AS 1720.1 first-principles LVL/GLT engine
+    // so heavier commercial loads can be checked honestly instead of tripping the scope gate.
+    // Each joist element will be per-element sized at render time from the hySPAN Dindas table —
+    // the schedule entry only defines the spacing, span type and target material.
+    joist: {
+        FJ1: { material: 'hySPAN LVL (residential)', spacing: 450, spanType: 'single',      fflOffset: 19, description: 'Single span @ 450 ctrs', color: '#A7F3D0' },
+        FJ2: { material: 'hySPAN LVL (residential)', spacing: 600, spanType: 'single',      fflOffset: 19, description: 'Single span @ 600 ctrs', color: '#FCD34D' },
+        FJ3: { material: 'hySPAN LVL (residential)', spacing: 450, spanType: 'continuous',  fflOffset: 19, description: 'Continuous @ 450',        color: '#FCA5A5' },
+        FJ4: { material: 'hySPAN LVL (residential)', spacing: 600, spanType: 'continuous',  fflOffset: 19, description: 'Continuous @ 600',        color: '#93C5FD' },
+        FJ5: { material: 'hySPAN LVL (residential)', spacing: 450, spanType: 'single',      fflOffset: 19, description: '',                        color: '#67E8F9' },
     }
 };
 

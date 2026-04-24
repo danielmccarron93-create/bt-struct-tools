@@ -153,6 +153,41 @@ function getSectionProperties(sizeStr) {
     const profile = lookupSteelSection(sizeStr);
     if (!profile) return null;
 
+    // If the catalogue entry already has Red Book properties (Ix, Zx, Sx, Ag, m)
+    // use them directly — they're more accurate than computing from geometry.
+    // The UB catalogue in 18a-steel-sections.js now carries the full Red Book
+    // property set (Ix, Iy, Zx, Sx, J, Iw, Ag, m, d1) sourced from AISC
+    // Design Capacity Tables Vol 1, Table 3.1-3(A).
+    // Units in catalogue: Ix/Iy in 10⁶ mm⁴, Zx/Sx in 10³ mm³, J in 10³ mm⁴,
+    //                     Iw in 10⁹ mm⁶, Ag in mm², m in kg/m.
+    if (profile.Ix && profile.Zx && profile.Sx && profile.Ag) {
+        // Catalogue has full property set — normalise to base units (mm⁴ etc.)
+        // and present the same interface as computed props.
+        const result = {
+            ...profile,
+            // Base-unit conversions for consumers that expect mm⁴/mm³ directly
+            Ix: profile.Ix * 1e6,               // 10⁶ mm⁴ → mm⁴
+            Sx: profile.Sx * 1e3,               // 10³ mm³ → mm³
+            Zx: profile.Zx * 1e3,               // 10³ mm³ → mm³
+            mass: profile.m,                     // kg/m
+            // Keep the original stored values accessible under _raw prefix
+            // for the new calc engine that expects the stored (×10⁶ etc.) form
+            _raw_Ix: profile.Ix,
+            _raw_Iy: profile.Iy,
+            _raw_Zx: profile.Zx,
+            _raw_Sx: profile.Sx,
+            _raw_J:  profile.J,
+            _raw_Iw: profile.Iw,
+        };
+        // Iy, J, Iw may also be present — convert to base units
+        if (profile.Iy != null) result.Iy = profile.Iy * 1e6;
+        if (profile.J  != null) result.J_mm4 = profile.J * 1e3;
+        if (profile.Iw != null) result.Iw_mm6 = profile.Iw * 1e9;
+        _sectionPropsCache[sizeStr] = result;
+        return result;
+    }
+
+    // Fallback — compute from geometry (UC, PFC, hollows, estimated sections)
     let computed;
     switch (profile.type) {
         case 'UB':
@@ -614,7 +649,10 @@ function buildDesignCheckHTML(beamEl) {
 
     // ── Check if we have enough data to run ──
     const typeRef = beamEl.typeRef || beamEl.tag;
-    const schedData = typeRef ? (project.scheduleTypes.beam[typeRef] || {}) : {};
+    let schedData = typeRef ? (project.scheduleTypes.beam[typeRef] || {}) : {};
+    if (!schedData.size && project.scheduleTypes.floorBeam) {
+        schedData = project.scheduleTypes.floorBeam[typeRef] || schedData;
+    }
 
     if (!typeRef || !schedData.size) {
         html += `<div style="font-size:10px; color:#999; padding:4px 0;">Assign a section size to enable design checks</div>`;
@@ -622,10 +660,12 @@ function buildDesignCheckHTML(beamEl) {
         return html;
     }
 
-    // ── Run the check ──
-    const check = runBeamDesignCheck(beamEl);
+    // ── Run the check — prefer enhanced engine if available ──
+    const check = (typeof runEnhancedBeamCheck === 'function')
+        ? runEnhancedBeamCheck(beamEl)
+        : runBeamDesignCheck(beamEl);
 
-    if (check.errors.length > 0) {
+    if (check.errors && check.errors.length > 0) {
         html += `<div style="font-size:10px; color:#DC2626; padding:4px 0;">`;
         for (const err of check.errors) {
             html += `⚠ ${err}<br>`;
@@ -640,9 +680,15 @@ function buildDesignCheckHTML(beamEl) {
     const overallColor = check.ok ? '#16A34A' : '#DC2626';
     const overallLabel = check.ok ? 'PASS' : 'FAIL';
 
-    // Overall status
-    html += `<div style="display:flex; justify-content:center; margin:4px 0 8px 0;">`;
-    html += `<span style="font-weight:700; font-size:12px; color:${overallColor}; background:${overallColor}15; padding:2px 12px; border-radius:3px; border:1px solid ${overallColor}40;">${overallLabel}</span>`;
+    // Overall status + utilisation + auto-size
+    const maxUtilPct = (check.maxUtil * 100).toFixed(0);
+    html += `<div style="display:flex; justify-content:center; align-items:center; gap:6px; margin:4px 0 8px 0;">`;
+    html += `<span style="font-weight:700; font-size:12px; color:${overallColor}; background:${overallColor}15; padding:2px 12px; border-radius:3px; border:1px solid ${overallColor}40;">${overallLabel} · ${maxUtilPct}%</span>`;
+    html += `<span style="font-size:9px; color:#666;">${check.governing || ''}</span>`;
+    html += `</div>`;
+    // Auto-size button
+    html += `<div style="text-align:center; margin-bottom:6px;">`;
+    html += `<button onclick="applyAutoSize('${beamEl.id}')" style="font-size:9px; padding:2px 10px; border:1px solid #8B5CF6; color:#8B5CF6; background:transparent; border-radius:3px; cursor:pointer;" title="Find lightest passing UB section">Auto-size</button>`;
     html += `</div>`;
 
     // Loading inputs (editable)
@@ -651,28 +697,44 @@ function buildDesignCheckHTML(beamEl) {
     html += `<div style="font-size:10px; color:#666; margin-bottom:4px;">`;
     html += `<div style="display:flex; justify-content:space-between;"><span>G (dead)</span><span class="prop-click-edit" onclick="editDesignLoad('${levelId}','G')" style="cursor:pointer;">${ds.G.toFixed(1)} kPa</span></div>`;
     html += `<div style="display:flex; justify-content:space-between;"><span>Q (live)</span><span class="prop-click-edit" onclick="editDesignLoad('${levelId}','Q')" style="cursor:pointer;">${ds.Q.toFixed(1)} kPa</span></div>`;
-    html += `<div style="display:flex; justify-content:space-between;"><span>Self-wt</span><span>${check.selfWeight.toFixed(2)} kN/m</span></div>`;
-    html += `<div style="display:flex; justify-content:space-between;"><span>Trib. width</span><span>${(check.tribWidth / 1000).toFixed(2)} m</span></div>`;
-    html += `<div style="display:flex; justify-content:space-between;"><span>Span</span><span>${(check.span / 1000).toFixed(2)} m</span></div>`;
+    html += `<div style="display:flex; justify-content:space-between;"><span>Self-wt</span><span>${(check.selfWeight || 0).toFixed(2)} kN/m</span></div>`;
+    html += `<div style="display:flex; justify-content:space-between;"><span>Trib. width</span><span>${((check.tribWidth || 0) / 1000).toFixed(2)} m${check.isTieBeam ? ' <em style="color:#999;font-size:9px;">(tie beam)</em>' : ''}</span></div>`;
+    html += `<div style="display:flex; justify-content:space-between;"><span>Span</span><span>${((check.span || 0) / 1000).toFixed(2)} m</span></div>`;
+    if (check.governingCombo) {
+        html += `<div style="display:flex; justify-content:space-between;"><span>Governing</span><span>${check.governingCombo}</span></div>`;
+    }
     html += `</div>`;
 
-    // Bending check
+    // Bending check (member capacity if LTB available, otherwise section)
+    const bendLabel = check.phiMbx !== undefined ? 'Bending (LTB)' : 'Bending';
+    const bendCapacity = check.phiMbx !== undefined ? check.phiMbx : check.phiMsx;
     html += `<div style="font-size:10px; margin-top:6px; padding:4px; background:${bendColor}08; border-left:3px solid ${bendColor}; border-radius:0 3px 3px 0;">`;
-    html += `<div style="font-weight:600; color:${bendColor};">Bending — ${(check.bendingUtil * 100).toFixed(0)}%</div>`;
-    html += `<div style="color:#666;">M* = ${check.Mstar.toFixed(1)} kN·m</div>`;
-    html += `<div style="color:#666;">φMsx = ${check.phiMsx.toFixed(1)} kN·m</div>`;
-    html += `<div style="color:#666; font-size:9px;">fy = ${check.fy} MPa (Grade ${check.grade}, ${check.sectionClass})</div>`;
+    html += `<div style="font-weight:600; color:${bendColor};">${bendLabel} — ${(check.bendingUtil * 100).toFixed(0)}%</div>`;
+    html += `<div style="color:#666;">M* = ${(check.Mstar || 0).toFixed(1)} kN·m</div>`;
+    html += `<div style="color:#666;">φM = ${(bendCapacity || 0).toFixed(1)} kN·m</div>`;
+    html += `<div style="color:#666; font-size:9px;">fy = ${check.fy} MPa (Grade ${check.grade}${check.sectionClass ? ', ' + check.sectionClass : ''})</div>`;
     html += `</div>`;
+
+    // Shear check (if available from enhanced engine)
+    if (check.phiVv !== undefined && check.Vstar !== undefined) {
+        const shearColor = (check.shearUtil || 0) <= 0.9 ? '#16A34A' : (check.shearUtil || 0) <= 1.0 ? '#D97706' : '#DC2626';
+        html += `<div style="font-size:10px; margin-top:4px; padding:4px; background:${shearColor}08; border-left:3px solid ${shearColor}; border-radius:0 3px 3px 0;">`;
+        html += `<div style="font-weight:600; color:${shearColor};">Shear — ${((check.shearUtil || 0) * 100).toFixed(0)}%</div>`;
+        html += `<div style="color:#666;">V* = ${(check.Vstar || 0).toFixed(1)} kN  ·  φVv = ${(check.phiVv || 0).toFixed(1)} kN</div>`;
+        html += `</div>`;
+    }
 
     // Deflection check
     html += `<div style="font-size:10px; margin-top:4px; padding:4px; background:${deflColor}08; border-left:3px solid ${deflColor}; border-radius:0 3px 3px 0;">`;
-    html += `<div style="font-weight:600; color:${deflColor};">Deflection — ${(check.deflectionUtil * 100).toFixed(0)}%</div>`;
-    html += `<div style="color:#666;">δ = ${check.delta.toFixed(1)} mm (limit ${check.deltaLimit.toFixed(1)} mm = L/${250})</div>`;
-    html += `<div style="color:#666; font-size:9px;">SLS: w = ${check.wSLS.toFixed(2)} kN/m (G + ψs·Q, ψs = 0.7)</div>`;
+    html += `<div style="font-weight:600; color:${deflColor};">Deflection — ${((check.deflectionUtil || 0) * 100).toFixed(0)}%</div>`;
+    html += `<div style="color:#666;">δ = ${(check.delta || 0).toFixed(1)} mm (limit ${(check.deltaLimit || 0).toFixed(1)} mm = L/250)</div>`;
+    if (check.wSLS !== undefined && check.wSLS > 0) {
+        html += `<div style="color:#666; font-size:9px;">SLS: w = ${check.wSLS.toFixed(2)} kN/m (G + ψs·Q, ψs = 0.7)</div>`;
+    }
     html += `</div>`;
 
     // Warnings
-    if (check.warnings.length > 0) {
+    if (check.warnings && check.warnings.length > 0) {
         html += `<div style="font-size:9px; color:#D97706; margin-top:4px;">`;
         for (const w of check.warnings) {
             html += `⚠ ${w}<br>`;
@@ -680,16 +742,25 @@ function buildDesignCheckHTML(beamEl) {
         html += `</div>`;
     }
 
-    // Assumptions
-    html += `<div style="font-size:9px; color:#999; margin-top:6px; cursor:pointer;" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">`;
-    html += `▸ Assumptions (click to expand)`;
-    html += `</div>`;
-    html += `<div style="display:none; font-size:9px; color:#999; padding-left:8px;">`;
-    for (const a of check.assumptions) {
-        html += `• ${a}<br>`;
+    // Calc sheet button (if FloorCalcSheet is available)
+    if (typeof FloorCalcSheet !== 'undefined' && FloorCalcSheet.showCalcSheetModal) {
+        html += `<div style="margin-top:6px; text-align:center;">`;
+        html += `<button onclick="FloorCalcSheet.showCalcSheetModal(selectedElement)" style="font-size:10px; padding:3px 14px; border:1px solid var(--accent,#2B7CD0); color:var(--accent,#2B7CD0); background:transparent; border-radius:3px; cursor:pointer;">View Calc Sheet</button>`;
+        html += `</div>`;
     }
-    html += `<br>AS 4100-2020 | AS/NZS 1170.0 | AS/NZS 1170.1`;
-    html += `</div>`;
+
+    // Assumptions
+    if (check.assumptions && check.assumptions.length > 0) {
+        html += `<div style="font-size:9px; color:#999; margin-top:6px; cursor:pointer;" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">`;
+        html += `▸ Assumptions (click to expand)`;
+        html += `</div>`;
+        html += `<div style="display:none; font-size:9px; color:#999; padding-left:8px;">`;
+        for (const a of check.assumptions) {
+            html += `• ${a}<br>`;
+        }
+        html += `<br>AS 4100-2020 | AS/NZS 1170.0 | AS/NZS 1170.1`;
+        html += `</div>`;
+    }
 
     html += `</div>`;
     return html;
@@ -715,4 +786,301 @@ function editDesignLoad(levelId, field) {
     // Refresh panel
     _lastPropsElement = null;
     updatePropsPanel();
+}
+
+
+// ============================================================================
+// ENHANCED BEAM CHECK — delegates to FloorCalcEngine when available
+// ============================================================================
+// Slice 3: If the new engine modules are loaded AND the beam has floor zones
+// overlapping it, run the piecewise analysis + full AS 4100 check (with LTB
+// and shear). Otherwise fall back to the original runBeamDesignCheck above.
+//
+// This is the function that the properties panel and future calc sheet will
+// call. It returns an object compatible with the original result shape PLUS
+// the new engine's richer output (steps[], util_*, etc.).
+
+/**
+ * Run the best-available design check on a beam element.
+ *
+ * @param {object} beamEl — beam element { x1, y1, x2, y2, typeRef, level, ... }
+ * @param {object} [overrides] — optional { tribWidth, G, Q, restraint, joistSpacing_mm }
+ * @returns {object} — design check result
+ */
+function runEnhancedBeamCheck(beamEl, overrides) {
+    // Gate: new engine must be loaded
+    if (typeof FloorCalcEngine === 'undefined' || typeof FloorCalcEngine.checkBeam !== 'function') {
+        return runBeamDesignCheck(beamEl, overrides);
+    }
+
+    // ── Basics ──
+    const dx = beamEl.x2 - beamEl.x1;
+    const dy = beamEl.y2 - beamEl.y1;
+    const span_mm = Math.sqrt(dx * dx + dy * dy);
+    if (span_mm < 100) return runBeamDesignCheck(beamEl, overrides);
+
+    const typeRef = beamEl.typeRef || beamEl.tag;
+    if (!typeRef) return runBeamDesignCheck(beamEl, overrides);
+
+    // Look up schedule — try beam first, then floorBeam
+    let schedData = (project.scheduleTypes.beam && project.scheduleTypes.beam[typeRef]) || {};
+    if (!schedData.size && project.scheduleTypes.floorBeam) {
+        schedData = project.scheduleTypes.floorBeam[typeRef] || schedData;
+    }
+    const sizeStr = schedData.size;
+    if (!sizeStr) return runBeamDesignCheck(beamEl, overrides);
+
+    const props = getSectionProperties(sizeStr);
+    if (!props) return runBeamDesignCheck(beamEl, overrides);
+
+    // ── Tributary width ──
+    let tribWidth_mm;
+    let tribWidth_geometric_mm = 0; // geometric width (for display, even on tie beams)
+    let isTieBeam = false;
+    if (overrides && overrides.tribWidth > 0) {
+        tribWidth_mm = overrides.tribWidth;
+        tribWidth_geometric_mm = tribWidth_mm;
+    } else {
+        const tribResult = calculateTributaryWidth(beamEl);
+        if (tribResult.method === 'manual-required') {
+            return runBeamDesignCheck(beamEl, overrides);
+        }
+        tribWidth_geometric_mm = tribResult.tribWidth;
+        tribWidth_mm = tribResult.tribWidth;
+    }
+
+    const levelId = beamEl.level || (typeof getActiveLevel === 'function' ? getActiveLevel().id : 'L1');
+
+    // ── Span direction check: is this beam a tie beam? ──
+    // A beam running parallel to joist span carries no floor load (self-weight only).
+    // A beam perpendicular to joist span carries full tributary floor load.
+    {
+        const designSettings = getLevelDesignSettings(levelId);
+        const spanDir_deg = designSettings.spanDirection || 0; // 0° = X, 90° = Y
+
+        // Beam direction angle in degrees (0° = horizontal E-W, 90° = vertical N-S)
+        const bDx = (beamEl.x2 || 0) - (beamEl.x1 || 0);
+        const bDy = (beamEl.y2 || 0) - (beamEl.y1 || 0);
+        const beamAngle_deg = Math.abs(Math.atan2(bDy, bDx) * 180 / Math.PI);
+        // Normalise to 0–180 range (beam direction is unsigned)
+        const beamDir = beamAngle_deg > 90 ? 180 - beamAngle_deg : beamAngle_deg;
+        // spanDir normalised similarly
+        const spanDirNorm = (spanDir_deg % 180);
+
+        // Angular difference between beam direction and joist span direction
+        let angleDiff = Math.abs(beamDir - spanDirNorm);
+        if (angleDiff > 90) angleDiff = 180 - angleDiff;
+
+        // If beam is within 15° of span direction → tie beam → no floor load
+        // If beam is within 15° of perpendicular to span → loaded beam → full trib
+        if (angleDiff < 15) {
+            // Beam runs parallel to joist span — it's a tie beam
+            isTieBeam = true;
+            tribWidth_mm = 0;
+        }
+        // else: beam is perpendicular to span or angled — keep full trib width
+    }
+
+    // ── Check for floor zones ──
+    // If floor zones exist on this level, use the piecewise path.
+    // Otherwise fall back to the uniform-UDL legacy check.
+    let hasFloorZones = false;
+    let zones = [];
+    if (typeof FloorLoadResolver !== 'undefined' && typeof FloorLoadResolver.resolveZonesFromElements === 'function') {
+        const floorLoadSchedule = project.scheduleTypes.floorLoad || {};
+        zones = FloorLoadResolver.resolveZonesFromElements(project.elements, floorLoadSchedule);
+        hasFloorZones = zones.length > 0;
+    }
+
+    const span_m = span_mm / 1000;
+    const grade = schedData.grade || '300';
+    const restraint = (overrides && overrides.restraint) || 'full'; // default full until joist wiring (Slice 5)
+    const joistSpacing_mm = (overrides && overrides.joistSpacing_mm) || 450;
+
+    let analysis_override = null;
+
+    if (hasFloorZones
+        && typeof FloorBeamAnalysis !== 'undefined'
+        && typeof FloorBeamAnalysis.analyseSSBeam === 'function'
+        && typeof FloorLoadResolver.buildPiecewiseLoadFns === 'function') {
+        // ── Piecewise path ──
+        const designSettings = getLevelDesignSettings(levelId);
+        const defaultG = (overrides && overrides.G !== undefined) ? overrides.G : designSettings.G;
+        const defaultQ = (overrides && overrides.Q !== undefined) ? overrides.Q : designSettings.Q;
+
+        const loadFns = FloorLoadResolver.buildPiecewiseLoadFns(
+            beamEl, tribWidth_mm, zones, defaultG, defaultQ
+        );
+
+        // Self-weight must be added to w_G
+        const sw_kNm = (props.mass || 0) * 9.81 / 1000;
+        const w_G_with_sw = function (x_m) {
+            return loadFns.w_G_of_x_kNm(x_m) + sw_kNm;
+        };
+
+        const Ix_mm4 = props.Ix || 0;
+        const EI_Nmm2 = 200000 * Ix_mm4;
+
+        analysis_override = FloorBeamAnalysis.analyseSSBeam({
+            span_m: span_m,
+            w_G_of_x_kNm: w_G_with_sw,
+            w_Q_of_x_kNm: loadFns.w_Q_of_x_kNm,
+            EI_Nmm2: EI_Nmm2,
+        });
+    }
+
+    // ── Call the full AS 4100 engine ──
+    const engineInput = {
+        section: props,
+        grade: grade,
+        span_m: span_m,
+        restraint: restraint,
+        joistSpacing_mm: joistSpacing_mm,
+    };
+    if (analysis_override) {
+        engineInput.analysis_override = analysis_override;
+    } else {
+        // Uniform UDL path — get loads from level settings
+        const designSettings = getLevelDesignSettings(levelId);
+        const G = (overrides && overrides.G !== undefined) ? overrides.G : designSettings.G;
+        const Q = (overrides && overrides.Q !== undefined) ? overrides.Q : designSettings.Q;
+        const tribW_m = tribWidth_mm / 1000;
+        engineInput.udl_G_kNm = G * tribW_m;
+        engineInput.udl_Q_kNm = Q * tribW_m;
+    }
+
+    try {
+        const engineResult = FloorCalcEngine.checkBeam(engineInput);
+        // Map back to the shape expected by buildDesignCheckHTML
+        return {
+            ok: engineResult.pass,
+            errors: [],
+            warnings: [],
+            assumptions: [
+                'Simply supported end conditions',
+                engineResult.Le_pos_mm > 0
+                    ? 'LTB check per AS 4100 Cl 5.6 (Le = ' + Math.round(engineResult.Le_pos_mm) + ' mm)'
+                    : 'Full lateral restraint (no LTB reduction)',
+                analysis_override ? 'Piecewise load from floor zones' : 'UDL from tributary floor area',
+            ],
+            span: span_mm,
+            size: sizeStr,
+            grade: grade,
+            fy: engineResult.inputs.fy,
+            tribWidth: tribWidth_mm,
+            tribWidthGeometric: tribWidth_geometric_mm,
+            isTieBeam: isTieBeam,
+            G: engineResult.inputs.udl_G_kNm || 0,
+            Q: engineResult.inputs.udl_Q_kNm || 0,
+            selfWeight: (props.mass || 0) * 9.81 / 1000,
+            // ULS — map to legacy field names
+            wULS: 0, // not directly available from engine, M*/V* used instead
+            Mstar: engineResult.M_star_kNm,
+            phiMsx: engineResult.phiMsx_kNm,
+            phiMbx: engineResult.phiMbx_kNm,
+            bendingUtil: engineResult.util_moment,
+            bendingOk: engineResult.util_moment <= 1.0,
+            // Shear
+            Vstar: engineResult.V_star_kN,
+            phiVv: engineResult.phiVv_kN,
+            shearUtil: engineResult.util_shear,
+            shearOk: engineResult.util_shear <= 1.0,
+            // SLS
+            wSLS: 0,
+            delta: engineResult.deflection_total_mm,
+            deltaLimit: engineResult.limit_total_mm,
+            deflectionUtil: engineResult.util_defl_total,
+            deflectionOk: engineResult.util_defl_total <= 1.0,
+            deflectionLiveUtil: engineResult.util_defl_live,
+            // New engine extras
+            sectionClass: engineResult.section_class,
+            compact: engineResult.section_class === 'Compact',
+            maxUtil: engineResult.max_util,
+            governing: engineResult.governing,
+            governingCombo: engineResult.governing_combo,
+            steps: engineResult.steps,
+            // Flag for UI to know which engine ran
+            _engine: 'FloorCalcEngine',
+        };
+    } catch (e) {
+        // If the new engine throws, fall back to legacy
+        console.warn('[beam-design] FloorCalcEngine error, falling back to legacy:', e);
+        return runBeamDesignCheck(beamEl, overrides);
+    }
+}
+
+// ============================================================================
+// AUTO-SIZE BEAM — find lightest passing UB section
+// ============================================================================
+
+/**
+ * Find the lightest UB section that passes all AS 4100 checks for a beam.
+ * Iterates from lightest to heaviest, returns first passing section.
+ *
+ * @param {object} beamEl — beam element from project.elements
+ * @returns {object|null} { size, result } or null if nothing passes
+ */
+function autoSizeBeam(beamEl) {
+    if (!beamEl || beamEl.type !== 'line' || beamEl.layer !== 'S-BEAM') return null;
+
+    const typeRef = beamEl.typeRef || beamEl.tag;
+    let schedData = typeRef ? (project.scheduleTypes.beam[typeRef] || {}) : {};
+    if (!schedData.size && project.scheduleTypes.floorBeam) {
+        schedData = project.scheduleTypes.floorBeam[typeRef] || schedData;
+    }
+
+    const origSize = schedData.size;
+    const sections = typeof STEEL_SECTIONS !== 'undefined' ? STEEL_SECTIONS.UB : [];
+
+    for (let i = 0; i < sections.length; i++) {
+        schedData.size = sections[i];
+        try {
+            const result = runEnhancedBeamCheck(beamEl);
+            if (result && result.ok) {
+                schedData.size = origSize; // restore
+                return { size: sections[i], result: result };
+            }
+        } catch (e) { /* skip section */ }
+    }
+
+    // Nothing passed — restore original
+    schedData.size = origSize;
+    return null;
+}
+
+/**
+ * Auto-size a beam and apply the result to its schedule entry.
+ * Called from the properties panel UI.
+ * @param {string} beamId — element ID
+ */
+function applyAutoSize(beamId) {
+    const el = project.elements.find(function (e) { return e.id == beamId; });
+    if (!el) return;
+
+    const result = autoSizeBeam(el);
+    if (!result) {
+        console.warn('[beam-design] No passing UB section found for beam ' + beamId);
+        return;
+    }
+
+    const typeRef = el.typeRef || el.tag;
+    let schedData = project.scheduleTypes.beam[typeRef];
+    if (!schedData && project.scheduleTypes.floorBeam) {
+        schedData = project.scheduleTypes.floorBeam[typeRef];
+    }
+    if (!schedData) return;
+
+    const oldSize = schedData.size;
+    schedData.size = result.size;
+
+    // Invalidate utilisation cache
+    _beamUtilCache = {};
+    _beamUtilHash = '';
+
+    // Re-render
+    if (typeof engine !== 'undefined' && engine.requestRender) engine.requestRender();
+    if (typeof updatePropertiesPanel === 'function') updatePropertiesPanel();
+
+    console.log('[beam-design] Auto-sized: ' + oldSize + ' → ' + result.size +
+        ' (util ' + (result.result.maxUtil * 100).toFixed(0) + '%)');
 }

@@ -320,6 +320,15 @@ const LAYERS = {
         visible: true,
         locked: false,
         printColor: '#6366f1'
+    },
+    'S-FLOORZONE': {
+        name: 'Floor Loads',
+        color: '#059669',
+        lineWeight: 0.18,
+        pattern: 'dashed',
+        visible: true,
+        locked: false,
+        printColor: '#059669'
     }
 };
 
@@ -368,11 +377,11 @@ class ProjectData {
         return this.elements.filter(el => el.layer === layerId);
     }
 
-    /** Get all visible elements */
+    /** Get all visible elements (falls back to global LAYERS for newly-registered layers) */
     getVisibleElements() {
         return this.elements.filter(el => {
-            const layer = this.layers[el.layer];
-            return layer && layer.visible;
+            const layer = this.layers[el.layer] || (typeof LAYERS !== 'undefined' ? LAYERS[el.layer] : null);
+            return layer && layer.visible !== false;
         });
     }
 

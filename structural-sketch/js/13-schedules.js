@@ -52,7 +52,7 @@ function getScheduleColWidths(category) {
     } else if (category === 'stripfooting') {
         // type, colour, width, depth, reo, setdown + count + delete
         return ['7%', '5%', '16%', '16%', '18%', '14%', '8%', '6%'];
-    } else if (category === 'beam' || category === 'column') {
+    } else if (category === 'beam' || category === 'column' || category === 'floorBeam') {
         // type, colour, sectionType, size, grade, description + count + delete
         return ['6%', '4%', '12%', '22%', '8%', '20%', '6%', '5%'];
     } else if (category === 'wall') {
@@ -61,12 +61,18 @@ function getScheduleColWidths(category) {
     } else if (category === 'bracingWall') {
         // type, colour, bracingType, capacity, minLength, description + count + delete
         return ['7%', '5%', '14%', '12%', '12%', '18%', '8%', '6%'];
+    } else if (category === 'floorLoad') {
+        // type, colour, G, Q, spanDir, description + count + delete
+        return ['7%', '5%', '11%', '11%', '13%', '25%', '8%', '6%'];
+    } else if (category === 'joist') {
+        // type, colour, material, spacing, spanType, description + count + delete
+        return ['7%', '5%', '22%', '12%', '14%', '17%', '8%', '6%'];
     }
     return ['10%', '6%', '24%', '28%', '12%', '8%'];
 }
 
 function renderSchedule() {
-    const category = activeScheduleTab; // 'padfooting', 'stripfooting', 'beam', 'column', 'wall'
+    const category = activeScheduleTab; // 'padfooting' | 'stripfooting' | 'beam' | 'floorBeam' | 'column' | 'wall' | 'bracingWall' | 'floorLoad' | 'joist'
     const types = project.scheduleTypes[category] || {};
 
     const schedTable = document.getElementById('schedule-table');
@@ -120,10 +126,16 @@ function getScheduleHeaders(category) {
         return ['Type', 'Colour', 'Section', 'Size', 'Grade', 'Description'];
     } else if (category === 'column') {
         return ['Type', 'Colour', 'Section', 'Size', 'Grade', 'Description'];
+    } else if (category === 'floorBeam') {
+        return ['Type', 'Colour', 'Section', 'Size', 'Grade', 'Description'];
     } else if (category === 'wall') {
         return ['Type', 'Colour', 'Wall Type', 'Thickness (mm)', 'Description'];
     } else if (category === 'bracingWall') {
         return ['Type', 'Colour', 'Bracing Type', 'Capacity (kN/m)', 'Min Length (mm)', 'Description'];
+    } else if (category === 'floorLoad') {
+        return ['Type', 'Colour', 'G (kPa)', 'Q (kPa)', 'Span Dir (°)', 'Description'];
+    } else if (category === 'joist') {
+        return ['Type', 'Colour', 'Material', 'Spacing (mm)', 'Span Type', 'Description'];
     }
     return ['Type', 'Colour'];
 }
@@ -136,12 +148,22 @@ function countElementsOfType(category, typeRef) {
         } else if (category === 'stripfooting' && el.type === 'stripFooting' && (el.typeRef === typeRef || el.tag === typeRef || (!el.typeRef && typeRef === 'SF1'))) {
             count++;
         } else if (category === 'beam' && el.type === 'line' && el.layer === 'S-BEAM' && (el.typeRef === typeRef || el.tag === typeRef || (!el.typeRef && typeRef === 'SB1'))) {
-            count++;
+            // Exclude beams whose typeRef starts with 'FB' — those belong to the floorBeam category
+            const ref = el.typeRef || el.tag || '';
+            if (!ref.startsWith('FB')) count++;
+        } else if (category === 'floorBeam' && el.type === 'line' && el.layer === 'S-BEAM') {
+            // Floor bearers: beams that have been promoted (typeRef starts with 'FB')
+            const ref = el.typeRef || el.tag || '';
+            if (ref === typeRef && ref.startsWith('FB')) count++;
         } else if (category === 'column' && el.type === 'column' && (el.typeRef === typeRef || el.tag === typeRef || (!el.typeRef && typeRef === 'SC1'))) {
             count++;
         } else if (category === 'wall' && el.type === 'wall' && (el.typeRef === typeRef || el.tag === typeRef || (!el.typeRef && typeRef === 'BW1'))) {
             count++;
         } else if (category === 'bracingWall' && el.type === 'bracingWall' && (el.typeRef === typeRef || el.tag === typeRef || (!el.typeRef && typeRef === 'BR1'))) {
+            count++;
+        } else if (category === 'floorLoad' && el.type === 'floorZone' && (el.typeRef === typeRef || (!el.typeRef && typeRef === 'FL1'))) {
+            count++;
+        } else if (category === 'joist' && el.type === 'joistSet' && (el.typeRef === typeRef || (!el.typeRef && typeRef === 'FJ1'))) {
             count++;
         }
     }
@@ -229,7 +251,7 @@ function renderScheduleRow(category, typeRef, typeData, count) {
         html += `</div></div></td>`;
         // TOP cell (editable text)
         html += `<td class="edit-cell${emptyClass(typeData.top)}" data-primary="1" onclick="editScheduleCell(event)">${v(typeData.top)}</td>`;
-    } else if (category === 'beam' || category === 'column') {
+    } else if (category === 'beam' || category === 'column' || category === 'floorBeam') {
         // Section type dropdown
         const curST = v(typeData.sectionType);
         html += `<td><select class="sched-select" data-cat="${category}" data-type="${typeRef}" data-field="sectionType" onchange="onScheduleDropdown(this)">`;
@@ -295,6 +317,32 @@ function renderScheduleRow(category, typeRef, typeData, count) {
         html += `<span class="dim-value${v(typeData.minLength) === '' ? ' empty' : ''}" data-field="minLength" data-type="${typeRef}" data-cat="bracingWall" onclick="editPfDim(this)">${v(typeData.minLength) || '—'}</span>`;
         html += `<div class="dim-spinner"><button onclick="spinPfDim('${typeRef}','minLength',50,'bracingWall')" title="+50">▲</button><button onclick="spinPfDim('${typeRef}','minLength',-50,'bracingWall')" title="−50">▼</button></div>`;
         html += `</div></div></td>`;
+        // Description (free text)
+        html += `<td class="edit-cell${emptyClass(typeData.description)}" onclick="editScheduleCell(event)">${v(typeData.description)}</td>`;
+    } else if (category === 'floorLoad') {
+        // G (kPa) — free text (numeric)
+        html += `<td class="edit-cell${emptyClass(typeData.G)}" data-primary="1" onclick="editScheduleCell(event)">${v(typeData.G)}</td>`;
+        // Q (kPa) — free text (numeric)
+        html += `<td class="edit-cell${emptyClass(typeData.Q)}" onclick="editScheduleCell(event)">${v(typeData.Q)}</td>`;
+        // Span direction (° from horizontal) — free text (numeric)
+        html += `<td class="edit-cell${emptyClass(typeData.spanDirection)}" onclick="editScheduleCell(event)">${v(typeData.spanDirection)}</td>`;
+        // Description (free text)
+        html += `<td class="edit-cell${emptyClass(typeData.description)}" onclick="editScheduleCell(event)">${v(typeData.description)}</td>`;
+    } else if (category === 'joist') {
+        // Material — free text for now (Phase 6: dropdown with hySPAN sizes / AS 1720.1 timber / LGS purlins)
+        html += `<td class="edit-cell${emptyClass(typeData.material)}" data-primary="1" onclick="editScheduleCell(event)">${v(typeData.material)}</td>`;
+        // Spacing (mm) with spinner — reuse pf-dim-cell pattern
+        html += `<td class="pf-dim-cell" data-cat="${category}" data-type="${typeRef}">`;
+        html += `<div class="size-cell-wrap"><div class="dim-group">`;
+        html += `<span class="dim-value${v(typeData.spacing) === '' ? ' empty' : ''}" data-field="spacing" data-type="${typeRef}" data-cat="joist" onclick="editPfDim(this)">${v(typeData.spacing) || '—'}</span>`;
+        html += `<div class="dim-spinner"><button onclick="spinPfDim('${typeRef}','spacing',50,'joist')" title="+50">▲</button><button onclick="spinPfDim('${typeRef}','spacing',-50,'joist')" title="−50">▼</button></div>`;
+        html += `</div></div></td>`;
+        // Span type dropdown (SS vs continuous) — sets restraint for beam Le/kl
+        const curSpanType = v(typeData.spanType) || 'single';
+        html += `<td><select class="sched-select" data-cat="${category}" data-type="${typeRef}" data-field="spanType" onchange="onScheduleDropdown(this)">`;
+        html += `<option value="single"${curSpanType === 'single' ? ' selected' : ''}>Simply Supported</option>`;
+        html += `<option value="continuous"${curSpanType === 'continuous' ? ' selected' : ''}>Continuous</option>`;
+        html += `</select></td>`;
         // Description (free text)
         html += `<td class="edit-cell${emptyClass(typeData.description)}" onclick="editScheduleCell(event)">${v(typeData.description)}</td>`;
     }
@@ -395,7 +443,7 @@ function getScheduleFields(category) {
     } else if (category === 'stripfooting') {
         // width, depth & setdown handled by dim-value spinners; 'reo' and 'top' use generic edit-cell
         return ['_width', '_depth', 'reo', '_setdown', 'top'];
-    } else if (category === 'beam' || category === 'column') {
+    } else if (category === 'beam' || category === 'column' || category === 'floorBeam') {
         // sectionType, size, grade are dropdowns; only 'description' uses generic edit-cell
         return ['_sectionType', '_size', '_grade', 'description'];
     } else if (category === 'wall') {
@@ -404,6 +452,12 @@ function getScheduleFields(category) {
     } else if (category === 'bracingWall') {
         // bracingType is dropdown, capacity is read-only, minLength is spinner; only 'description' uses generic edit-cell
         return ['_bracingType', '_capacity', '_minLength', 'description'];
+    } else if (category === 'floorLoad') {
+        // G, Q, spanDirection, description — all editable text cells
+        return ['G', 'Q', 'spanDirection', 'description'];
+    } else if (category === 'joist') {
+        // material is text, spacing is spinner, spanType is dropdown; only material + description use generic edit-cell
+        return ['material', '_spacing', '_spanType', 'description'];
     }
     return [];
 }
@@ -587,8 +641,18 @@ function openColorPicker(e) {
 function addScheduleType(category) {
     const types = project.scheduleTypes[category];
     // Determine prefix for this category
-    const prefix = category === 'padfooting' ? 'PF' : category === 'stripfooting' ? 'SF' :
-                   category === 'beam' ? 'SB' : category === 'column' ? 'SC' : 'BW';
+    const prefixMap = {
+        padfooting: 'PF',
+        stripfooting: 'SF',
+        beam: 'SB',
+        column: 'SC',
+        wall: 'BW',
+        bracingWall: 'BR',
+        floorLoad: 'FL',
+        floorBeam: 'FB',
+        joist: 'FJ'
+    };
+    const prefix = prefixMap[category] || 'T';
     // Find next available number
     let nextNum = 1;
     while (types[prefix + nextNum]) {
@@ -612,6 +676,12 @@ function addScheduleType(category) {
         newType = { sectionType: '', size: '', description: '', grade: '300', color: defaultColor };
     } else if (category === 'wall') {
         newType = { wallType: '', thickness: '', description: '', color: defaultColor };
+    } else if (category === 'floorLoad') {
+        newType = { G: '', Q: '', spanDirection: 0, description: '', color: defaultColor };
+    } else if (category === 'floorBeam') {
+        newType = { sectionType: '', size: '', description: '', grade: '300', color: defaultColor };
+    } else if (category === 'joist') {
+        newType = { material: 'hySPAN LVL (residential)', spacing: 450, spanType: 'single', description: '', color: defaultColor };
     }
 
     project.scheduleTypes[category][newTypeRef] = newType;

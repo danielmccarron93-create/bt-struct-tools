@@ -33,7 +33,8 @@ function updatePropsPanel() {
         cloud: 'Cloud', notesbox: 'Notes Panel', table: 'Table',
         slabcallout: 'Slab Callout', footing: 'Pad Footing',
         stripFooting: 'Strip Footing', wall: 'Wall',
-        borehole: 'Borehole', rlmarker: 'RL Marker'
+        borehole: 'Borehole', rlmarker: 'RL Marker',
+        joistBay: 'Joist Bay', floorZone: 'Floor Zone'
     };
     let displayType = typeNames[el.type] || el.type;
     if (el.type === 'line' && el.layer === 'S-BEAM') displayType = 'Beam';
@@ -357,6 +358,50 @@ function updatePropsPanel() {
         html += propRow('Y1', fmtCoord(el.y1));
         html += propRow('X2', fmtCoord(el.x2));
         html += propRow('Y2', fmtCoord(el.y2));
+    }
+
+    // ── Floor Zone properties (Slice 2) ──
+    if (el.type === 'floorZone') {
+        const fzTypeRef = el.typeRef || 'FL1';
+        const fzTypeData = (project.scheduleTypes.floorLoad && project.scheduleTypes.floorLoad[fzTypeRef]) || {};
+        const fzColor = fzTypeData.color || '#A7F3D0';
+        const fzG = Number(fzTypeData.G) || 0;
+        const fzQ = Number(fzTypeData.Q) || 0;
+        const fzSpan = Number(fzTypeData.spanDirection) || 0;
+        const fzDesc = fzTypeData.description || '';
+
+        html += propDivider();
+        html += `<div class="prop-row"><span class="prop-label">Type</span><span class="prop-type-badge" onclick="showTypeReassignmentPicker(selectedElement,'floorLoad',150,80)" title="Click to change type"><span class="color-dot" style="background:${fzColor}"></span>${fzTypeRef}</span></div>`;
+        html += propDivider();
+        html += propRow('G (dead)', fzG.toFixed(1) + ' kPa');
+        html += propRow('Q (live)', fzQ.toFixed(1) + ' kPa');
+        html += propRow('Span dir.', fzSpan + '°');
+        if (fzDesc) html += propRow('Desc.', fzDesc);
+        html += propDivider();
+        // Area from real-mm polygon vertices (shoelace)
+        const fzPts = el.points || [];
+        if (fzPts.length >= 3) {
+            let fzArea = 0;
+            for (let i = 0; i < fzPts.length; i++) {
+                const j = (i + 1) % fzPts.length;
+                fzArea += fzPts[i].x * fzPts[j].y - fzPts[j].x * fzPts[i].y;
+            }
+            fzArea = Math.abs(fzArea) / 2;
+            html += propRow('Area', (fzArea / 1e6).toFixed(2) + ' m²');
+        }
+        html += propRow('Vertices', fzPts.length);
+    }
+
+    // ── Joist Bay properties (Slice 5 — legacy) ──
+    if (el.type === 'joistBay' && typeof floorDesigner !== 'undefined' && floorDesigner.buildJoistBayPropsHTML) {
+        html += propDivider();
+        html += floorDesigner.buildJoistBayPropsHTML(el);
+    }
+
+    // ── Joist Zone properties (new polygon-based system) ──
+    if (el.type === 'joistZone' && typeof floorDesigner !== 'undefined' && floorDesigner.buildJoistZonePropsHTML) {
+        html += propDivider();
+        html += floorDesigner.buildJoistZonePropsHTML(el);
     }
 
     // ── Borehole properties ──

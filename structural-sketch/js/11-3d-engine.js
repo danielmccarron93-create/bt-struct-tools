@@ -547,46 +547,23 @@ function rebuild3DScene() {
         const gridLineMat = new THREE.LineBasicMaterial({ color: 0xCCCCCC, transparent: true, opacity: 0.25 });
 
         for (const g of structuralGrids) {
-            let pts, labelPos;
-
-            if (typeof isOrthoGrid === 'function' && isOrthoGrid(g)) {
-                const pos = g.position * scale3d;
-                if (g.axis === 'V') {
-                    pts = [new THREE.Vector3(pos, -0.5, -2), new THREE.Vector3(pos, maxElev + 1, -2)];
-                    labelPos = new THREE.Vector3(pos, maxElev + 1.5, -2);
-                } else {
-                    pts = [new THREE.Vector3(-2, -0.5, pos), new THREE.Vector3(-2, maxElev + 1, pos)];
-                    labelPos = new THREE.Vector3(-2, maxElev + 1.5, pos);
-                }
-            } else if (typeof isAngledGrid === 'function' && isAngledGrid(g)) {
-                // Angled grid → vertical plane from (x1,y1) to (x2,y2)
-                const x1 = g.x1 * scale3d, y1 = g.y1 * scale3d;
-                const x2 = g.x2 * scale3d, y2 = g.y2 * scale3d;
-                // Draw two vertical edges of the plane
-                pts = [new THREE.Vector3(x1, -0.5, y1), new THREE.Vector3(x2, -0.5, y2)];
-                labelPos = new THREE.Vector3((x1 + x2) / 2, maxElev + 1.5, (y1 + y2) / 2);
-                // Also draw the top edge
-                const topPts = [new THREE.Vector3(x1, maxElev + 1, y1), new THREE.Vector3(x2, maxElev + 1, y2)];
-                const topGeo = new THREE.BufferGeometry().setFromPoints(topPts);
-                scene3d.add(new THREE.Line(topGeo, gridLineMat));
+            const pos = g.position * scale3d;
+            let pts;
+            if (g.axis === 'V') {
+                pts = [new THREE.Vector3(pos, -0.5, -2), new THREE.Vector3(pos, maxElev + 1, -2)];
             } else {
-                // Fallback for grids without type helpers loaded
-                const pos = (g.position || 0) * scale3d;
-                if (g.axis === 'V') {
-                    pts = [new THREE.Vector3(pos, -0.5, -2), new THREE.Vector3(pos, maxElev + 1, -2)];
-                    labelPos = new THREE.Vector3(pos, maxElev + 1.5, -2);
-                } else {
-                    pts = [new THREE.Vector3(-2, -0.5, pos), new THREE.Vector3(-2, maxElev + 1, pos)];
-                    labelPos = new THREE.Vector3(-2, maxElev + 1.5, pos);
-                }
+                pts = [new THREE.Vector3(-2, -0.5, pos), new THREE.Vector3(-2, maxElev + 1, pos)];
             }
-
             const gGeo = new THREE.BufferGeometry().setFromPoints(pts);
             scene3d.add(new THREE.Line(gGeo, gridLineMat));
 
             const bubbleSprite = createTextSprite(g.label, '#AAAAAA', 22);
             if (bubbleSprite) {
-                bubbleSprite.position.copy(labelPos);
+                if (g.axis === 'V') {
+                    bubbleSprite.position.set(pos, maxElev + 1.5, -2);
+                } else {
+                    bubbleSprite.position.set(-2, maxElev + 1.5, pos);
+                }
                 scene3d.add(bubbleSprite);
             }
         }
@@ -646,6 +623,11 @@ function rebuild3DScene() {
             const pos = new THREE.Vector3(mx, elev - beamDepth / 2, mz);
             const mesh = addMeshWithEdges(geo, mat, pos, { y: -angle }, el);
             mesh.castShadow = true;
+        }
+
+        // ── JOIST ZONES ──
+        if (el.type === 'joistZone' && typeof buildJoistZone3D === 'function') {
+            buildJoistZone3D(el, lv, scene3d, scale3d);
         }
 
         // ── WALLS ──
@@ -2349,10 +2331,22 @@ engine.onRender(() => {
 // Beam tags are now auto-generated with section sizes.
 // We'll add rendering for beam tags along the line midpoint.
 
+// ── Beam utilisation cache ──
+var _beamUtilCache = {};
+var _beamUtilHash = '';
+var _beamUtilComputing = false;
+
 function drawBeamTags(ctx, eng) {
     const coords = eng.coords;
     const zoom = eng.viewport.zoom;
     if (zoom < 0.4) return;
+
+    // Invalidate utilisation cache when elements change (but not while already computing)
+    const curHash = elementHash();
+    if (curHash !== _beamUtilHash && !_beamUtilComputing) {
+        _beamUtilCache = {};
+        _beamUtilHash = curHash;
+    }
 
     for (const el of project.getVisibleElements()) {
         if (el.type !== 'line' || !el.tag) continue;
@@ -2396,6 +2390,68 @@ function drawBeamTags(ctx, eng) {
             }
         }
         ctx.fillText(displayTag, 0, -offset);
+
+        // ── Utilisation badge (S-BEAM only, Floor Mode only, when section assigned) ──
+        // Only compute when floor mode is active to avoid blocking normal rendering.
+        if (el.layer === 'S-BEAM' && typeof floorMode !== 'undefined' && floorMode.isActive()) {
+            const typeRef2 = el.typeRef || el.tag;
+            const schedData2 = project.scheduleTypes.beam[typeRef2] || (project.scheduleTypes.floorBeam || {})[typeRef2];
+            if (schedData2 && schedData2.size) {
+                // Schedule async computation if not cached (once only, not on every frame)
+                if (!_beamUtilCache[el.id] && !_beamUtilComputing && typeof runEnhancedBeamCheck === 'function') {
+                    _beamUtilComputing = true;
+                    setTimeout(function () {
+                        var computed = 0;
+                        try {
+                            var beamsToCheck = project.getVisibleElements().filter(function(e2) {
+                                return e2.type === 'line' && e2.layer === 'S-BEAM';
+                            });
+                            for (var bi2 = 0; bi2 < beamsToCheck.length; bi2++) {
+                                var b2 = beamsToCheck[bi2];
+                                var tr2 = b2.typeRef || b2.tag;
+                                var sd2 = project.scheduleTypes.beam[tr2] || (project.scheduleTypes.floorBeam || {})[tr2];
+                                if (sd2 && sd2.size && !_beamUtilCache[b2.id]) {
+                                    try { _beamUtilCache[b2.id] = runEnhancedBeamCheck(b2); computed++; } catch (e3) { /* skip */ }
+                                }
+                            }
+                        } catch (e4) { /* skip */ }
+                        _beamUtilComputing = false;
+                        // Only trigger re-render if we actually computed something new
+                        if (computed > 0 && typeof engine !== 'undefined' && engine.requestRender) engine.requestRender();
+                    }, 100);
+                }
+
+                // Draw cached result if available
+                const check = _beamUtilCache[el.id];
+                if (check && check.maxUtil !== undefined) {
+                    const util = check.maxUtil;
+                    const utilPct = (util * 100).toFixed(0);
+                    const color = util <= 0.85 ? '#16A34A' : util <= 1.0 ? '#D97706' : '#DC2626';
+                    const bgColor = util <= 0.85 ? '#DCFCE7' : util <= 1.0 ? '#FEF3C7' : '#FEE2E2';
+                    const pillW = Math.max(fontSize * 2.5, 20);
+                    const pillH = fontSize * 0.9;
+                    const pillY = offset * 0.15;
+                    ctx.fillStyle = bgColor;
+                    ctx.beginPath();
+                    const r = pillH / 2;
+                    ctx.moveTo(-pillW / 2 + r, pillY);
+                    ctx.arcTo(pillW / 2, pillY, pillW / 2, pillY + pillH, r);
+                    ctx.arcTo(pillW / 2, pillY + pillH, -pillW / 2, pillY + pillH, r);
+                    ctx.arcTo(-pillW / 2, pillY + pillH, -pillW / 2, pillY, r);
+                    ctx.arcTo(-pillW / 2, pillY, pillW / 2, pillY, r);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = Math.max(0.3, 0.5);
+                    ctx.stroke();
+                    ctx.fillStyle = color;
+                    ctx.font = `bold ${fontSize * 0.65}px sans-serif`;
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(utilPct + '%', 0, pillY + pillH / 2);
+                }
+            }
+        }
+
         ctx.restore();
     }
     ctx.textAlign = 'left';
