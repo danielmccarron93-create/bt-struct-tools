@@ -1,0 +1,26 @@
+{
+  "name": "BT Inspection Report",
+  "short_name": "BT Inspect",
+  "description": "Bligh Tanner site inspection reports — mobile-first, offline-capable.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#00aaec",
+  "categories": ["productivity", "business"],
+  "icons": [
+    {
+      "src": "assets/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

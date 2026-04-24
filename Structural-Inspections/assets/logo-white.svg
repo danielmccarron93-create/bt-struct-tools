@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 180" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Bligh Tanner">
+  <style>
+    .bt-logo-text-w {
+      font-family: 'Libre Franklin', 'Franklin Gothic Medium', 'Franklin Gothic', 'Arial Black', system-ui, sans-serif;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+    }
+  </style>
+  <text class="bt-logo-text-w" x="140" y="75" text-anchor="middle" font-size="80" fill="#ffffff">BLIGH</text>
+  <text class="bt-logo-text-w" x="140" y="155" text-anchor="middle" font-size="80" fill="#ffffff">TANNER</text>
+</svg>
