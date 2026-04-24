@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>StructDraw V22 — A1 Sheet Detail Editor</title>
+  <title>StructDraw V24.A3 — A1 Sheet Detail Editor</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
@@ -1713,20 +1713,9 @@
   </div>
 </div>
 
-<!-- CONNECTION WIZARD DIALOG (V16, drafter §9.x) -->
-<div class="dialog-overlay" id="connectionDialog">
-  <div class="dialog plate-dialog" style="max-width:500px">
-    <div class="dialog-title" id="connDlgTitle">Connection</div>
-    <div class="dialog-body" id="connDlgBody"
-         style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <!-- populated dynamically by openConnectionDialog() -->
-    </div>
-    <div class="dialog-buttons">
-      <button class="dialog-btn" onclick="document.getElementById('connectionDialog').classList.remove('visible')">Cancel</button>
-      <button class="dialog-btn primary" id="connOkBtn">Create</button>
-    </div>
-  </div>
-</div>
+<!-- CONNECTION WIZARD DIALOG — V23.1 replaced modal with inline Inspector -->
+<!-- (openConnectionDialog() now populates the right-hand Inspector panel
+     with live ghost preview on the canvas; see connWizState handling.) -->
 
 <!-- V20 COMMAND PALETTE -->
 <div id="cmdPalette" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.35);align-items:flex-start;justify-content:center;padding-top:15vh;">
@@ -1893,76 +1882,12 @@ const UC_DB = {
   "100UC 14.8":{ d:100, bf:100, tf: 7.0, tw: 5.0, r1: 6.5 },
 };
 
-// AS/NZS 3679.1 Parallel Flange Channels — PFC
-// d = overall depth, bf = flange width, tf = flange thickness, tw = web thickness, r1 = root radius
-const PFC_DB = {
-  "380PFC":{ d:380, bf:100, tf:17.5, tw:10.0, r1:14.0 },
-  "300PFC":{ d:300, bf: 90, tf:16.0, tw: 8.0, r1:14.0 },
-  "250PFC":{ d:250, bf: 90, tf:15.0, tw: 8.0, r1:12.0 },
-  "230PFC":{ d:230, bf: 75, tf:12.0, tw: 6.5, r1:12.0 },
-  "200PFC":{ d:200, bf: 75, tf:12.0, tw: 6.0, r1:12.0 },
-  "180PFC":{ d:180, bf: 75, tf:11.0, tw: 6.0, r1:12.0 },
-  "150PFC":{ d:150, bf: 75, tf: 9.5, tw: 6.0, r1: 10.0 },
-  "125PFC":{ d:125, bf: 65, tf: 8.0, tw: 6.0, r1:  8.0 },
-  "100PFC":{ d:100, bf: 50, tf: 8.0, tw: 5.0, r1:  8.0 },
-  "75PFC":{ d: 75, bf: 40, tf: 6.0, tw: 4.0, r1:  6.0 },
-};
-
-// AS/NZS 3679.1 Equal Angles — EA
-// B = leg length (equal), t = thickness, r1 = root radius, r2 = toe radius
-const EA_DB = {
-  "200x200x26":{ B:200, t:26, r1:18, r2: 9 },
-  "200x200x20":{ B:200, t:20, r1:18, r2: 9 },
-  "200x200x18":{ B:200, t:18, r1:18, r2: 9 },
-  "200x200x16":{ B:200, t:16, r1:18, r2: 9 },
-  "200x200x13":{ B:200, t:13, r1:18, r2: 9 },
-  "150x150x19":{ B:150, t:19, r1:13, r2: 7 },
-  "150x150x16":{ B:150, t:16, r1:13, r2: 7 },
-  "150x150x12":{ B:150, t:12, r1:13, r2: 7 },
-  "150x150x10":{ B:150, t:10, r1:13, r2: 7 },
-  "125x125x12":{ B:125, t:12, r1:10, r2: 5 },
-  "125x125x10":{ B:125, t:10, r1:10, r2: 5 },
-  "125x125x8":{ B:125, t: 8, r1:10, r2: 5 },
-  "100x100x12":{ B:100, t:12, r1: 8, r2: 5 },
-  "100x100x10":{ B:100, t:10, r1: 8, r2: 5 },
-  "100x100x8":{ B:100, t: 8, r1: 8, r2: 5 },
-  "100x100x6":{ B:100, t: 6, r1: 8, r2: 5 },
-  "90x90x10":{ B: 90, t:10, r1: 8, r2: 5 },
-  "90x90x8":{ B: 90, t: 8, r1: 8, r2: 5 },
-  "90x90x6":{ B: 90, t: 6, r1: 8, r2: 5 },
-  "75x75x10":{ B: 75, t:10, r1: 8, r2: 5 },
-  "75x75x8":{ B: 75, t: 8, r1: 8, r2: 5 },
-  "75x75x6":{ B: 75, t: 6, r1: 8, r2: 5 },
-  "75x75x5":{ B: 75, t: 5, r1: 8, r2: 5 },
-  "65x65x8":{ B: 65, t: 8, r1: 6, r2: 3 },
-  "65x65x6":{ B: 65, t: 6, r1: 6, r2: 3 },
-  "65x65x5":{ B: 65, t: 5, r1: 6, r2: 3 },
-  "50x50x6":{ B: 50, t: 6, r1: 5, r2: 3 },
-  "50x50x5":{ B: 50, t: 5, r1: 5, r2: 3 },
-  "50x50x3":{ B: 50, t: 3, r1: 5, r2: 3 },
-};
-
-// AS/NZS 3679.1 Unequal Angles — UA
-// B = long leg, D = short leg, t = thickness, r1 = root radius, r2 = toe radius
-const UA_DB = {
-  "150x100x12":{ B:150, D:100, t:12, r1:10, r2:5 },
-  "150x100x10":{ B:150, D:100, t:10, r1:10, r2:5 },
-  "150x90x12":{ B:150, D: 90, t:12, r1:10, r2:5 },
-  "150x90x10":{ B:150, D: 90, t:10, r1:10, r2:5 },
-  "150x90x8":{ B:150, D: 90, t: 8, r1:10, r2:5 },
-  "125x75x12":{ B:125, D: 75, t:12, r1:10, r2:5 },
-  "125x75x10":{ B:125, D: 75, t:10, r1:10, r2:5 },
-  "125x75x8":{ B:125, D: 75, t: 8, r1:10, r2:5 },
-  "100x75x10":{ B:100, D: 75, t:10, r1: 8, r2:5 },
-  "100x75x8":{ B:100, D: 75, t: 8, r1: 8, r2:5 },
-  "100x75x6":{ B:100, D: 75, t: 6, r1: 8, r2:5 },
-  "75x50x8":{ B: 75, D: 50, t: 8, r1: 6, r2:3 },
-  "75x50x6":{ B: 75, D: 50, t: 6, r1: 6, r2:3 },
-  "75x50x5":{ B: 75, D: 50, t: 5, r1: 6, r2:3 },
-  "65x50x8":{ B: 65, D: 50, t: 8, r1: 6, r2:3 },
-  "65x50x6":{ B: 65, D: 50, t: 6, r1: 6, r2:3 },
-  "65x50x5":{ B: 65, D: 50, t: 5, r1: 6, r2:3 },
-};
+// V22.1 cleanup — the original stub PFC / EA / UA databases (short keys like
+// "380PFC" and "200x200x26") were superseded by the drafter-style catalogue
+// below ("380PFC 55.2" / "EA200x200x26" / "UA150x100x12"). Both copies were
+// left in place by a half-finished migration and collided as duplicate `const`
+// declarations, preventing the page from loading. The authoritative V22.1
+// databases are now the single source — see a few screenfuls down.
 
 const SHS_DB = {
   "89x3.5":{ B:89, t:3.5 }, "89x5":{ B:89, t:5.0 }, "89x6":{ B:89, t:6.0 },
@@ -2356,6 +2281,8 @@ function _projectLoadSheet(idx) {
   selected3D = [];
   undoStack.length = 0;
   redoStack.length = 0;
+  // V24 Phase A — upgrade any legacy-shape members to the 3D frame model.
+  if (typeof migrateAllMembers === 'function') migrateAllMembers();
   if (typeof v3dMarkDirty === 'function') v3dMarkDirty();
   if (typeof invalidateWeldCache === 'function') invalidateWeldCache();
   if (typeof renderSheetBrowser === 'function') renderSheetBrowser();
@@ -2365,6 +2292,8 @@ function _projectLoadSheet(idx) {
 // Public API — called by sheet browser buttons
 function projectSwitchSheet(idx) {
   if (idx === project.activeSheetIdx) return;
+  // V23.1 — don't carry an open wizard across sheets.
+  if (connWizState) connWizCancel();
   _projectSnapshotActive();
   _projectLoadSheet(idx);
 }
@@ -2406,7 +2335,19 @@ function projectInit() {
   project.activeSheetIdx = 0;
 }
 
-function mkObj(type, props) { return { id: objIdN++, type, ...props }; }
+function mkObj(type, props) {
+  const obj = { id: objIdN++, type, ...props };
+  // V24 Phase A — ensure every member carries an axis/up frame from birth.
+  if (typeof isMemberType === 'function' && isMemberType(type)
+      && !(obj.axis && obj.up)) {
+    const f = (typeof legacyRotToFrame === 'function')
+      ? legacyRotToFrame(obj.rot)
+      : { axis: { x: 1, y: 0, z: 0 }, up: { x: 0, y: 1, z: 0 } };
+    obj.axis = f.axis;
+    obj.up = f.up;
+  }
+  return obj;
+}
 
 function addObj(obj) {
   objects3D.push(obj);
@@ -2913,8 +2854,38 @@ function getPolyPlateBounds(obj, vk) {
   }
 }
 
+// V24 Phase A — compute the projected AABB of a beam-like member's
+// oriented bounding box onto a view's (u, v) plane using the member's
+// 3D frame. Handles all 24 orthogonal orientations exactly.
+function _memberFrame2DBounds(obj, vk) {
+  if (!isMemberType(obj.type)) return null;
+  if (!obj.axis || !obj.up) return null;
+  const p = sectionProfile(obj);
+  if (!p) return null;
+  const f = memberFrame(obj);
+  const hl = (obj.length || 0) / 2;
+  const hd = (p.d || 0) / 2;
+  const hbf = (p.bf || 0) / 2;
+  const B = _viewBasis(vk);
+  // Member centre in view-local (u, v)
+  const cu = (obj.x || 0) * B.u.x + (obj.y || 0) * B.u.y + (obj.z || 0) * B.u.z;
+  const cv = (obj.x || 0) * B.v.x + (obj.y || 0) * B.v.y + (obj.z || 0) * B.v.z;
+  // Half-extent on each view axis = sum of |projection of each local half-dim|
+  const ax_u = _vDot(f.axis, B.u), ax_v = _vDot(f.axis, B.v);
+  const up_u = _vDot(f.up, B.u),   up_v = _vDot(f.up, B.v);
+  const rt_u = _vDot(f.right, B.u), rt_v = _vDot(f.right, B.v);
+  const halfU = Math.abs(hl * ax_u) + Math.abs(hd * up_u) + Math.abs(hbf * rt_u);
+  const halfV = Math.abs(hl * ax_v) + Math.abs(hd * up_v) + Math.abs(hbf * rt_v);
+  return { u1: cu - halfU, u2: cu + halfU, v1: cv - halfV, v2: cv + halfV };
+}
+
 function getObj2DBounds(obj, block) {
   const vk = block.viewKey;
+  // V24 frame fast path — any member with axis/up uses the generalised calc.
+  if (isMemberType(obj.type) && obj.axis && obj.up) {
+    const b = _memberFrame2DBounds(obj, vk);
+    if (b) return b;
+  }
   if (obj.type === 'ub') {
     const s = UB_DB[obj.section]; if (!s) return null;
     if (vk === 'elevation') { const hl=obj.length/2, hd=s.d/2; return {u1:obj.x-hl, u2:obj.x+hl, v1:obj.y-hd, v2:obj.y+hd}; }
@@ -2973,6 +2944,7 @@ function hitTest3D(block, px, py) {
   const tol = 6 * drawingScale / viewport.zoom;
   for (let i = objects3D.length - 1; i >= 0; i--) {
     const obj = objects3D[i];
+    if (obj.__preview) continue; // V23.1 — ghost preview is not selectable
     const b = getObj2DBounds(obj, block);
     if (!b) continue;
     // For rotated objects in elevation, un-rotate the test point around the object centre
@@ -2999,6 +2971,7 @@ function hitTestAll3D(block, px, py) {
   const hits = [];
   for (let i = objects3D.length - 1; i >= 0; i--) {
     const obj = objects3D[i];
+    if (obj.__preview) continue; // V23.1 — ghost preview is not selectable
     const b = getObj2DBounds(obj, block);
     if (!b) continue;
     let tu = real.u, tv = real.v;
@@ -3138,73 +3111,49 @@ function getGrips(obj, block) {
     }
   }
 
-  if (obj.type === 'ub' || obj.type === 'shs') {
-    // End grips for extending member length
-    if (vk === 'elevation') {
-      // Both UB and SHS: length is along X in elevation (horizontal default)
-      grips.push({ type: 'end-left', u: b.u1, v: mv, cursor: 'ew-resize' });
-      grips.push({ type: 'end-right', u: b.u2, v: mv, cursor: 'ew-resize' });
-    } else if (vk === 'planB') {
-      if (obj.type === 'ub') {
-        // UB: length along X in plan
-        grips.push({ type: 'end-left', u: b.u1, v: mv, cursor: 'ew-resize' });
-        grips.push({ type: 'end-right', u: b.u2, v: mv, cursor: 'ew-resize' });
-      }
-      if (obj.type === 'shs') {
-        // SHS in plan: rotation-aware — only show length grips when member length
-        // has a meaningful projection along the X axis (cos component > threshold).
-        // For vertical columns (rot≈90°), planB shows a B×B cross-section — no length to drag.
-        const rotR = (obj.rot || 0) * Math.PI / 180;
-        const absCr = Math.abs(Math.cos(rotR));
-        if (absCr > 0.25) { // length visibly extends along X when |cos(rot)| > ~15°
-          grips.push({ type: 'end-left', u: b.u1, v: mv, cursor: 'ew-resize' });
-          grips.push({ type: 'end-right', u: b.u2, v: mv, cursor: 'ew-resize' });
-        }
-        // No grips when length is predominantly vertical (out of plan view)
-      }
+  // V24.A2 — Frame-aware end grips for any beam-like member (UB/UC/SHS/PFC
+  // /RHS/CHS/EA/UA). Reads the 3D frame to find the real endpoints, projects
+  // them into the view. If the axis is visible in the view, show both end
+  // grips; if the member is seen end-on, show a single centre move-grip.
+  if (isMemberType(obj.type)) {
+    const f = memberFrame(obj);
+    const B = _viewBasis(vk);
+    const a = memberProjectedAxis(obj, vk);
+    const ep = memberEndPoint(obj, +1);
+    const en = memberEndPoint(obj, -1);
+    const toUV = (p) => ({
+      u: p.x * B.u.x + p.y * B.u.y + p.z * B.u.z,
+      v: p.x * B.v.x + p.y * B.v.y + p.z * B.v.z,
+    });
+    const epUV = toUV(ep);
+    const enUV = toUV(en);
+    if (a.magUV > 0.3) {
+      // Axis projects visibly into this view — drag either end to extend.
+      grips.push({ type: 'end-plus',  u: epUV.u, v: epUV.v, cursor: 'crosshair', sign: +1 });
+      grips.push({ type: 'end-minus', u: enUV.u, v: enUV.v, cursor: 'crosshair', sign: -1 });
     }
-    // In sectionA — UB shows cross-section only, SHS shows rotation-aware projection
-    if (vk === 'sectionA' && obj.type === 'shs') {
-      // Only show end grips when member length is visibly projected along Y (sin component)
-      // rot≈90° (column): sin≈1, full length visible. rot≈0° (beam): sin≈0, cross-section only.
-      const rotR = (obj.rot || 0) * Math.PI / 180;
-      const absSr = Math.abs(Math.sin(rotR));
-      if (absSr > 0.25) {
-        grips.push({ type: 'end-top', u: mu, v: b.v2, cursor: 'ns-resize' });
-        grips.push({ type: 'end-bot', u: mu, v: b.v1, cursor: 'ns-resize' });
-      }
-    }
-
-    // Rotation handle — small circle above the bounding box
-    if (vk === 'elevation') {
-      grips.push({ type: 'rotate', u: mu, v: b.v2 + 20, cursor: 'grab' });
-    }
+    // Rotation handle is no longer shown — orientation is now driven by the
+    // Inspector's Axis/Dir/Roll dropdowns (V24.A1). The old rotate grip would
+    // only edit the legacy `rot` scalar, which no longer fully describes the
+    // frame.
   }
 
   return grips;
 }
 
 // Hit-test grips: returns the grip descriptor if cursor is near one, else null
+// V24.A2 — grips are now stored in view-local (u, v) coords that already
+// account for the member's 3D frame (see getGrips). No rotational un-transform
+// of the cursor is needed.
 function hitTestGrip(block, px, py) {
   const real = px2real(block, px, py);
-  const gripRadiusPx = 8; // pixel tolerance for grip hit (slightly larger for small sections)
+  const gripRadiusPx = 8; // pixel tolerance for grip hit
   const gripRadiusReal = gripRadiusPx * drawingScale / viewport.zoom;
 
   for (const obj of selected3D) {
     const grips = getGrips(obj, block);
-    // For rotated objects in elevation, un-rotate the test point around the object centre
-    // so it matches the un-rotated grip coordinates (grips are stored in un-rotated frame)
-    let tu = real.u, tv = real.v;
-    const rot = obj.rot || 0;
-    if (Math.abs(rot) > 0.01 && block.viewKey === 'elevation') {
-      const cu = obj.x, cv = obj.y;
-      const rad = rot * Math.PI / 180;
-      const dx = real.u - cu, dy = real.v - cv;
-      tu = cu + dx * Math.cos(rad) + dy * Math.sin(rad);
-      tv = cv - dx * Math.sin(rad) + dy * Math.cos(rad);
-    }
     for (const g of grips) {
-      if (Math.hypot(tu - g.u, tv - g.v) < gripRadiusReal) {
+      if (Math.hypot(real.u - g.u, real.v - g.v) < gripRadiusReal) {
         return { ...g, obj, block };
       }
     }
@@ -3304,110 +3253,36 @@ function applyGripDrag(gripInfo, currentU, currentV) {
     }
   }
 
-  // UB/SHS end drag — change member length
-  if (obj.type === 'ub') {
-    if (vk === 'elevation' || vk === 'planB') {
-      // Length is along X axis
-      if (type === 'end-right') {
-        const left = obj.x - obj.length / 2;
-        const newLen = Math.max(20, currentU - left);
-        obj.x = left + newLen / 2;
-        obj.length = newLen;
-      } else if (type === 'end-left') {
-        const right = obj.x + obj.length / 2;
-        const newLen = Math.max(20, right - currentU);
-        obj.x = right - newLen / 2;
-        obj.length = newLen;
-      }
-    }
-  }
-  if (obj.type === 'shs') {
-    const rotR = (obj.rot || 0) * Math.PI / 180;
-    const cr = Math.cos(rotR), sr = Math.sin(rotR);
-    const absCr = Math.abs(cr), absSr = Math.abs(sr);
-    const s = SHS_DB[obj.section]; if (!s) return;
-    const hB = s.B / 2, hl = obj.length / 2;
-
-    if (vk === 'elevation') {
-      // Rotation-aware: project cursor onto member axis direction to get new length.
-      // Member axis in world coords = (cos(rot), sin(rot)).
-      // This keeps the opposite end anchored for any rotation angle.
-      if (type === 'end-right') {
-        // Keep left end fixed in world coordinates
-        const fixedX = obj.x - hl * cr;
-        const fixedY = obj.y - hl * sr;
-        // Project cursor onto member axis from fixed end
-        const newLen = Math.max(20, (currentU - fixedX) * cr + (currentV - fixedY) * sr);
-        obj.x = fixedX + (newLen / 2) * cr;
-        obj.y = fixedY + (newLen / 2) * sr;
-        obj.length = newLen;
-      } else if (type === 'end-left') {
-        // Keep right end fixed in world coordinates
-        const fixedX = obj.x + hl * cr;
-        const fixedY = obj.y + hl * sr;
-        // Project from fixed end in negative direction
-        const newLen = Math.max(20, (fixedX - currentU) * cr + (fixedY - currentV) * sr);
-        obj.x = fixedX - (newLen / 2) * cr;
-        obj.y = fixedY - (newLen / 2) * sr;
-        obj.length = newLen;
-      }
-    } else if (vk === 'sectionA') {
-      // Rotation-aware: projected length along Y = hl * |sin(rot)|, section along Y = hB * |cos(rot)|
-      // Dragging end-top/bot changes the member length by mapping the Y delta back to length
-      if (type === 'end-top') {
-        // top end of projected member
-        const projHalfY = hB * absCr + hl * absSr;
-        const bot = obj.y - projHalfY;
-        const newProjH = Math.max(s.B + 10, currentV - bot);
-        // Solve for length: newProjH/2 = hB*|cos|+newHl*|sin| → newHl = (newProjH/2 - hB*|cos|)/|sin|
-        if (absSr > 0.01) {
-          const newHl = (newProjH / 2 - hB * absCr) / absSr;
-          const newLen = Math.max(20, newHl * 2);
-          const oldProjHalfY = hB * absCr + (obj.length / 2) * absSr;
-          const oldBot = obj.y - oldProjHalfY;
-          // Keep bottom end fixed: recompute centre
-          const newProjHalfY = hB * absCr + (newLen / 2) * absSr;
-          obj.y = oldBot + newProjHalfY;
-          obj.length = newLen;
-        }
-      } else if (type === 'end-bot') {
-        const projHalfY = hB * absCr + hl * absSr;
-        const top = obj.y + projHalfY;
-        const newProjH = Math.max(s.B + 10, top - currentV);
-        if (absSr > 0.01) {
-          const newHl = (newProjH / 2 - hB * absCr) / absSr;
-          const newLen = Math.max(20, newHl * 2);
-          const oldProjHalfY = hB * absCr + (obj.length / 2) * absSr;
-          const oldTop = obj.y + oldProjHalfY;
-          // Keep top end fixed: recompute centre
-          const newProjHalfY = hB * absCr + (newLen / 2) * absSr;
-          obj.y = oldTop - newProjHalfY;
-          obj.length = newLen;
-        }
-      }
-    } else if (vk === 'planB') {
-      // PlanB grips only shown when cos component > 0.25 (see getGrips),
-      // so length has meaningful projection along X. Map X drag back to length.
-      if (type === 'end-right') {
-        const projHalfX = hl * absCr + hB * absSr;
-        const left = obj.x - projHalfX;
-        const newProjW = Math.max(s.B + 10, currentU - left);
-        const newHl = Math.max(10, (newProjW / 2 - hB * absSr) / absCr);
-        const newLen = newHl * 2;
-        const newProjHalfX = newHl * absCr + hB * absSr;
-        obj.x = left + newProjHalfX;
-        obj.length = newLen;
-      } else if (type === 'end-left') {
-        const projHalfX = hl * absCr + hB * absSr;
-        const right = obj.x + projHalfX;
-        const newProjW = Math.max(s.B + 10, right - currentU);
-        const newHl = Math.max(10, (newProjW / 2 - hB * absSr) / absCr);
-        const newLen = newHl * 2;
-        const newProjHalfX = newHl * absCr + hB * absSr;
-        obj.x = right - newProjHalfX;
-        obj.length = newLen;
-      }
-    }
+  // V24.A2 — Frame-aware length drag for any beam-like member. The grip's
+  // `sign` (+1/-1) identifies which end of the 3D frame axis is being dragged;
+  // the opposite end stays anchored in world space. The cursor's (currentU,
+  // currentV) in view coords is lifted back into 3D using the view basis
+  // (preserving the anchor's depth component — a valid assumption for all 24
+  // orthogonal orientations because the axis is perpendicular to view depth
+  // in those cases). New length = projection of (cursor3D − anchor) onto
+  // sign · axis. Centre recomputed so the anchored end stays put.
+  if (isMemberType(obj.type) && (type === 'end-plus' || type === 'end-minus')) {
+    const f = memberFrame(obj);
+    const sign = (type === 'end-plus') ? 1 : -1;
+    const anchor = memberEndPoint(obj, -sign);
+    const B = _viewBasis(vk);
+    const anchorDepth = anchor.x * B.d.x + anchor.y * B.d.y + anchor.z * B.d.z;
+    const cursor3D = {
+      x: currentU * B.u.x + currentV * B.v.x + anchorDepth * B.d.x,
+      y: currentU * B.u.y + currentV * B.v.y + anchorDepth * B.d.y,
+      z: currentU * B.u.z + currentV * B.v.z + anchorDepth * B.d.z,
+    };
+    const dx = cursor3D.x - anchor.x;
+    const dy = cursor3D.y - anchor.y;
+    const dz = cursor3D.z - anchor.z;
+    const projectedLen = sign * (dx * f.axis.x + dy * f.axis.y + dz * f.axis.z);
+    const newLen = Math.max(20, projectedLen);
+    obj.length = newLen;
+    obj.x = anchor.x + sign * (newLen / 2) * f.axis.x;
+    obj.y = anchor.y + sign * (newLen / 2) * f.axis.y;
+    obj.z = anchor.z + sign * (newLen / 2) * f.axis.z;
+    if (typeof v3dMarkDirty === 'function') v3dMarkDirty();
+    if (typeof invalidateWeldCache === 'function') invalidateWeldCache();
   }
 }
 
@@ -3435,104 +3310,58 @@ let activeEdgeSnaps = []; // [{axis:'u'|'v', value: number, label: string}] for 
 // Returns arrays of { axis, value, label } where axis is 'u' or 'v'
 function getSnapEdges(obj, viewKey) {
   const edges = [];
-  if (obj.type === 'ub') {
-    const s = UB_DB[obj.section]; if (!s) return edges;
-    const hd = s.d / 2, hbf = s.bf / 2, htw = s.tw / 2, hl = obj.length / 2;
-    if (viewKey === 'elevation') {
-      // Centrelines
-      edges.push({ axis: 'u', value: obj.x, label: 'UB centreline' });
-      edges.push({ axis: 'v', value: obj.y, label: 'UB centreline' });
-      // Flange faces (top/bottom of beam)
-      edges.push({ axis: 'v', value: obj.y + hd, label: 'UB top flange' });
-      edges.push({ axis: 'v', value: obj.y - hd, label: 'UB bot flange' });
-      // Flange inner faces
-      edges.push({ axis: 'v', value: obj.y + hd - s.tf, label: 'UB top flange inner' });
-      edges.push({ axis: 'v', value: obj.y - hd + s.tf, label: 'UB bot flange inner' });
-      // Web faces
-      edges.push({ axis: 'u', value: obj.x - hl, label: 'UB left end' });
-      edges.push({ axis: 'u', value: obj.x + hl, label: 'UB right end' });
-    } else if (viewKey === 'sectionA') {
-      // Centrelines
-      edges.push({ axis: 'u', value: obj.z, label: 'UB centreline' });
-      edges.push({ axis: 'v', value: obj.y, label: 'UB centreline' });
-      // Web faces (key snap targets — plate bolts to web face)
-      edges.push({ axis: 'u', value: obj.z - htw, label: 'UB web near' });
-      edges.push({ axis: 'u', value: obj.z + htw, label: 'UB web far' });
-      // Flange faces
-      edges.push({ axis: 'v', value: obj.y + hd, label: 'UB top flange' });
-      edges.push({ axis: 'v', value: obj.y - hd, label: 'UB bot flange' });
-      // Flange tips
-      edges.push({ axis: 'u', value: obj.z - hbf, label: 'UB flange left' });
-      edges.push({ axis: 'u', value: obj.z + hbf, label: 'UB flange right' });
-    } else { // planB
-      // Centrelines
-      edges.push({ axis: 'u', value: obj.x, label: 'UB centreline' });
-      edges.push({ axis: 'v', value: obj.z, label: 'UB centreline' });
-      // Web faces
-      edges.push({ axis: 'v', value: obj.z - htw, label: 'UB web near' });
-      edges.push({ axis: 'v', value: obj.z + htw, label: 'UB web far' });
-      // Flange tips
-      edges.push({ axis: 'v', value: obj.z - hbf, label: 'UB flange near' });
-      edges.push({ axis: 'v', value: obj.z + hbf, label: 'UB flange far' });
-      // Beam ends
-      edges.push({ axis: 'u', value: obj.x - hl, label: 'UB left end' });
-      edges.push({ axis: 'u', value: obj.x + hl, label: 'UB right end' });
+  // V24.A2 — Frame-aware snap edges for any beam-like member (UB/UC/SHS/
+  // PFC/RHS/CHS/EA/UA). For each of the 3 frame directions × ±half-dim, emit
+  // a snap line if the face normal projects primarily to one of the view's
+  // axes. Handles all 24 orthogonal orientations; any face that points into
+  // view depth is skipped (it's not a snap line, it's a surface).
+  if (isMemberType(obj.type)) {
+    const p = sectionProfile(obj);
+    if (!p) return edges;
+    const f = memberFrame(obj);
+    const hl = (obj.length || 0) / 2;
+    const hd = (p.d || 0) / 2;
+    const hbf = (p.bf || 0) / 2;
+    const B = _viewBasis(viewKey);
+    // Member centre projected into view (u, v)
+    const cu = (obj.x || 0) * B.u.x + (obj.y || 0) * B.u.y + (obj.z || 0) * B.u.z;
+    const cv = (obj.x || 0) * B.v.x + (obj.y || 0) * B.v.y + (obj.z || 0) * B.v.z;
+    const typeUpper = obj.type.toUpperCase();
+    edges.push({ axis: 'u', value: cu, label: typeUpper + ' centreline' });
+    edges.push({ axis: 'v', value: cv, label: typeUpper + ' centreline' });
+    // The member's 3 frame directions × their half-extents:
+    const dirs = [
+      { dir: f.axis,  half: hl,  name: 'end' },
+      { dir: f.up,    half: hd,  name: 'face' },
+      { dir: f.right, half: hbf, name: 'side' },
+    ];
+    for (const d of dirs) {
+      const nu = d.dir.x * B.u.x + d.dir.y * B.u.y + d.dir.z * B.u.z;
+      const nv = d.dir.x * B.v.x + d.dir.y * B.v.y + d.dir.z * B.v.z;
+      if (Math.abs(nu) > 0.9) {
+        const off = d.half * nu;
+        edges.push({ axis: 'u', value: cu + off, label: typeUpper + ' ' + d.name });
+        edges.push({ axis: 'u', value: cu - off, label: typeUpper + ' ' + d.name });
+      } else if (Math.abs(nv) > 0.9) {
+        const off = d.half * nv;
+        edges.push({ axis: 'v', value: cv + off, label: typeUpper + ' ' + d.name });
+        edges.push({ axis: 'v', value: cv - off, label: typeUpper + ' ' + d.name });
+      }
+      // Normal along view depth → face is camera-facing; no snap line in this view.
     }
-  }
-  else if (obj.type === 'shs') {
-    const s = SHS_DB[obj.section]; if (!s) return edges;
-    const hB = s.B / 2, hl = obj.length / 2;
-    // SHS is rotation-aware: rot=0° → horizontal member, rot=90° → vertical (column default).
-    // Dominant orientation test — for rot between axes the snap system can only offer
-    // axis-aligned edges, so we pick the closer of the two principal orientations.
-    const rotR  = (obj.rot || 0) * Math.PI / 180;
-    const isVert = Math.abs(Math.sin(rotR)) > Math.abs(Math.cos(rotR)); // true near rot=90°/270°
-    if (viewKey === 'elevation') {
-      // Centrelines (invariant under rotation about the member centre)
-      edges.push({ axis: 'u', value: obj.x, label: 'SHS centreline' });
-      edges.push({ axis: 'v', value: obj.y, label: 'SHS centreline' });
-      if (isVert) {
-        // Vertical column: length runs along Y, width B runs along X
-        edges.push({ axis: 'v', value: obj.y - hl, label: 'SHS bot end' });
-        edges.push({ axis: 'v', value: obj.y + hl, label: 'SHS top end' });
-        edges.push({ axis: 'u', value: obj.x - hB, label: 'SHS left face' });
-        edges.push({ axis: 'u', value: obj.x + hB, label: 'SHS right face' });
-      } else {
-        // Horizontal beam: length along X, depth B along Y
-        edges.push({ axis: 'u', value: obj.x - hl, label: 'SHS left end' });
-        edges.push({ axis: 'u', value: obj.x + hl, label: 'SHS right end' });
-        edges.push({ axis: 'v', value: obj.y + hB, label: 'SHS top face' });
-        edges.push({ axis: 'v', value: obj.y - hB, label: 'SHS bottom face' });
-      }
-    } else if (viewKey === 'sectionA') {
-      // SectionA is the Z-Y plane. B is always perpendicular to the section cut (along Z → u axis).
-      edges.push({ axis: 'u', value: obj.z,      label: 'SHS centreline' });
-      edges.push({ axis: 'v', value: obj.y,      label: 'SHS centreline' });
-      edges.push({ axis: 'u', value: obj.z - hB, label: 'SHS near face' });
-      edges.push({ axis: 'u', value: obj.z + hB, label: 'SHS far face' });
-      if (isVert) {
-        // Vertical column — full length visible along Y, so v-faces are at ± hl
-        edges.push({ axis: 'v', value: obj.y - hl, label: 'SHS bot end' });
-        edges.push({ axis: 'v', value: obj.y + hl, label: 'SHS top end' });
-      } else {
-        // Horizontal beam — cross-section only, v-faces at ± hB
-        edges.push({ axis: 'v', value: obj.y - hB, label: 'SHS bottom face' });
-        edges.push({ axis: 'v', value: obj.y + hB, label: 'SHS top face' });
-      }
-    } else { // planB — X-Z plane
-      edges.push({ axis: 'u', value: obj.x, label: 'SHS centreline' });
-      edges.push({ axis: 'v', value: obj.z, label: 'SHS centreline' });
-      // Z axis (v) is always perpendicular to any horizontal-plane member; B spans ± hB
-      edges.push({ axis: 'v', value: obj.z - hB, label: 'SHS near face' });
-      edges.push({ axis: 'v', value: obj.z + hB, label: 'SHS far face' });
-      if (isVert) {
-        // Vertical column — length goes out of the plan view, so X-extent is also ± hB
-        edges.push({ axis: 'u', value: obj.x - hB, label: 'SHS left face' });
-        edges.push({ axis: 'u', value: obj.x + hB, label: 'SHS right face' });
-      } else {
-        // Horizontal beam — length runs along X
-        edges.push({ axis: 'u', value: obj.x - hl, label: 'SHS left end' });
-        edges.push({ axis: 'u', value: obj.x + hl, label: 'SHS right end' });
+    // UB-specific flange inner faces: still useful for bolt-to-web-face snapping.
+    // Only emit when the web is visible in-plane (flange face normal in view).
+    if (obj.type === 'ub' && p.tf) {
+      const flangeDir = f.up;
+      const fu = flangeDir.x * B.u.x + flangeDir.y * B.u.y + flangeDir.z * B.u.z;
+      const fv = flangeDir.x * B.v.x + flangeDir.y * B.v.y + flangeDir.z * B.v.z;
+      const inner = hd - p.tf;
+      if (Math.abs(fu) > 0.9) {
+        edges.push({ axis: 'u', value: cu + inner * fu, label: 'UB flange inner' });
+        edges.push({ axis: 'u', value: cu - inner * fu, label: 'UB flange inner' });
+      } else if (Math.abs(fv) > 0.9) {
+        edges.push({ axis: 'v', value: cv + inner * fv, label: 'UB flange inner' });
+        edges.push({ axis: 'v', value: cv - inner * fv, label: 'UB flange inner' });
       }
     }
   }
@@ -3628,30 +3457,34 @@ function applyEdgeSnap(selectedObjs, viewKey) {
     });
   });
 
+  // V24.A2 — Apply a snap delta in view-local (u or v) back to world (x,y,z).
+  // The view basis maps view axes to world vectors. A u-axis snap of magnitude
+  // D adds D * B.u to each selected object's world position. Generalises cleanly
+  // to all three views and avoids the per-view if/else chain.
+  const VB = _viewBasis(viewKey);
+  const applyU = (delta) => selectedObjs.forEach(obj => {
+    obj.x = (obj.x || 0) + delta * VB.u.x;
+    obj.y = (obj.y || 0) + delta * VB.u.y;
+    obj.z = (obj.z || 0) + delta * VB.u.z;
+  });
+  const applyV = (delta) => selectedObjs.forEach(obj => {
+    obj.x = (obj.x || 0) + delta * VB.v.x;
+    obj.y = (obj.y || 0) + delta * VB.v.y;
+    obj.z = (obj.z || 0) + delta * VB.v.z;
+  });
+
   // --- U axis ---
   if (snappedAxisU) {
-    // Already snapped: accumulate offset, break if user drags far enough
     snapOffsetU += (bestSnapU ? -bestSnapU.delta : 0);
     if (bestSnapU && bestDistU < breakTol) {
-      // Still close — hold the snap
-      selectedObjs.forEach(obj => {
-        if (viewKey === 'elevation') obj.x += bestSnapU.delta;
-        else if (viewKey === 'sectionA') obj.z += bestSnapU.delta;
-        else obj.x += bestSnapU.delta;
-      });
+      applyU(bestSnapU.delta);
       snaps.push({ axis: 'u', value: bestSnapU.target.value, label: bestSnapU.target.label });
     } else {
-      // Broke free
       snappedAxisU = false; snapOffsetU = 0;
     }
   } else {
-    // Not snapped: check if we should engage
     if (bestSnapU && bestDistU < tol) {
-      selectedObjs.forEach(obj => {
-        if (viewKey === 'elevation') obj.x += bestSnapU.delta;
-        else if (viewKey === 'sectionA') obj.z += bestSnapU.delta;
-        else obj.x += bestSnapU.delta;
-      });
+      applyU(bestSnapU.delta);
       snaps.push({ axis: 'u', value: bestSnapU.target.value, label: bestSnapU.target.label });
       snappedAxisU = true; snapOffsetU = 0;
     }
@@ -3661,22 +3494,14 @@ function applyEdgeSnap(selectedObjs, viewKey) {
   if (snappedAxisV) {
     snapOffsetV += (bestSnapV ? -bestSnapV.delta : 0);
     if (bestSnapV && bestDistV < breakTol) {
-      selectedObjs.forEach(obj => {
-        if (viewKey === 'elevation') obj.y += bestSnapV.delta;
-        else if (viewKey === 'sectionA') obj.y += bestSnapV.delta;
-        else obj.z += bestSnapV.delta;
-      });
+      applyV(bestSnapV.delta);
       snaps.push({ axis: 'v', value: bestSnapV.target.value, label: bestSnapV.target.label });
     } else {
       snappedAxisV = false; snapOffsetV = 0;
     }
   } else {
     if (bestSnapV && bestDistV < tol) {
-      selectedObjs.forEach(obj => {
-        if (viewKey === 'elevation') obj.y += bestSnapV.delta;
-        else if (viewKey === 'sectionA') obj.y += bestSnapV.delta;
-        else obj.z += bestSnapV.delta;
-      });
+      applyV(bestSnapV.delta);
       snaps.push({ axis: 'v', value: bestSnapV.target.value, label: bestSnapV.target.label });
       snappedAxisV = true; snapOffsetV = 0;
     }
@@ -3846,6 +3671,8 @@ function exportSheetToPDF() {
     alert('PDF library not loaded. Check your internet connection and try again.');
     return;
   }
+  // V23.1 — uncommitted wizard previews should never leak into exports.
+  if (connWizState) connWizCancel();
   // Print output always looks better on a white sheet with black ink, so
   // temporarily force the classic theme for the duration of the export.
   // The raster and vector paths both read theme colours via getComputedStyle
@@ -4888,6 +4715,8 @@ function _dxfEmit2DEntity(b, blk, ent) {
 
 // Main entry
 function exportSheetToDXF() {
+  // V23.1 — uncommitted wizard previews should never leak into DXF exports.
+  if (connWizState) connWizCancel();
   try {
     const b = _dxfBuilder();
     _dxfHeader(b);
@@ -5420,6 +5249,11 @@ function getDepthValue(obj, viewKey) {
 // Get 2D footprint rectangle [u1,v1, u2,v2] for an object in a given view.
 // This is the region that this object "covers" in the view plane.
 function get2DFootprint(obj, viewKey) {
+  // V24 Phase A — frame-aware path for beam-like members.
+  if (isMemberType(obj.type) && obj.axis && obj.up) {
+    const b = _memberFrame2DBounds(obj, viewKey);
+    if (b) return b;
+  }
   if (obj.type === 'ub') {
     const s = UB_DB[obj.section]; if (!s) return null;
     const hd = s.d/2, hbf = s.bf/2, hl = obj.length/2;
@@ -5482,15 +5316,23 @@ function getOcclusionRects(obj, viewKey) {
 // Accounts for rotation (obj.rot about Z-axis) when computing X and Y extents.
 // Returns { min, max }.
 function getObjAxisExtent(obj, axis) {
+  // V24 Phase A — for beam-like members with a 3D frame, delegate to the
+  // frame-aware helper which handles all 24 orthogonal orientations (and is
+  // ready for arbitrary angles in Phase C).
+  if (isMemberType(obj.type) && obj.axis && obj.up) {
+    const ext = memberExtentOnAxis(obj, axis);
+    if (ext) return ext;
+  }
+
+  // Legacy path — kept for members that haven't been migrated yet AND for
+  // the unit tests implicit in unchanged fixture files. Same math as V23.1.
   const rot = (obj.rot || 0) * Math.PI / 180;
   const cr = Math.cos(rot), sr = Math.sin(rot);
 
   if (obj.type === 'ub') {
     const s = UB_DB[obj.section]; if (!s) return { min: obj[axis], max: obj[axis] };
     const hl = obj.length / 2, hd = s.d / 2, hbf = s.bf / 2;
-    // Unrotated: length along X, depth along Y, bf along Z
     if (axis === 'z') return { min: obj.z - hbf, max: obj.z + hbf };
-    // For X/Y, account for rotation in the X-Y plane
     const halfX = Math.abs(hl * cr) + Math.abs(hd * sr);
     const halfY = Math.abs(hl * sr) + Math.abs(hd * cr);
     if (axis === 'x') return { min: obj.x - halfX, max: obj.x + halfX };
@@ -5500,7 +5342,6 @@ function getObjAxisExtent(obj, axis) {
   if (obj.type === 'shs') {
     const s = SHS_DB[obj.section]; if (!s) return { min: obj[axis], max: obj[axis] };
     const hB = s.B / 2, hl = obj.length / 2;
-    // Unrotated: length along X, B along Y, B along Z (matches UB convention)
     if (axis === 'z') return { min: obj.z - hB, max: obj.z + hB };
     const halfX = Math.abs(hl * cr) + Math.abs(hB * sr);
     const halfY = Math.abs(hl * sr) + Math.abs(hB * cr);
@@ -5508,7 +5349,6 @@ function getObjAxisExtent(obj, axis) {
     return { min: obj.y - halfY, max: obj.y + halfY };
   }
 
-  // V22.1 new section types — use sectionProfile for unified dims.
   if (isMemberType(obj.type) && obj.type !== 'ub' && obj.type !== 'shs') {
     const p = sectionProfile(obj);
     if (!p) return { min: obj[axis], max: obj[axis] };
@@ -5639,6 +5479,464 @@ function isMemberType(type) {
 }
 
 // ============================================================
+// V24 MEMBER ORIENTATION FRAME (Phase A)
+// ============================================================
+// Every beam-like member has a local 3D frame: axis (length direction),
+// up (web / long-leg direction), right (= axis × up). These are unit
+// vectors in world coordinates. The trio fully describes the 24 orthogonal
+// orientations + all non-orthogonal cases reserved for Phase C.
+//
+// Legacy members store only `obj.rot` (a scalar degree angle about Z in the
+// elevation X-Y plane). `memberFrame()` returns a live frame computed from
+// `obj.axis` + `obj.up` when present, falling back to `rot` for backwards
+// compatibility. New code should read frames — writing `rot` alone is still
+// safe but restricted to the legacy Z-axis rotation behaviour.
+
+// Unit-vector helpers (3D, no THREE dep — this runs before the iso engine).
+function _vLen(v) { return Math.hypot(v.x, v.y, v.z); }
+function _vNorm(v) {
+  const L = _vLen(v) || 1;
+  return { x: v.x / L, y: v.y / L, z: v.z / L };
+}
+function _vCross(a, b) {
+  return {
+    x: a.y * b.z - a.z * b.y,
+    y: a.z * b.x - a.x * b.z,
+    z: a.x * b.y - a.y * b.x,
+  };
+}
+function _vDot(a, b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+function _vScale(v, k) { return { x: v.x * k, y: v.y * k, z: v.z * k }; }
+function _vAdd(a, b) { return { x: a.x + b.x, y: a.y + b.y, z: a.z + b.z }; }
+
+// Map a view key to { uAxis, vAxis, depthAxis } as 3D unit vectors in world
+// coords. Note Y flip in elevation / section — matches `real2px()`.
+// elevation: u=+X, v=+Y (canvas flip handled elsewhere), depth=+Z
+// sectionA:  u=+Z, v=+Y, depth=+X (we're looking from +X toward -X)
+// planB:     u=+X, v=+Z, depth=-Y (looking from above)
+function _viewBasis(viewKey) {
+  if (viewKey === 'elevation') {
+    return {
+      u: { x: 1, y: 0, z: 0 },
+      v: { x: 0, y: 1, z: 0 },
+      d: { x: 0, y: 0, z: 1 },
+    };
+  }
+  if (viewKey === 'sectionA') {
+    return {
+      u: { x: 0, y: 0, z: 1 },
+      v: { x: 0, y: 1, z: 0 },
+      d: { x: 1, y: 0, z: 0 },
+    };
+  }
+  // planB
+  return {
+    u: { x: 1, y: 0, z: 0 },
+    v: { x: 0, y: 0, z: 1 },
+    d: { x: 0, y: -1, z: 0 },
+  };
+}
+
+// Legacy rot (degrees, Z-axis rotation) → frame with length tilted in XY plane.
+// rot=0  → axis=+X, up=+Y  (horizontal beam, web up — default)
+// rot=90 → axis=+Y, up=-X  (vertical member — same visual as today's rot=90)
+function legacyRotToFrame(rot) {
+  const rad = (rot || 0) * Math.PI / 180;
+  const cr = Math.cos(rad), sr = Math.sin(rad);
+  return {
+    axis: { x: cr, y: sr, z: 0 },
+    up:   { x: -sr, y: cr, z: 0 },
+    right:{ x: 0, y: 0, z: 1 },
+  };
+}
+
+// Return { axis, up, right } as unit vectors.
+// Reads obj.axis + obj.up if present; else falls back to legacy rot.
+function memberFrame(obj) {
+  if (!obj) return { axis:{x:1,y:0,z:0}, up:{x:0,y:1,z:0}, right:{x:0,y:0,z:1} };
+  if (obj.axis && obj.up) {
+    const a = _vNorm(obj.axis);
+    const u = _vNorm(obj.up);
+    // Re-orthogonalize `up` against `axis` in case user-supplied vectors drifted.
+    const uPerp = _vNorm({
+      x: u.x - a.x * _vDot(a, u),
+      y: u.y - a.y * _vDot(a, u),
+      z: u.z - a.z * _vDot(a, u),
+    });
+    return { axis: a, up: uPerp, right: _vCross(a, uPerp) };
+  }
+  return legacyRotToFrame(obj.rot);
+}
+
+// Project a world 3D vector into a view's (u, v) plane.
+function _projectToView(vec3, viewKey) {
+  const B = _viewBasis(viewKey);
+  return {
+    u: _vDot(vec3, B.u),
+    v: _vDot(vec3, B.v),
+    d: _vDot(vec3, B.d),
+  };
+}
+
+// Returns { u, v, d, magUV } for the member's axis in a view.
+// magUV = hypot(u,v); 1 = axis lies in the view plane, 0 = axis is view-depth.
+function memberProjectedAxis(obj, viewKey) {
+  const f = memberFrame(obj);
+  const p = _projectToView(f.axis, viewKey);
+  p.magUV = Math.hypot(p.u, p.v);
+  return p;
+}
+function memberProjectedUp(obj, viewKey) {
+  const f = memberFrame(obj);
+  const p = _projectToView(f.up, viewKey);
+  p.magUV = Math.hypot(p.u, p.v);
+  return p;
+}
+
+// Classify how the viewer sees the member in a given view:
+//   'side' — length and up both visible (web profile from the side; default UB)
+//   'plan' — length visible but up is along view depth (flange face seen)
+//   'end'  — length is along view depth (cross-section profile seen)
+// Orthogonal frames always map to one of these three. Phase C adds 'diagonal'.
+function memberViewMode(obj, viewKey) {
+  const a = memberProjectedAxis(obj, viewKey);
+  const u = memberProjectedUp(obj, viewKey);
+  const axisInView = a.magUV > 0.5;
+  const upInView = u.magUV > 0.5;
+  if (!axisInView) return 'end';
+  if (upInView) return 'side';
+  return 'plan';
+}
+
+// Returns the 2D rotation angle (radians) to apply when drawing the member
+// in its canonical local frame so that the local +X axis lines up with the
+// view-projected direction of the member's length (for 'side'/'plan' modes)
+// or so that local +Y (up) aligns with the projected up (for 'end' mode).
+// NOTE: elevation / sectionA views flip Y on the canvas, so positive canvas
+// rotation (CW in screen space) = negative maths rotation. We invert here.
+function memberViewAngle(obj, viewKey) {
+  const mode = memberViewMode(obj, viewKey);
+  if (mode === 'end') {
+    const up = memberProjectedUp(obj, viewKey);
+    // Align local +Y (up) with projected up. atan2(-u, v) because local up
+    // points in +v direction when angle=0.
+    return Math.atan2(-up.u, up.v);
+  }
+  const a = memberProjectedAxis(obj, viewKey);
+  // Align local +X (length) with projected axis.
+  return Math.atan2(a.v, a.u);
+}
+
+// Returns the 3D world-space end point of a member. sign=+1 = forward end
+// (length/2 along axis); sign=-1 = back end. Replaces scattered
+// `obj.x + obj.length/2` style axis assumptions in connection builders.
+function memberEndPoint(obj, sign) {
+  const f = memberFrame(obj);
+  const hl = (obj.length || 0) / 2;
+  return {
+    x: (obj.x || 0) + sign * hl * f.axis.x,
+    y: (obj.y || 0) + sign * hl * f.axis.y,
+    z: (obj.z || 0) + sign * hl * f.axis.z,
+  };
+}
+
+// Return 2D half-extent of the member's AABB projected onto a world axis
+// ('x'|'y'|'z'). Generalises the existing getObjAxisExtent's rotation math
+// to an arbitrary 3D frame. Used by occlusion, cut-class, bounds calcs.
+function memberExtentOnAxis(obj, axisName) {
+  if (!isMemberType(obj.type)) return null;
+  const f = memberFrame(obj);
+  const p = sectionProfile(obj);
+  if (!p) return null;
+  const hl = (obj.length || 0) / 2;
+  const hd = (p.d || 0) / 2;
+  const hbf = (p.bf || 0) / 2;
+  const aWorld = f.axis[axisName], uWorld = f.up[axisName], rWorld = f.right[axisName];
+  // Half-extent along world axis = sum of |projection| of each local half-dim
+  const half = Math.abs(hl * aWorld) + Math.abs(hd * uWorld) + Math.abs(hbf * rWorld);
+  const c = obj[axisName] || 0;
+  return { min: c - half, max: c + half };
+}
+
+// ---- Orthogonal presets (24 orientations) ----
+// axisLetter: 'X'|'Y'|'Z', dir: +1|-1, rollDeg: 0|90|180|270
+// Returns { axis, up, right } unit vectors.
+function frameFromPreset(axisLetter, dir, rollDeg) {
+  const axisMap = {
+    X: { x: 1, y: 0, z: 0 }, Y: { x: 0, y: 1, z: 0 }, Z: { x: 0, y: 0, z: 1 },
+  };
+  const axis = _vScale(axisMap[axisLetter] || axisMap.X, dir || 1);
+  // Reference "up" before roll — pick the canonical perpendicular:
+  // axis along X → up=+Y; along Y → up=-X; along Z → up=+Y.
+  let refUp;
+  if (axisLetter === 'X') refUp = { x: 0, y: 1, z: 0 };
+  else if (axisLetter === 'Y') refUp = { x: -1, y: 0, z: 0 };
+  else refUp = { x: 0, y: 1, z: 0 };
+  // Rotate refUp by rollDeg about axis (Rodrigues formula).
+  const rad = ((rollDeg || 0) % 360) * Math.PI / 180;
+  const cr = Math.cos(rad), sr = Math.sin(rad);
+  const k = axis; // already unit
+  const term1 = _vScale(refUp, cr);
+  const term2 = _vScale(_vCross(k, refUp), sr);
+  const term3 = _vScale(k, _vDot(k, refUp) * (1 - cr));
+  const up = _vNorm(_vAdd(_vAdd(term1, term2), term3));
+  return { axis, up, right: _vCross(axis, up) };
+}
+
+// Find the closest 24-preset match for a frame. Used by the Inspector to
+// display a preset-style dropdown value for any frame. Returns:
+//   { axisLetter, dir, rollDeg, exact } where exact=true if within 1°.
+function presetFromFrame(frame) {
+  const axes = [
+    ['X', 1, { x: 1, y: 0, z: 0 }], ['X', -1, { x: -1, y: 0, z: 0 }],
+    ['Y', 1, { x: 0, y: 1, z: 0 }], ['Y', -1, { x: 0, y: -1, z: 0 }],
+    ['Z', 1, { x: 0, y: 0, z: 1 }], ['Z', -1, { x: 0, y: 0, z: -1 }],
+  ];
+  let best = { axisLetter: 'X', dir: 1, rollDeg: 0, score: -Infinity, exact: false };
+  for (const [letter, dir, vec] of axes) {
+    const axisScore = _vDot(frame.axis, vec);
+    if (axisScore < 0.5) continue;
+    for (const roll of [0, 90, 180, 270]) {
+      const candidate = frameFromPreset(letter, dir, roll);
+      const upScore = _vDot(frame.up, candidate.up);
+      const total = axisScore + upScore;
+      if (total > best.score) {
+        best = { axisLetter: letter, dir, rollDeg: roll, score: total,
+                 exact: axisScore > 0.999 && upScore > 0.999 };
+      }
+    }
+  }
+  return best;
+}
+
+// Set obj.axis / obj.up from a preset. Also clears obj.rot to the nearest
+// legacy-compatible value (for round-trip with older StructDraw loads).
+function setMemberFrameFromPreset(obj, axisLetter, dir, rollDeg) {
+  const f = frameFromPreset(axisLetter, dir, rollDeg);
+  obj.axis = f.axis;
+  obj.up = f.up;
+  // Best-effort legacy rot: only meaningful for X-axis with Z-plane roll.
+  if (axisLetter === 'X' && dir === 1 && rollDeg === 0) obj.rot = 0;
+  else if (axisLetter === 'Y' && dir === 1 && rollDeg === 0) obj.rot = 90;
+  else if (axisLetter === 'X' && dir === -1 && rollDeg === 0) obj.rot = 180;
+  else if (axisLetter === 'Y' && dir === -1 && rollDeg === 0) obj.rot = 270;
+  else delete obj.rot; // no faithful legacy representation
+}
+
+// Migrate a legacy member in place: if axis/up are missing but rot exists,
+// compute them from rot so subsequent code reads the new fields.
+// Safe to call on already-migrated members (no-op).
+function migrateLegacyMember(obj) {
+  if (!obj || !isMemberType(obj.type)) return obj;
+  if (obj.axis && obj.up) return obj;
+  const f = legacyRotToFrame(obj.rot);
+  obj.axis = f.axis;
+  obj.up = f.up;
+  return obj;
+}
+
+// Called by project load + import — upgrades every member in the scene.
+function migrateAllMembers() {
+  if (!Array.isArray(objects3D)) return;
+  for (const o of objects3D) migrateLegacyMember(o);
+}
+
+// V24.A4 — Free tilt: rotate a member's frame about an arbitrary world-space
+// axis by angleDeg. Returns a new {axis, up, right} frame; does not mutate.
+// Uses Rodrigues' rotation formula applied to both axis and up vectors.
+function _rotateFrameAboutAxis(frame, worldAxisUnit, angleDeg) {
+  const rad = angleDeg * Math.PI / 180;
+  const cr = Math.cos(rad), sr = Math.sin(rad);
+  const k = _vNorm(worldAxisUnit);
+  const rot = (v) => {
+    const t1 = _vScale(v, cr);
+    const t2 = _vScale(_vCross(k, v), sr);
+    const t3 = _vScale(k, _vDot(k, v) * (1 - cr));
+    return _vNorm(_vAdd(_vAdd(t1, t2), t3));
+  };
+  const axis = rot(frame.axis);
+  const up = rot(frame.up);
+  return { axis, up, right: _vCross(axis, up) };
+}
+
+// Apply a free-tilt rotation to a single member about a world axis letter.
+// worldAxisLetter: 'X' | 'Y' | 'Z' (not to be confused with the member's own
+// axis — this is a WORLD direction). Mutates obj.axis and obj.up.
+function _applyMemberTilt(obj, worldAxisLetter, angleDeg) {
+  if (!obj || !isMemberType(obj.type)) return;
+  const map = {
+    X: { x: 1, y: 0, z: 0 },
+    Y: { x: 0, y: 1, z: 0 },
+    Z: { x: 0, y: 0, z: 1 },
+  };
+  const k = map[worldAxisLetter];
+  if (!k || !angleDeg) return;
+  const f = _rotateFrameAboutAxis(memberFrame(obj), k, angleDeg);
+  obj.axis = f.axis;
+  obj.up = f.up;
+  // Drop the legacy scalar rot — it's no longer a faithful representation
+  // of the frame once a non-orthogonal tilt has been applied.
+  if ('rot' in obj) delete obj.rot;
+}
+
+// V24.A3 — Placement axis-from-view (§A.6).
+// Given the view a member was drawn in and its 2D angle relative to that
+// view's u-axis, return the orthogonal preset the member should be born with.
+//
+//   elevation view: u=+X, v=+Y  →  horizontal draw = X-axis, vertical = Y-axis
+//   sectionA view:  u=+Z, v=+Y  →  horizontal draw = Z-axis, vertical = Y-axis
+//   planB view:     u=+X, v=+Z  →  horizontal draw = X-axis, vertical = Z-axis
+//
+// For elevation, non-orthogonal angles (more than 5° off cardinal) return null
+// so the legacy scalar-rot path can still represent the tilted member. For
+// sectionA and planB the legacy path is wrong (it rotates in the X-Y plane,
+// not the view plane), so we always snap to the nearest cardinal.
+function _placementFrameForView(viewKey, rotDeg) {
+  // Collapse to [0, 180) — direction doesn't matter for symmetric members;
+  // we always pick dir=+1 so grip plus/minus ends stay predictable.
+  const abs = ((rotDeg % 180) + 180) % 180;
+  const uAligned = abs < 45 || abs >= 135;
+
+  if (viewKey === 'elevation') {
+    const TOL = 5;
+    const nearU = abs < TOL || abs > 180 - TOL;
+    const nearV = Math.abs(abs - 90) < TOL;
+    if (!nearU && !nearV) return null;   // tilted beam — keep legacy rot
+  }
+
+  const table = {
+    elevation: { u: ['X', 1], v: ['Y', 1] },
+    sectionA:  { u: ['Z', 1], v: ['Y', 1] },
+    planB:     { u: ['X', 1], v: ['Z', 1] },
+  };
+  const entry = table[viewKey] && table[viewKey][uAligned ? 'u' : 'v'];
+  if (!entry) return null;
+  return { axisLetter: entry[0], dir: entry[1], rollDeg: 0 };
+}
+
+// ============================================================
+// V24 PER-VIEW RENDERING PROXY (Phase A)
+// ============================================================
+// For orthogonal frames, every member in every view reduces to ONE of the
+// three existing renderer branches — 'elevation' (side view: length in u,
+// depth in v), 'sectionA' (end-on: cross-section profile), or 'planB'
+// (plan: length in u, width in v).
+//
+// drawMemberProxied(drawFn, blk, obj, ...rest) figures out which branch to
+// call and how to remap obj's (x,y,z) so the branch draws the correct
+// geometry in the correct place. For legacy-frame members (axis=+X, up=+Y
+// with roll via `rot`) this is a zero-cost passthrough — existing code
+// behaviour is unchanged.
+//
+// Strategy per target-view T and member with frame F:
+//   1. Compute mode = memberViewMode(obj, T)  → 'side' | 'end' | 'plan'
+//   2. Pick branch: 'elevation' | 'sectionA' | 'planB' to match mode.
+//   3. Find target-view (u, v) of the member's centre using T's basis.
+//   4. Remap proxy.{x,y,z} so the branch reads the correct centre:
+//         branch elevation reads obj.x, obj.y   → set proxy.x = targetU
+//         branch sectionA  reads obj.z, obj.y   → set proxy.z = targetU
+//         branch planB     reads obj.x, obj.z   → set proxy.x = targetU
+//   5. Compute inPlaneRot: the 2D angle to rotate the canvas so the branch's
+//      local +u (or local +v for 'end') aligns with the projected axis or
+//      projected up.
+//   6. Apply 2D rotation with ctx.save / translate / rotate / translate back,
+//      then call drawFn with a blk proxy reporting branchView.
+//
+// The renderer's own `withRotation` call is a no-op because we set proxy.rot=0.
+
+function _isLegacyFrame(obj) {
+  // Legacy = axis is exactly +X (roll encoded in `rot` via up). We detect
+  // via obj-level absence of the new fields rather than re-deriving the frame,
+  // to keep the fast path cheap.
+  return !obj.axis || !obj.up;
+}
+
+function drawMemberProxied(drawFn, blk, obj, ...rest) {
+  if (_isLegacyFrame(obj)) {
+    drawFn(blk, obj, ...rest);
+    return;
+  }
+
+  const f = memberFrame(obj);
+  // Additional fast path: axis is still +X and up is in the X-Y plane → new
+  // fields are present but describe legacy geometry. Pass through.
+  if (Math.abs(f.axis.x - 1) < 1e-6
+   && Math.abs(f.axis.y) < 1e-6
+   && Math.abs(f.axis.z) < 1e-6
+   && Math.abs(f.up.z) < 1e-6) {
+    drawFn(blk, obj, ...rest);
+    return;
+  }
+
+  const viewKey = blk.viewKey;
+  const mode = memberViewMode(obj, viewKey);
+  const a = memberProjectedAxis(obj, viewKey);
+  const u = memberProjectedUp(obj, viewKey);
+
+  let branchView, angleDeg;
+  if (mode === 'end') {
+    branchView = 'sectionA';
+    // Align projected up with branch local +v (screen-down since canvas Y-down;
+    // rotation sign will be inverted when applied to the canvas).
+    angleDeg = Math.atan2(u.u, u.v) * 180 / Math.PI;
+  } else if (mode === 'plan') {
+    branchView = 'planB';
+    angleDeg = Math.atan2(a.v, a.u) * 180 / Math.PI;
+  } else {
+    branchView = 'elevation';
+    angleDeg = Math.atan2(a.v, a.u) * 180 / Math.PI;
+  }
+
+  // Compute target-view (u, v) of member centre using target-view basis.
+  const B = _viewBasis(viewKey);
+  const cx = obj.x || 0, cy = obj.y || 0, cz = obj.z || 0;
+  const targetU = cx * B.u.x + cy * B.u.y + cz * B.u.z;
+  const targetV = cx * B.v.x + cy * B.v.y + cz * B.v.z;
+
+  // Remap proxy coords to put member centre at target (u, v) in the branch's
+  // own coordinate system.
+  const proxy = Object.assign({}, obj);
+  proxy.rot = 0; // suppress the renderer's built-in withRotation
+  if (branchView === 'elevation') {
+    proxy.x = targetU; proxy.y = targetV;
+  } else if (branchView === 'sectionA') {
+    proxy.z = targetU; proxy.y = targetV;
+  } else { // planB
+    proxy.x = targetU; proxy.z = targetV;
+  }
+
+  // Block proxy reports the branch view so renderer branches dispatch right.
+  const blkProxy = Object.assign({}, blk);
+  blkProxy.viewKey = branchView;
+
+  // rest indices for draw* signature (blk, obj, col, hidCol, clCol, cs, occRects, cc):
+  //   rest[0]=col, [1]=hidCol, [2]=clCol, [3]=cs, [4]=occRects, [5]=cc
+  // Phase A1 — blank occRects (occlusion on rotated members is deferred) and
+  // clear cutClass (cut-hatching on rotated members is deferred — the section
+  // plane's cut of a reoriented member is geometrically non-trivial; Phase B
+  // revisits this once connection builders are frame-aware).
+  const restClean = rest.slice();
+  if (restClean.length > 4) restClean[4] = [];
+  if (restClean.length > 5) restClean[5] = null;
+
+  // Apply the 2D rotation externally, centred on the real-world (targetU,
+  // targetV) position in the target view. real2px uses blk.sheetX/sheetY
+  // which we inherit unchanged, so the screen pixel anchor is correct.
+  if (Math.abs(angleDeg) > 0.01) {
+    const cp = real2px(blk, targetU, targetV);
+    const angleRad = -angleDeg * Math.PI / 180; // canvas Y is down
+    ctx.save();
+    ctx.translate(cp.x, cp.y);
+    ctx.rotate(angleRad);
+    ctx.translate(-cp.x, -cp.y);
+    drawFn(blkProxy, proxy, ...restClean);
+    ctx.restore();
+  } else {
+    drawFn(blkProxy, proxy, ...restClean);
+  }
+}
+
+// ============================================================
 // BOLT GRIP AUTO-DETECTION & LENGTH CALCULATION (V14)
 // ============================================================
 
@@ -5730,6 +6028,9 @@ function computeBoltGripInfo(boltObj) {
   const intervals = [];
   for (const obj of objects3D) {
     if (obj.id === boltObj.id || obj.type === 'bolt') continue;
+    // V23.1 — keep grip calc symmetric between preview and committed items:
+    // committed bolts don't see preview plates, preview bolts don't see them.
+    if (!!obj.__preview !== !!boltObj.__preview) continue;
     const ivs = rayMaterialAlongZ(obj, bx, by);
     if (ivs) intervals.push(...ivs);
   }
@@ -5851,38 +6152,26 @@ function getObjFaces(obj) {
       faces.push({ axis: 'z', value: obj.z + ht, span: { uAxis: 'x', uMin: obj.x - hw, uMax: obj.x + hw, vAxis: 'y', vMin: obj.y - hh, vMax: obj.y + hh }, objId: obj.id });
     }
   }
-  else if (obj.type === 'shs') {
-    const s = SHS_DB[obj.section]; if (!s) return faces;
-    const hB = s.B / 2, hl = obj.length / 2;
-    if (isVert) {
-      // Vertical column: length along Y, B along X and Z
-      faces.push({ axis: 'x', value: obj.x - hB, span: { uAxis: 'z', uMin: obj.z - hB, uMax: obj.z + hB, vAxis: 'y', vMin: obj.y - hl, vMax: obj.y + hl }, objId: obj.id });
-      faces.push({ axis: 'x', value: obj.x + hB, span: { uAxis: 'z', uMin: obj.z - hB, uMax: obj.z + hB, vAxis: 'y', vMin: obj.y - hl, vMax: obj.y + hl }, objId: obj.id });
-      faces.push({ axis: 'y', value: obj.y - hl, span: { uAxis: 'x', uMin: obj.x - hB, uMax: obj.x + hB, vAxis: 'z', vMin: obj.z - hB, vMax: obj.z + hB }, objId: obj.id });
-      faces.push({ axis: 'y', value: obj.y + hl, span: { uAxis: 'x', uMin: obj.x - hB, uMax: obj.x + hB, vAxis: 'z', vMin: obj.z - hB, vMax: obj.z + hB }, objId: obj.id });
-      faces.push({ axis: 'z', value: obj.z - hB, span: { uAxis: 'x', uMin: obj.x - hB, uMax: obj.x + hB, vAxis: 'y', vMin: obj.y - hl, vMax: obj.y + hl }, objId: obj.id });
-      faces.push({ axis: 'z', value: obj.z + hB, span: { uAxis: 'x', uMin: obj.x - hB, uMax: obj.x + hB, vAxis: 'y', vMin: obj.y - hl, vMax: obj.y + hl }, objId: obj.id });
-    } else {
-      // Horizontal beam: length along X, B along Y and Z
-      faces.push({ axis: 'x', value: obj.x - hl, span: { uAxis: 'z', uMin: obj.z - hB, uMax: obj.z + hB, vAxis: 'y', vMin: obj.y - hB, vMax: obj.y + hB }, objId: obj.id });
-      faces.push({ axis: 'x', value: obj.x + hl, span: { uAxis: 'z', uMin: obj.z - hB, uMax: obj.z + hB, vAxis: 'y', vMin: obj.y - hB, vMax: obj.y + hB }, objId: obj.id });
-      faces.push({ axis: 'y', value: obj.y - hB, span: { uAxis: 'x', uMin: obj.x - hl, uMax: obj.x + hl, vAxis: 'z', vMin: obj.z - hB, vMax: obj.z + hB }, objId: obj.id });
-      faces.push({ axis: 'y', value: obj.y + hB, span: { uAxis: 'x', uMin: obj.x - hl, uMax: obj.x + hl, vAxis: 'z', vMin: obj.z - hB, vMax: obj.z + hB }, objId: obj.id });
-      faces.push({ axis: 'z', value: obj.z - hB, span: { uAxis: 'x', uMin: obj.x - hl, uMax: obj.x + hl, vAxis: 'y', vMin: obj.y - hB, vMax: obj.y + hB }, objId: obj.id });
-      faces.push({ axis: 'z', value: obj.z + hB, span: { uAxis: 'x', uMin: obj.x - hl, uMax: obj.x + hl, vAxis: 'y', vMin: obj.y - hB, vMax: obj.y + hB }, objId: obj.id });
-    }
-  }
-  else if (obj.type === 'ub') {
-    const s = UB_DB[obj.section]; if (!s) return faces;
-    const hl = obj.length / 2, hd = s.d / 2, hbf = s.bf / 2;
-    // UB: length along X, depth along Y, bf along Z (rot=0)
-    // Only emit outer bounding faces for simplicity; refined web/flange faces are future V15 work
-    faces.push({ axis: 'x', value: obj.x - hl, span: { uAxis: 'z', uMin: obj.z - hbf, uMax: obj.z + hbf, vAxis: 'y', vMin: obj.y - hd, vMax: obj.y + hd }, objId: obj.id });
-    faces.push({ axis: 'x', value: obj.x + hl, span: { uAxis: 'z', uMin: obj.z - hbf, uMax: obj.z + hbf, vAxis: 'y', vMin: obj.y - hd, vMax: obj.y + hd }, objId: obj.id });
-    faces.push({ axis: 'y', value: obj.y - hd, span: { uAxis: 'x', uMin: obj.x - hl, uMax: obj.x + hl, vAxis: 'z', vMin: obj.z - hbf, vMax: obj.z + hbf }, objId: obj.id });
-    faces.push({ axis: 'y', value: obj.y + hd, span: { uAxis: 'x', uMin: obj.x - hl, uMax: obj.x + hl, vAxis: 'z', vMin: obj.z - hbf, vMax: obj.z + hbf }, objId: obj.id });
-    faces.push({ axis: 'z', value: obj.z - hbf, span: { uAxis: 'x', uMin: obj.x - hl, uMax: obj.x + hl, vAxis: 'y', vMin: obj.y - hd, vMax: obj.y + hd }, objId: obj.id });
-    faces.push({ axis: 'z', value: obj.z + hbf, span: { uAxis: 'x', uMin: obj.x - hl, uMax: obj.x + hl, vAxis: 'y', vMin: obj.y - hd, vMax: obj.y + hd }, objId: obj.id });
+  // V24.A2 — Frame-aware face generation for any beam-like member.
+  // memberExtentOnAxis gives the world AABB along each axis — for orthogonal
+  // frames this is exact, and for Phase C diagonals it's a conservative
+  // enclosing box. Emit the 6 AABB faces with their world-axis normal so
+  // the existing computeWeldInterfaces + projectWeldToView pipeline works
+  // unchanged. Handles UB / UC / SHS / PFC / RHS / CHS / EA / UA.
+  else if (isMemberType(obj.type)) {
+    const extX = memberExtentOnAxis(obj, 'x');
+    const extY = memberExtentOnAxis(obj, 'y');
+    const extZ = memberExtentOnAxis(obj, 'z');
+    if (!extX || !extY || !extZ) return faces;
+    const xSpanYZ = { uAxis: 'z', uMin: extZ.min, uMax: extZ.max, vAxis: 'y', vMin: extY.min, vMax: extY.max };
+    const ySpanXZ = { uAxis: 'x', uMin: extX.min, uMax: extX.max, vAxis: 'z', vMin: extZ.min, vMax: extZ.max };
+    const zSpanXY = { uAxis: 'x', uMin: extX.min, uMax: extX.max, vAxis: 'y', vMin: extY.min, vMax: extY.max };
+    faces.push({ axis: 'x', value: extX.min, span: xSpanYZ, objId: obj.id });
+    faces.push({ axis: 'x', value: extX.max, span: xSpanYZ, objId: obj.id });
+    faces.push({ axis: 'y', value: extY.min, span: ySpanXZ, objId: obj.id });
+    faces.push({ axis: 'y', value: extY.max, span: ySpanXZ, objId: obj.id });
+    faces.push({ axis: 'z', value: extZ.min, span: zSpanXY, objId: obj.id });
+    faces.push({ axis: 'z', value: extZ.max, span: zSpanXY, objId: obj.id });
   }
 
   return faces;
@@ -6563,6 +6852,8 @@ function computePlateHoles(plate) {
   const c = Math.cos(rotR), s = Math.sin(rotR);
   for (const o of objects3D) {
     if (o.type !== 'bolt') continue;
+    // V23.1 — keep preview and committed holes independent
+    if (!!o.__preview !== !!plate.__preview) continue;
     const b = BOLT_DB[o.boltSize]; if (!b) continue;
     // Bolt axis is along Z — check if it passes through the plate Z range.
     // Use grip info if available so we account for actual bolt extents.
@@ -6787,26 +7078,39 @@ function drawBlockContent(blk, cs) {
     return cc !== 'hidden';
   });
 
-  // Draw 3D objects with occlusion (only among visible objects)
+  // Draw 3D objects with occlusion (only among visible objects).
+  // V23.1 — preview objects (from the inline connection wizard) render at
+  // 50% opacity so they read as a ghost until committed.
   visibleObjs.forEach(obj => {
     const occRects = getOcclusionRects(obj, vk);
     const cc = obj._cutClass || null;
-    if (obj.type === 'ub') drawUB(blk, obj, col, hidCol, clCol, cs, occRects, cc);
-    else if (obj.type === 'shs') drawSHS(blk, obj, col, hidCol, clCol, cs, occRects, cc);
+    const isPrev = obj.__preview === true;
+    if (isPrev) { ctx.save(); ctx.globalAlpha = (ctx.globalAlpha ?? 1) * 0.5; }
+    // V24 Phase A — route member renderers through the orientation proxy so
+    // non-default frames (axis != +X) dispatch to the correct view branch.
+    // Plates + bolts keep their existing dispatch (they don't use frames).
+    if (obj.type === 'ub') drawMemberProxied(drawUB, blk, obj, col, hidCol, clCol, cs, occRects, cc);
+    else if (obj.type === 'shs') drawMemberProxied(drawSHS, blk, obj, col, hidCol, clCol, cs, occRects, cc);
     else if (obj.type === 'plate') drawPlate(blk, obj, col, hidCol, clCol, cs, occRects, cc);
     else if (obj.type === 'bolt') drawBolt(blk, obj, col, hidCol, clCol, cs, occRects, cc);
     // V22.1 new section types use the unified renderer
     else if (obj.type === 'pfc' || obj.type === 'rhs' || obj.type === 'chs'
           || obj.type === 'ea'  || obj.type === 'ua') {
-      drawSectionMember(blk, obj, col, hidCol, clCol, cs, occRects, cc);
+      drawMemberProxied(drawSectionMember, blk, obj, col, hidCol, clCol, cs, occRects, cc);
     }
+    if (isPrev) ctx.restore();
   });
 
   // Draw auto-weld hatching at member interfaces
   drawAutoWelds(blk, cs);
 
-  // Draw 2D entities
-  if (entities2D[blk.viewKey]) entities2D[blk.viewKey].forEach(ent => drawEnt2D(blk, ent, cs));
+  // Draw 2D entities (ghost preview wrap for wizard items)
+  if (entities2D[blk.viewKey]) entities2D[blk.viewKey].forEach(ent => {
+    const isPrev = ent.__preview === true;
+    if (isPrev) { ctx.save(); ctx.globalAlpha = (ctx.globalAlpha ?? 1) * 0.5; }
+    drawEnt2D(blk, ent, cs);
+    if (isPrev) ctx.restore();
+  });
 }
 
 // ============================================================
@@ -10797,13 +11101,25 @@ function finishDrawMember(blk, startU, startV, endU, endV) {
     y = planCutY;  // plan shows X,Z — Y is depth (use plan cut Y)
   }
 
+  // V24.A3 — pick the correct 3D axis from the view the user drew in.
+  // For orthogonal draws this returns a preset → we inject axis/up directly
+  // and skip the legacy rot field. For non-ortho elevation draws it returns
+  // null and we fall through to the legacy rot path.
+  const snap = _placementFrameForView(blk.viewKey, rotDeg);
+  const frameExtras = snap
+    ? (() => {
+        const f = frameFromPreset(snap.axisLetter, snap.dir, snap.rollDeg);
+        return { axis: f.axis, up: f.up };
+      })()
+    : { rot: Math.round(rotDeg * 10) / 10 };
+
   let newObj = null;
   if (drawMember.type === 'ub') {
     if (length < 5) return; // too short, ignore
-    newObj = mkObj('ub', { section: drawMember.section, x, y, z, length: Math.round(length), rot: Math.round(rotDeg * 10) / 10 });
+    newObj = mkObj('ub', { section: drawMember.section, x, y, z, length: Math.round(length), ...frameExtras });
   } else if (drawMember.type === 'shs') {
     if (length < 5) return;
-    newObj = mkObj('shs', { section: drawMember.section, x, y, z, length: Math.round(length), rot: Math.round(rotDeg * 10) / 10 });
+    newObj = mkObj('shs', { section: drawMember.section, x, y, z, length: Math.round(length), ...frameExtras });
   } else if (drawMember.type === 'pfc' || drawMember.type === 'rhs'
           || drawMember.type === 'chs' || drawMember.type === 'ea' || drawMember.type === 'ua') {
     // V22.1 — new section member types share the same draw flow as UB/SHS.
@@ -10812,7 +11128,7 @@ function finishDrawMember(blk, startU, startV, endU, endV) {
       section: drawMember.section,
       x, y, z,
       length: Math.round(length),
-      rot: Math.round(rotDeg * 10) / 10
+      ...frameExtras
     });
   } else if (drawMember.type === 'plate') {
     // For plates: startU/V to endU/V defines a diagonal rectangle
@@ -11039,26 +11355,35 @@ function initKeyboard() {
     if (e.key === 'd' || e.key === 'D') setTool('dimension');
     if (e.key === 't' || e.key === 'T') setTool('text');
 
-    // R key: rotate selected object (prompt for angle), or Rect tool if nothing selected
+    // R key: rotate selected object(s), or Rect tool if nothing selected.
+    // V24.A3: beam-like members cycle roll (R +90°, Shift+R -90°), Alt+R
+    // flips the axis direction end-for-end. Plates/bolts still use scalar rot.
     if (e.key === 'r' || e.key === 'R') {
       if (selected3D.length > 0 && tool === 'select') {
-        const input = prompt('Enter rotation angle (degrees):', '0');
-        if (input !== null) {
-          const angle = parseFloat(input);
-          if (!isNaN(angle)) {
-            const before = selected3D.map(o => JSON.parse(JSON.stringify(o)));
-            selected3D.forEach(obj => {
-              if (obj.type === 'ub' || obj.type === 'shs') {
-                obj.rot = angle % 360;
-              }
-            });
-            const after = selected3D.map(o => JSON.parse(JSON.stringify(o)));
-            undoStack.push({ act: 'moveObj', before, after });
-            if (undoStack.length > 100) undoStack.shift();
-            redoStack = [];
+        const before = selected3D.map(o => JSON.parse(JSON.stringify(o)));
+        const step = e.shiftKey ? -90 : 90;
+        selected3D.forEach(obj => {
+          if (isMemberType(obj.type)) {
+            const p = presetFromFrame(memberFrame(obj));
+            if (e.altKey) {
+              setMemberFrameFromPreset(obj, p.axisLetter, -p.dir, p.rollDeg);
+            } else {
+              const newRoll = ((p.rollDeg + step) % 360 + 360) % 360;
+              setMemberFrameFromPreset(obj, p.axisLetter, p.dir, newRoll);
+            }
+          } else {
+            obj.rot = (((obj.rot || 0) + step) % 360 + 360) % 360;
           }
-        }
-        requestRender(); e.preventDefault();
+        });
+        const after = selected3D.map(o => JSON.parse(JSON.stringify(o)));
+        undoStack.push({ act: 'moveObj', before, after });
+        if (undoStack.length > 100) undoStack.shift();
+        redoStack = [];
+        if (typeof v3dMarkDirty === 'function') v3dMarkDirty();
+        if (typeof invalidateWeldCache === 'function') invalidateWeldCache();
+        if (typeof updateInspector === 'function') updateInspector();
+        requestRender();
+        e.preventDefault();
       } else {
         setTool('rect');
       }
@@ -11109,6 +11434,8 @@ function initKeyboard() {
     }
 
     if (e.key === 'Escape') {
+      // V23.1 — inline connection wizard takes priority on Escape
+      if (connWizState) { connWizCancel(); e.preventDefault(); return; }
       if (tool === 'draw-plate' && platePts.length > 0) {
         // Cancel current plate polygon but stay in draw-plate mode
         platePts = []; plateBlock = null; plateDimInput = ''; plateDimActive = false;
@@ -11212,6 +11539,8 @@ function pasteObjects() {
 // ============================================================
 
 function saveProject() {
+  // V23.1 — commit or discard any open wizard before serialising.
+  if (connWizState) connWizCancel();
   const data = {
     version: '1.0',
     timestamp: new Date().toISOString(),
@@ -11259,6 +11588,8 @@ function loadProject(file) {
       ent2dIdN = allEnts.reduce((m, e) => Math.max(m, e.id || 0), 0) + 1;
       // Reset state
       selected3D = []; undoStack = []; redoStack = [];
+      // V24 Phase A — upgrade legacy members loaded from older .json files.
+      if (typeof migrateAllMembers === 'function') migrateAllMembers();
       if (typeof v3dMarkDirty === 'function') v3dMarkDirty();
       invalidateWeldCache();
       fitToView(); requestRender();
@@ -11441,10 +11772,38 @@ function _connLabel(u, v, text, align) {
   };
 }
 
+// V24 Phase A — connection builders still assume legacy orientation
+// (columns vertical along Y, beams horizontal along X). Phase B removes
+// these gates by rewriting the builders to project onto the anchor's frame.
+// For now, refuse gracefully when the anchor isn't in the expected frame.
+function _connRequireLegacyColumn(col, title) {
+  if (!col || !col.axis) return; // not-yet-migrated legacy member; accept
+  const ay = Math.abs(col.axis.y);
+  if (ay < 0.9) {
+    throw new Error(
+      `${title}: Phase A only supports vertical (Y-axis) columns. ` +
+      `This column is on the ${col.axis.x > 0.5 ? 'X' : col.axis.z > 0.5 ? 'Z' : 'off'} ` +
+      `axis. Phase B adds support for arbitrary orientations.`
+    );
+  }
+}
+function _connRequireLegacyBeam(beam, title) {
+  if (!beam || !beam.axis) return;
+  const ax = Math.abs(beam.axis.x);
+  if (ax < 0.9) {
+    throw new Error(
+      `${title}: Phase A only supports horizontal (X-axis) beams. ` +
+      `This beam is on the ${beam.axis.y > 0.5 ? 'Y' : beam.axis.z > 0.5 ? 'Z' : 'off'} ` +
+      `axis. Phase B adds support for arbitrary orientations.`
+    );
+  }
+}
+
 // ---- Cap plate (drafter §9.2) ----
 // Column cap: horizontal plate welded to top of column, bolts through the
 // plate for a supported member (beam bearing / upper baseplate splice).
 function buildCapPlate(col, params) {
+  _connRequireLegacyColumn(col, 'Cap plate');
   const cs = _connGetSectionDims(col);
   const D = CONN_DEFAULTS;
 
@@ -11504,6 +11863,7 @@ function buildCapPlate(col, params) {
 // Cast-in baseplate: horizontal plate welded to column base with holding-down
 // bolts protruding downward into the concrete footing.
 function buildBaseplate(col, params) {
+  _connRequireLegacyColumn(col, 'Baseplate');
   const cs = _connGetSectionDims(col);
   const D = CONN_DEFAULTS;
 
@@ -11558,6 +11918,7 @@ function buildBaseplate(col, params) {
 // ---- WSP — Web Side Plate (drafter §9.1) ----
 // Plate welded to column flange/face, bolted to UB web. Simple shear conn.
 function buildWSP(beam, params) {
+  _connRequireLegacyBeam(beam, 'WSP');
   const bs = _connGetSectionDims(beam);
   const D = CONN_DEFAULTS;
 
@@ -11604,6 +11965,7 @@ function buildWSP(beam, params) {
 // End-plate flange splice — two beams meeting with flush end plates
 // bolted through. Anchor = the beam selected.
 function buildSplice(beam, params) {
+  _connRequireLegacyBeam(beam, 'Splice');
   const bs = _connGetSectionDims(beam);
   const D = CONN_DEFAULTS;
 
@@ -11685,9 +12047,118 @@ function placeConnection(result) {
   requestRender();
 }
 
-// ---- Wizard dialog ----
-// Opens #connectionDialog populated with the parameters for `kind`, then on
-// OK invokes the right builder with the selected anchor object.
+// ---- V23.1 Inline Wizard State ----
+// When non-null, the Inspector panel shows the wizard form and the canvas
+// renders live ghost previews (50% opacity) of the builder output.
+// Shape: { kind, spec, anchor, params, previewObjIds:Set, previewEntIds:Set }
+let connWizState = null;
+let _connWizRebuildPending = false;
+
+// Splice any __preview:true items out of objects3D + entities2D.
+function connWizClearPreview() {
+  if (!connWizState) return;
+  objects3D = objects3D.filter(o => !o.__preview);
+  for (const vk of ['elevation', 'sectionA', 'planB']) {
+    if (entities2D[vk]) entities2D[vk] = entities2D[vk].filter(e => !e.__preview);
+  }
+  connWizState.previewObjIds = new Set();
+  connWizState.previewEntIds = new Set();
+}
+
+// Run the builder with current params and inject tagged preview items.
+function connWizRebuildPreview() {
+  _connWizRebuildPending = false;
+  if (!connWizState) return;
+  connWizClearPreview();
+  const { spec, anchor, params } = connWizState;
+  if (!anchor || !spec.requires.includes(anchor.type)) return;
+  let result;
+  try {
+    result = spec.builder(anchor, params);
+  } catch (e) {
+    console.error('Preview builder failed:', e);
+    return;
+  }
+  if (!result) return;
+  for (const o of (result.objs || [])) {
+    o.__preview = true;
+    objects3D.push(o);
+    if (o.id != null) connWizState.previewObjIds.add(o.id);
+  }
+  for (const vk of ['elevation', 'sectionA', 'planB']) {
+    const list = result.ents?.[vk] || [];
+    for (const e of list) {
+      if (e.id == null) e.id = ent2dIdN++;
+      if (!e.view) e.view = vk;
+      if (!e.layer) e.layer = '0';
+      if (!e.lw) e.lw = 0.35;
+      if (!e.ls) e.ls = 'solid';
+      e.__preview = true;
+      entities2D[vk].push(e);
+      connWizState.previewEntIds.add(e.id);
+    }
+  }
+  connWizState._lastLabel = result.label || spec.title;
+  requestRender();
+}
+
+function connWizScheduleRebuild() {
+  if (_connWizRebuildPending) return;
+  _connWizRebuildPending = true;
+  requestAnimationFrame(connWizRebuildPreview);
+}
+
+// Strip preview flags + push ONE atomic undo entry — matches placeConnection.
+function connWizCommit() {
+  if (!connWizState) return;
+  const objSnaps = [];
+  const entSnaps = [];
+  for (const o of objects3D) {
+    if (o.__preview) {
+      delete o.__preview;
+      objSnaps.push(JSON.parse(JSON.stringify(o)));
+    }
+  }
+  for (const vk of ['elevation', 'sectionA', 'planB']) {
+    if (!entities2D[vk]) continue;
+    for (const e of entities2D[vk]) {
+      if (e.__preview) {
+        delete e.__preview;
+        entSnaps.push(JSON.parse(JSON.stringify(e)));
+      }
+    }
+  }
+  if (objSnaps.length || entSnaps.length) {
+    undoStack.push({
+      act: 'connection',
+      name: connWizState._lastLabel || connWizState.spec.title,
+      objSnaps, entSnaps,
+    });
+    if (undoStack.length > 100) undoStack.shift();
+    redoStack = [];
+  }
+  connWizState = null;
+  if (typeof v3dMarkDirty === 'function') v3dMarkDirty();
+  if (typeof invalidateWeldCache === 'function') invalidateWeldCache();
+  if (typeof _projectSnapshotActive === 'function') _projectSnapshotActive();
+  updateInspector();
+  requestRender();
+}
+
+function connWizCancel() {
+  if (!connWizState) return;
+  connWizClearPreview();
+  connWizState = null;
+  updateInspector();
+  requestRender();
+}
+
+// ---- Wizard specs ----
+// V23.1 — renders inline in the Inspector panel with a live ghost preview.
+// `fields` is a list of [key, label, CONN_DEFAULTS key, input-kind?] tuples
+// used by `_inspConnectionHtml` + `_wireConnectionInputs`. `builder` is the
+// pure function invoked every time a parameter changes (for preview) and
+// once more on commit.
 const _connSpecs = {
   capPlate: {
     title: 'Cap Plate (§9.2)',
@@ -11745,71 +12216,30 @@ const _connSpecs = {
   },
 };
 
+// V23.1 — drives the inline Inspector wizard. Same name so existing call
+// sites (tile clicks, command palette, hamburger menu, keyboard chords) work.
 function openConnectionDialog(kind) {
   const spec = _connSpecs[kind];
   if (!spec) return;
 
-  // Validate selection — need exactly one suitable member selected
+  // If a wizard is already open, cancel it first (avoid stacking previews)
+  if (connWizState) connWizCancel();
+
   const anchor = selected3D.length === 1 ? selected3D[0] : null;
-  if (!anchor || !spec.requires.includes(anchor.type)) {
-    alert(`${spec.title}\n\n${spec.hint}\n\n(Select one ${spec.requires.join(' or ').toUpperCase()} member first, then click this library item.)`);
-    return;
+  const params = {};
+  for (const [key, , defaultKey] of spec.fields) {
+    params[key] = CONN_DEFAULTS[defaultKey];
   }
-
-  // Build dialog body
-  const body = document.getElementById('connDlgBody');
-  document.getElementById('connDlgTitle').textContent = spec.title;
-  body.innerHTML = '';
-  // Hint banner
-  const hint = document.createElement('div');
-  hint.style.cssText = 'grid-column:1/3;font-size:11px;opacity:0.7;padding:4px 0 6px 0;border-bottom:1px solid var(--brd);margin-bottom:4px;';
-  hint.textContent = `Anchor: ${anchor.type.toUpperCase()} ${anchor.section || ''}`;
-  body.appendChild(hint);
-
-  // Field inputs
-  const inputs = {};
-  for (const [key, label, defaultKey, kind2] of spec.fields) {
-    const lab = document.createElement('label');
-    const defaultVal = CONN_DEFAULTS[defaultKey];
-    if (kind2 === 'boltSelect') {
-      lab.innerHTML = `${label}: <select id="conn_${key}"><option>M16</option><option>M20</option><option>M24</option></select>`;
-      body.appendChild(lab);
-      const sel = lab.querySelector('select');
-      sel.value = defaultVal;
-      inputs[key] = () => sel.value;
-    } else if (kind2 === 'intSmall') {
-      lab.innerHTML = `${label}: <input type="number" id="conn_${key}" value="${defaultVal}" min="1" max="20" step="1">`;
-      body.appendChild(lab);
-      const inp = lab.querySelector('input');
-      inputs[key] = () => parseInt(inp.value) || defaultVal;
-    } else {
-      lab.innerHTML = `${label}: <input type="number" id="conn_${key}" value="${defaultVal}" step="1">`;
-      body.appendChild(lab);
-      const inp = lab.querySelector('input');
-      inputs[key] = () => parseFloat(inp.value) || defaultVal;
-    }
+  connWizState = {
+    kind, spec, anchor, params,
+    previewObjIds: new Set(), previewEntIds: new Set(),
+    _lastLabel: spec.title,
+  };
+  if (anchor && spec.requires.includes(anchor.type)) {
+    connWizRebuildPreview();
   }
-
-  // Show dialog
-  const dlg = document.getElementById('connectionDialog');
-  dlg.classList.add('visible');
-
-  // Replace OK handler each open
-  const okBtn = document.getElementById('connOkBtn');
-  const newBtn = okBtn.cloneNode(true);
-  okBtn.parentNode.replaceChild(newBtn, okBtn);
-  newBtn.addEventListener('click', () => {
-    const params = {};
-    for (const key of Object.keys(inputs)) params[key] = inputs[key]();
-    dlg.classList.remove('visible');
-    try {
-      const result = spec.builder(anchor, params);
-      placeConnection(result);
-    } catch (e) {
-      console.error('Connection builder failed:', e);
-      alert('Connection builder error: ' + e.message);
-    }
-  });
+  updateInspector();
+  requestRender();
 }
 
 // ============================================================
@@ -11876,6 +12306,8 @@ function wireSheetBrowser() {
 // live globals) serialised to JSON. Extension: .sdproj. Backwards-compatible
 // with single-sheet saves via the legacy shape check.
 function exportProject() {
+  // V23.1 — don't snapshot ghost previews into a project file.
+  if (connWizState) connWizCancel();
   _projectSnapshotActive();
   const payload = {
     format: 'structdraw-project',
@@ -11935,6 +12367,8 @@ function exportProjectToPDF() {
   if (!window.jspdf || !window.jspdf.jsPDF) {
     alert('PDF library not loaded.'); return;
   }
+  // V23.1 — uncommitted wizard previews should never leak into exports.
+  if (connWizState) connWizCancel();
   _projectSnapshotActive();
   const originalIdx = project.activeSheetIdx;
   const body = document.body;
@@ -12721,6 +13155,15 @@ function updateInspector() {
   const h1 = document.getElementById('inspH1');
   if (!body) return;
 
+  // V23.1 — inline connection wizard takes top priority
+  if (connWizState) {
+    eye.textContent = 'Connection';
+    h1.textContent = connWizState.spec.title;
+    body.innerHTML = _inspConnectionHtml(connWizState);
+    _wireConnectionInputs();
+    return;
+  }
+
   // Tool-active state — when drawing a line / rect / etc, show tool options
   if (tool && tool !== 'select' && selected3D.length === 0) {
     eye.textContent = 'Tool';
@@ -12751,6 +13194,114 @@ function updateInspector() {
   h1.textContent = sheetInfo.drawingNo || 'Untitled';
   body.innerHTML = _inspSheetInfoHtml();
   _wireSheetInfoInputs();
+}
+
+// V23.1 — Inline connection wizard Inspector rendering.
+// Renders the field list for connWizState.spec + a hint banner + Create/Cancel.
+function _inspConnectionHtml(state) {
+  const { spec, anchor, params } = state;
+  const anchorOK = anchor && spec.requires.includes(anchor.type);
+
+  let hintSection;
+  if (!anchor) {
+    hintSection = `
+      <div class="insp-section">
+        <div class="insp-title">Anchor</div>
+        <div style="font-size:11px;color:var(--text-mute);line-height:1.4;padding:4px 0;">
+          Select one ${spec.requires.map(s=>s.toUpperCase()).join(' or ')} member,
+          then click the tile again.
+        </div>
+        <div style="font-size:10.5px;color:var(--text-subtle);font-style:italic;padding:2px 0;">
+          ${spec.hint || ''}
+        </div>
+      </div>`;
+  } else if (!anchorOK) {
+    hintSection = `
+      <div class="insp-section">
+        <div class="insp-title">Anchor</div>
+        <div style="font-size:11px;color:var(--danger,#c33);line-height:1.4;padding:4px 0;">
+          ${anchor.type.toUpperCase()} selected — needs
+          ${spec.requires.map(s=>s.toUpperCase()).join(' or ')}.
+        </div>
+      </div>`;
+  } else {
+    const label = `${anchor.type.toUpperCase()} ${anchor.section || ''}`.trim();
+    hintSection = `
+      <div class="insp-section">
+        <div class="insp-title">Anchor</div>
+        <div style="font-size:11.5px;color:var(--text);padding:2px 0;">${label}</div>
+      </div>`;
+  }
+
+  // Field rows — two columns to stay compact
+  let fieldsHtml = '';
+  if (anchorOK) {
+    const rows = [];
+    for (let i = 0; i < spec.fields.length; i += 2) {
+      const f1 = spec.fields[i], f2 = spec.fields[i + 1];
+      rows.push(`<div class="insp-row">${_connFieldHtml(f1, params)}${f2 ? _connFieldHtml(f2, params) : '<div></div>'}</div>`);
+    }
+    fieldsHtml = `<div class="insp-section"><div class="insp-title">Parameters</div>${rows.join('')}</div>`;
+  }
+
+  const createBtnAttr = anchorOK ? '' : ' disabled style="opacity:0.5;cursor:not-allowed"';
+  const btnRow = `
+    <div class="insp-section">
+      <div style="display:flex;gap:6px">
+        <button class="insp-btn primary" id="connWizCreate"${createBtnAttr}>Create</button>
+        <button class="insp-btn" id="connWizCancel">Cancel</button>
+      </div>
+    </div>`;
+
+  return hintSection + fieldsHtml + btnRow;
+}
+
+function _connFieldHtml(field, params) {
+  const [key, label, defaultKey, kind2] = field;
+  const val = params[key] ?? CONN_DEFAULTS[defaultKey];
+  if (kind2 === 'boltSelect') {
+    const opts = ['M16', 'M20', 'M24'].map(b =>
+      `<option${b === val ? ' selected' : ''}>${b}</option>`).join('');
+    return `<div class="insp-field">
+      <label>${label}</label>
+      <select data-connkey="${key}" data-connkind="bolt">${opts}</select>
+    </div>`;
+  }
+  if (kind2 === 'intSmall') {
+    return `<div class="insp-field">
+      <label>${label}</label>
+      <input type="number" data-connkey="${key}" data-connkind="int" value="${val}" min="1" max="20" step="1">
+    </div>`;
+  }
+  return `<div class="insp-field">
+    <label>${label}</label>
+    <input type="number" data-connkey="${key}" data-connkind="num" value="${val}" step="1">
+  </div>`;
+}
+
+function _wireConnectionInputs() {
+  if (!connWizState) return;
+  const body = document.getElementById('inspectorBody');
+  if (!body) return;
+  body.querySelectorAll('[data-connkey]').forEach(el => {
+    const key = el.dataset.connkey;
+    const kind2 = el.dataset.connkind;
+    const readVal = () => {
+      if (kind2 === 'bolt') return el.value;
+      if (kind2 === 'int') return parseInt(el.value) || 0;
+      return parseFloat(el.value) || 0;
+    };
+    const evt = (kind2 === 'bolt') ? 'change' : 'input';
+    el.addEventListener(evt, () => {
+      if (!connWizState) return;
+      connWizState.params[key] = readVal();
+      connWizScheduleRebuild();
+    });
+  });
+  const createBtn = document.getElementById('connWizCreate');
+  if (createBtn) createBtn.addEventListener('click', () => connWizCommit());
+  const cancelBtn = document.getElementById('connWizCancel');
+  if (cancelBtn) cancelBtn.addEventListener('click', () => connWizCancel());
 }
 
 function _inspToolLabel(t) {
@@ -12832,6 +13383,92 @@ function _wireSheetInfoInputs() {
   }
 }
 
+// V24.A3 — Inspector orientation preview. Two small SVGs side-by-side:
+//   Side view — horizontal bar / vertical bar / into-page glyph per axis
+//   End view  — the member's section icon, rotated by roll°
+// Purpose: give the user immediate visual confirmation of the current frame
+// without having to mentally translate "Y-axis, roll 90°" into a picture.
+function _inspOrientationPreviewSVG(o) {
+  const preset = (o.axis && o.up)
+    ? presetFromFrame(memberFrame(o))
+    : { axisLetter: 'X', dir: 1, rollDeg: Math.round((o.rot || 0) / 90) * 90 % 360 };
+
+  const axisColor = preset.axisLetter === 'X' ? '#e74c3c'
+                  : preset.axisLetter === 'Y' ? '#27ae60'
+                  : '#3498db';
+
+  // --- Side view ----------------------------------------------------------
+  // Shows whether the member is horizontal (X), vertical (Y) or pointing
+  // into/out of the page (Z).
+  let sideView;
+  if (preset.axisLetter === 'X') {
+    // Horizontal beam — long rectangle
+    sideView = `
+      <rect x="3" y="12" width="24" height="6" fill="${axisColor}" fill-opacity="0.25" stroke="${axisColor}" stroke-width="1.2"/>
+      <line x1="15" y1="15" x2="26" y2="15" stroke="${axisColor}" stroke-width="1" marker-end="url(#op_arrow_${preset.axisLetter})"/>
+    `;
+  } else if (preset.axisLetter === 'Y') {
+    // Vertical column
+    sideView = `
+      <rect x="12" y="3" width="6" height="24" fill="${axisColor}" fill-opacity="0.25" stroke="${axisColor}" stroke-width="1.2"/>
+      <line x1="15" y1="15" x2="15" y2="4" stroke="${axisColor}" stroke-width="1" marker-end="url(#op_arrow_${preset.axisLetter})"/>
+    `;
+  } else {
+    // Z-axis — show as circle with × (into page, dir=-1) or dot (out of page, dir=+1)
+    const glyph = preset.dir > 0
+      ? `<circle cx="15" cy="15" r="3" fill="${axisColor}"/>`
+      : `<line x1="10" y1="10" x2="20" y2="20" stroke="${axisColor}" stroke-width="1.5"/>
+         <line x1="20" y1="10" x2="10" y2="20" stroke="${axisColor}" stroke-width="1.5"/>`;
+    sideView = `
+      <circle cx="15" cy="15" r="8" fill="${axisColor}" fill-opacity="0.15" stroke="${axisColor}" stroke-width="1.2"/>
+      ${glyph}
+    `;
+  }
+
+  // --- End view -----------------------------------------------------------
+  // The section icon rotated by roll. For symmetric sections (SHS, CHS)
+  // the rotation is invisible — that's fine, there's nothing to indicate.
+  const iconId = 'icon-' + o.type;
+  const endView = `
+    <g transform="rotate(${preset.rollDeg} 15 15)">
+      <use href="#${iconId}" x="5" y="5" width="20" height="20"/>
+    </g>
+  `;
+
+  // Arrowhead marker (axis-coloured) — scoped per axis so colour is right.
+  const arrowDefs = `
+    <defs>
+      <marker id="op_arrow_X" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+        <path d="M0,0 L10,5 L0,10 Z" fill="#e74c3c"/>
+      </marker>
+      <marker id="op_arrow_Y" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+        <path d="M0,0 L10,5 L0,10 Z" fill="#27ae60"/>
+      </marker>
+    </defs>
+  `;
+
+  const axisLabel = (preset.dir > 0 ? '+' : '−') + preset.axisLetter;
+
+  return `
+    <div id="orientPreview" class="orient-preview"
+         style="display:flex;gap:8px;margin-top:6px;padding:8px 6px;background:var(--surface-3);border:1px solid var(--border);border-radius:4px;justify-content:center;align-items:center;">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+        <svg width="36" height="36" viewBox="0 0 30 30" style="color:var(--text);">
+          ${arrowDefs}
+          ${sideView}
+        </svg>
+        <span style="font-size:9.5px;color:var(--text-mute);letter-spacing:0.3px;">Side · ${axisLabel}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+        <svg width="36" height="36" viewBox="0 0 30 30" style="color:var(--text);">
+          ${endView}
+        </svg>
+        <span style="font-size:9.5px;color:var(--text-mute);letter-spacing:0.3px;">End · ${preset.rollDeg}°</span>
+      </div>
+    </div>
+  `;
+}
+
 function _inspMemberHtml(o) {
   const rot = (o.rot || 0).toFixed(1);
   const len = o.length ? o.length.toFixed(0) : '';
@@ -12846,15 +13483,84 @@ function _inspMemberHtml(o) {
   } else if (o.type === 'plate') {
     sizeRow = `<div class="insp-field"><label>Thickness (mm)</label><input type="number" id="propPt" value="${o.pt || 10}"></div>`;
   }
-  const lengthRow = (o.type === 'ub' || o.type === 'uc' || o.type === 'shs')
+  const isMember = isMemberType(o.type);
+  const lengthRow = isMember
     ? `<div class="insp-field"><label>Length (mm)</label><input type="number" id="propLen" value="${len}" step="10"></div>`
     : '';
+
+  // V24 Phase A — 3D orientation fields. For non-member objects (plates /
+  // bolts) keep the legacy single rotation input.
+  let orientRow;
+  if (isMember) {
+    const preset = (o.axis && o.up)
+      ? presetFromFrame(memberFrame(o))
+      : { axisLetter: 'X', dir: 1, rollDeg: Math.round((o.rot || 0) / 90) * 90 % 360, exact: true };
+    const opt = (val, cur, label) =>
+      `<option value="${val}"${val == cur ? ' selected' : ''}>${label || val}</option>`;
+    orientRow = `
+      <div class="insp-row triple">
+        <div class="insp-field">
+          <label>Axis</label>
+          <select id="propAxisLetter">
+            ${opt('X', preset.axisLetter)}${opt('Y', preset.axisLetter)}${opt('Z', preset.axisLetter)}
+          </select>
+        </div>
+        <div class="insp-field">
+          <label>Dir</label>
+          <select id="propAxisDir">
+            ${opt(1, preset.dir, '+')}${opt(-1, preset.dir, '−')}
+          </select>
+        </div>
+        <div class="insp-field">
+          <label>Roll (°)</label>
+          <select id="propRoll">
+            ${opt(0, preset.rollDeg)}${opt(90, preset.rollDeg)}${opt(180, preset.rollDeg)}${opt(270, preset.rollDeg)}
+          </select>
+        </div>
+      </div>
+      ${_inspOrientationPreviewSVG(o)}
+      ${preset.exact === false
+        ? `<div id="offPresetWarn" style="font-size:10px;color:#c77a00;margin-top:4px;text-align:center;letter-spacing:0.2px;">
+             ⚠ Custom rotation — dropdowns show nearest preset
+           </div>`
+        : ''}
+      <div style="font-size:10px;color:var(--text-mute);margin-top:4px;text-align:center;letter-spacing:0.2px;">
+        <kbd style="font-size:9.5px;padding:0 3px;border:1px solid var(--border);border-radius:2px;">R</kbd> roll +90°
+        &nbsp; <kbd style="font-size:9.5px;padding:0 3px;border:1px solid var(--border);border-radius:2px;">⇧R</kbd> −90°
+        &nbsp; <kbd style="font-size:9.5px;padding:0 3px;border:1px solid var(--border);border-radius:2px;">⌥R</kbd> flip
+      </div>
+      <div class="insp-section" style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--border);">
+        <div class="insp-title" style="font-size:10.5px;">Free tilt</div>
+        <div style="display:flex;gap:6px;align-items:flex-end;margin-bottom:5px;">
+          <div class="insp-field" style="flex:1;margin-bottom:0;">
+            <label>Elev (° about Z)</label>
+            <input type="number" id="propTiltZ" value="0" step="5">
+          </div>
+          <button class="insp-btn" id="btnTiltZ" style="flex:0 0 auto;height:24px;padding:0 8px;">Apply</button>
+        </div>
+        <div style="display:flex;gap:6px;align-items:flex-end;">
+          <div class="insp-field" style="flex:1;margin-bottom:0;">
+            <label>Plan (° about Y)</label>
+            <input type="number" id="propTiltY" value="0" step="5">
+          </div>
+          <button class="insp-btn" id="btnTiltY" style="flex:0 0 auto;height:24px;padding:0 8px;">Apply</button>
+        </div>
+        <div style="font-size:10px;color:var(--text-mute);margin-top:5px;text-align:center;letter-spacing:0.2px;">
+          <kbd style="font-size:9.5px;padding:0 3px;border:1px solid var(--border);border-radius:2px;">T</kbd> elev tilt
+          &nbsp; <kbd style="font-size:9.5px;padding:0 3px;border:1px solid var(--border);border-radius:2px;">⇧T</kbd> plan tilt
+        </div>
+      </div>
+      <input type="hidden" id="propRot" value="${rot}">`;
+  } else {
+    orientRow = `<div class="insp-field"><label>Rotation (°)</label><input type="number" id="propRot" value="${rot}" step="1"></div>`;
+  }
+
   return `
     <div class="insp-section">
       <div class="insp-title">Geometry</div>
       ${sizeRow}
       ${lengthRow}
-      <div class="insp-field"><label>Rotation (°)</label><input type="number" id="propRot" value="${rot}" step="1"></div>
+      ${orientRow}
     </div>
     <div class="insp-section">
       <div class="insp-title">Position</div>
@@ -12886,6 +13592,68 @@ function _wireMemberInputs(o) {
   bind('propSection', el => { if (el.value) o.section = el.value; });
   bind('propBoltSize', el => { o.boltSize = el.value; });
   bind('propPt', el => { o.pt = parseFloat(el.value) || o.pt; });
+
+  // V24 Phase A — orientation dropdowns (members only). Any of the three
+  // changes rebuilds the 3D frame from the current preset.
+  // V24.A3 — also does a targeted refresh of the orientation preview SVG so
+  // the user sees their change reflected visually without losing dropdown focus.
+  const rebuildFrame = () => {
+    const axisEl = document.getElementById('propAxisLetter');
+    const dirEl  = document.getElementById('propAxisDir');
+    const rollEl = document.getElementById('propRoll');
+    if (!axisEl || !dirEl || !rollEl) return;
+    const axisLetter = axisEl.value;
+    const dir = parseInt(dirEl.value) || 1;
+    const rollDeg = parseInt(rollEl.value) || 0;
+    setMemberFrameFromPreset(o, axisLetter, dir, rollDeg);
+    if (typeof v3dMarkDirty === 'function') v3dMarkDirty();
+    if (typeof invalidateWeldCache === 'function') invalidateWeldCache();
+    // Targeted refresh of the preview — avoids rebuilding whole Inspector
+    // which would reset dropdown focus.
+    const oldPrev = document.getElementById('orientPreview');
+    if (oldPrev) {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = _inspOrientationPreviewSVG(o);
+      const fresh = tmp.firstElementChild;
+      if (fresh) oldPrev.replaceWith(fresh);
+    }
+    requestRender();
+  };
+  ['propAxisLetter', 'propAxisDir', 'propRoll'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', rebuildFrame);
+  });
+
+  // V24.A4 — Free tilt Apply buttons. Rotates every selected member (or just
+  // `o` if nothing else is selected) about world Z / world Y by the entered
+  // angle, then resets the input to 0 so subsequent applies compose.
+  const applyTilt = (worldAxisLetter, inputId) => {
+    const el = document.getElementById(inputId);
+    if (!el) return;
+    const angle = parseFloat(el.value);
+    if (!angle || isNaN(angle)) return;
+    const targets = (Array.isArray(selected3D) && selected3D.length > 0) ? selected3D : [o];
+    const members = targets.filter(t => isMemberType(t.type));
+    if (members.length === 0) return;
+    const before = members.map(t => JSON.parse(JSON.stringify(t)));
+    members.forEach(t => _applyMemberTilt(t, worldAxisLetter, angle));
+    const after = members.map(t => JSON.parse(JSON.stringify(t)));
+    undoStack.push({ act: 'moveObj', before, after });
+    if (undoStack.length > 100) undoStack.shift();
+    redoStack = [];
+    if (typeof v3dMarkDirty === 'function') v3dMarkDirty();
+    if (typeof invalidateWeldCache === 'function') invalidateWeldCache();
+    el.value = 0;
+    // Full Inspector rebuild — preset dropdowns may change (nearest preset
+    // recomputed) and the off-preset warning needs to appear/disappear.
+    if (typeof updateInspector === 'function') updateInspector();
+    requestRender();
+  };
+  const btnZ = document.getElementById('btnTiltZ');
+  if (btnZ) btnZ.addEventListener('click', () => applyTilt('Z', 'propTiltZ'));
+  const btnY = document.getElementById('btnTiltY');
+  if (btnY) btnY.addEventListener('click', () => applyTilt('Y', 'propTiltY'));
+
   const dup = document.getElementById('inspDup');
   if (dup) dup.addEventListener('click', () => {
     const copy = JSON.parse(JSON.stringify(o));
@@ -13900,6 +14668,19 @@ function v3dInit() {
   v3dGroup = new THREE.Group();
   v3dScene.add(v3dGroup);
 
+  // V24.A2 — World-axis gizmo at origin. THREE.AxesHelper draws X=red,
+  // Y=green, Z=blue (industry standard). Sits in world coordinates so it
+  // serves as an orientation reference for any rotated members in the scene.
+  // Arm length is 500mm (5cm on a 1:10 sheet) — readable but not dominating.
+  // Uses a fatter shader material (depthTest off) so it reads through meshes.
+  const axesHelper = new THREE.AxesHelper(500);
+  if (axesHelper.material) {
+    axesHelper.material.depthTest = false;
+    axesHelper.material.linewidth = 2; // hint; most platforms ignore for 1
+  }
+  axesHelper.renderOrder = 999;
+  v3dScene.add(axesHelper);
+
   // Materials
   v3dMatSteel = new THREE.MeshStandardMaterial({
     color: 0xb0b0b0, metalness: 0.05, roughness: 0.85,
@@ -14095,6 +14876,29 @@ function v3dRebuildScene() {
 // UB beams span along X-axis (horizontal). I-section profile sits in Y-Z plane
 // (depth d along Y, flange width bf along Z). Extrude direction (local +Z) must
 // map to world +X.  Rotation about Y by -90° achieves: localZ→X, localX→-Z, localY→Y.
+// V24 Phase A — apply the member's 3D frame to a Three.js pivot group.
+// Legacy behaviour: Z-axis rotation only (applied via pivot.rotation.z).
+// New behaviour: full orientation by constructing a quaternion from the
+// frame's {axis (length, world +X in canonical), up (world +Y canonical),
+// right (world +Z canonical)} basis. The canonical local frame of the
+// UB / SHS / etc. meshes below is: length → local +X, depth → local +Y,
+// width → local +Z. So the frame's (axis, up, right) columns form the
+// rotation matrix that maps local → world.
+function _v3dApplyMemberFrame(pivot, obj) {
+  if (obj.axis && obj.up) {
+    const f = memberFrame(obj);
+    const m = new THREE.Matrix4().makeBasis(
+      new THREE.Vector3(f.axis.x, f.axis.y, f.axis.z),
+      new THREE.Vector3(f.up.x, f.up.y, f.up.z),
+      new THREE.Vector3(f.right.x, f.right.y, f.right.z),
+    );
+    pivot.quaternion.setFromRotationMatrix(m);
+    return;
+  }
+  // Legacy path
+  if (obj.rot) pivot.rotation.z = (obj.rot || 0) * Math.PI / 180;
+}
+
 function v3dBuildUB(obj) {
   const s = UB_DB[obj.section]; if (!s) return;
   const shape = v3dMakeIShape(s.d, s.bf, s.tf, s.tw, s.r1);
@@ -14108,7 +14912,7 @@ function v3dBuildUB(obj) {
   // Profile: shape X (bf) → world -Z, shape Y (d) → world Y
   const pivot = new THREE.Group();
   pivot.position.set(obj.x || 0, obj.y || 0, obj.z || 0);
-  if (obj.rot) pivot.rotation.z = (obj.rot || 0) * Math.PI / 180;
+  _v3dApplyMemberFrame(pivot, obj);
   v3dGroup.add(pivot);
 
   const mesh = v3dAddMesh(geom, v3dMatSteel, pivot);
@@ -14124,7 +14928,7 @@ function v3dBuildSHS(obj) {
 
   const pivot = new THREE.Group();
   pivot.position.set(obj.x || 0, obj.y || 0, obj.z || 0);
-  if (obj.rot) pivot.rotation.z = (obj.rot || 0) * Math.PI / 180;
+  _v3dApplyMemberFrame(pivot, obj);
   v3dGroup.add(pivot);
 
   // Four walls as thin boxes — length along X (matching UB convention & 2D views)
