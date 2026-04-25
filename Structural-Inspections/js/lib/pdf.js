@@ -213,6 +213,160 @@ export async function renderThumbnail(blob, maxWidth = 320, pageNumber = 1) {
 }
 
 /**
+ * Extract per-page text spans with positions and font sizes — for feeding to
+ * an LLM that has to find the title block regardless of where it sits on the
+ * page (different BT templates put it in different places).
+ *
+ * Returns an array, one entry per requested page:
+ *
+ *   [{
+ *     pageNumber, width, height, rotation,
+ *     spans: [
+ *       { text, x, y, w, h, fontSize, fontName }, ...
+ *     ]
+ *   }, ...]
+ *
+ * Coordinates are in *natural-rotation* viewport pixels at scale 1 — i.e. the
+ * geometry as a human reading the rendered page would see it. Rotation
+ * (`rotation`) is the page's /Rotate hint, included so the LLM can interpret
+ * coords if it needs to.
+ *
+ * @param {Blob}  blob
+ * @param {Object} [opts]
+ * @param {number[]} [opts.pageNumbers]  — limit to specific pages (1-indexed).
+ * @param {number} [opts.minFontSize=8]  — drop tiny annotations.
+ */
+export async function extractPageSpans(blob, { pageNumbers, minFontSize = 8 } = {}) {
+  const doc = await loadPdf(blob);
+  try {
+    const pages = pageNumbers && pageNumbers.length
+      ? pageNumbers.filter((n) => n >= 1 && n <= doc.numPages)
+      : Array.from({ length: doc.numPages }, (_, i) => i + 1);
+
+    const out = [];
+    for (const pageNumber of pages) {
+      const page = await doc.getPage(pageNumber);
+      // Use the page's natural /Rotate so coords match what the LLM would
+      // see if we sent it a rendered image — keeps text+vision in agreement.
+      const viewport = page.getViewport({ scale: 1, rotation: page.rotate || 0 });
+      const content = await page.getTextContent();
+
+      const spans = [];
+      for (const item of content.items || []) {
+        const text = (item.str || '').trim();
+        if (!text) continue;
+
+        // Apply viewport transform to the text item's transform to get
+        // top-left coords + font size in display space.
+        // PDF.js helper: util.transform(viewport.transform, item.transform).
+        const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
+        // tx = [a, b, c, d, e, f]. Font size = sqrt(c^2 + d^2) (vertical scale).
+        const fontSize = Math.hypot(tx[2], tx[3]) || Math.hypot(tx[0], tx[1]) || 0;
+        if (fontSize < minFontSize) continue;
+
+        // tx[4], tx[5] is the BASELINE position in display space (y down).
+        // Top-left ≈ (tx[4], tx[5] - fontSize). Width is item.width scaled.
+        const w = (item.width || 0) * Math.hypot(tx[0], tx[1]) / Math.hypot(item.transform[0], item.transform[1] || 1);
+        const x = round(tx[4]);
+        const y = round(tx[5] - fontSize);
+        spans.push({
+          text,
+          x, y,
+          w: round(w),
+          h: round(fontSize),
+          fontSize: round(fontSize),
+          fontName: item.fontName || ''
+        });
+      }
+
+      out.push({
+        pageNumber,
+        width:    Math.round(viewport.width),
+        height:   Math.round(viewport.height),
+        rotation: page.rotate || 0,
+        spans
+      });
+    }
+    return out;
+  } finally {
+    doc.destroy();
+  }
+}
+
+/**
+ * Extract concatenated text for one or more pages — used for the General
+ * Notes pages when we want to feed the whole text body (not positions) to
+ * the LLM.
+ *
+ * Returns [{ pageNumber, text, charCount }].
+ */
+export async function extractPageText(blob, pageNumbers) {
+  const doc = await loadPdf(blob);
+  try {
+    const pages = pageNumbers && pageNumbers.length
+      ? pageNumbers.filter((n) => n >= 1 && n <= doc.numPages)
+      : Array.from({ length: doc.numPages }, (_, i) => i + 1);
+
+    const out = [];
+    for (const pageNumber of pages) {
+      const page    = await doc.getPage(pageNumber);
+      const content = await page.getTextContent();
+      const text = (content.items || [])
+        .map((it) => it.str || '')
+        .filter(Boolean)
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      out.push({ pageNumber, text, charCount: text.length });
+    }
+    return out;
+  } finally {
+    doc.destroy();
+  }
+}
+
+/**
+ * Render a page to a base64 PNG/JPEG data URL — used for the vision-fallback
+ * branch of the title-block extractor (when a page has no extractable text,
+ * e.g. scanned PDFs).
+ *
+ * @param {Blob}   blob
+ * @param {number} pageNumber       — 1-indexed
+ * @param {Object} [opts]
+ * @param {number} [opts.maxPx=1024]
+ * @param {string} [opts.format='image/jpeg']
+ * @param {number} [opts.quality=0.85]
+ * @returns {Promise<{ base64: string, mediaType: string, width: number, height: number }>}
+ */
+export async function renderPageAsImage(blob, pageNumber, { maxPx = 1024, format = 'image/jpeg', quality = 0.85 } = {}) {
+  const doc = await loadPdf(blob);
+  try {
+    const page = await doc.getPage(pageNumber);
+    const baseViewport = page.getViewport({ scale: 1, rotation: page.rotate || 0 });
+    const longSide = Math.max(baseViewport.width, baseViewport.height);
+    const scale = Math.min(maxPx / longSide, 1.5);
+    const viewport = page.getViewport({ scale, rotation: page.rotate || 0 });
+
+    const canvas = document.createElement('canvas');
+    canvas.width  = Math.floor(viewport.width);
+    canvas.height = Math.floor(viewport.height);
+    const ctx = canvas.getContext('2d', { alpha: false });
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: ctx, viewport }).promise;
+
+    const dataUrl  = canvas.toDataURL(format, quality);
+    const base64   = dataUrl.split(',', 2)[1] || '';
+    const mediaType = format;
+    return { base64, mediaType, width: canvas.width, height: canvas.height };
+  } finally {
+    doc.destroy();
+  }
+}
+
+function round(n) { return Math.round(n * 10) / 10; }
+
+/**
  * Extract a likely sheet number from a filename.
  *
  * Patterns it catches:

@@ -8,7 +8,7 @@
  *   - Navigation requests fall back to cached index.html when offline.
  */
 
-const VERSION = 'bt-inspect-v2.0.0-phase10';
+const VERSION = 'bt-inspect-v2.1.0-phase11-foundation';
 const SHELL_CACHE   = `shell-${VERSION}`;
 const RUNTIME_CACHE = `runtime-${VERSION}`;
 
@@ -44,6 +44,7 @@ const SHELL_ASSETS = [
   './js/lib/pdf-fonts.js',
   './js/lib/share.js',
   './js/lib/ai-expand.js',
+  './js/lib/anthropic.js',
   './js/lib/annotate.js',
   './js/lib/qr.js',
   './js/lib/export-bundle.js',

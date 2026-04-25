@@ -117,6 +117,50 @@ db.version(4).stores({
   }
 });
 
+// v5 — project-map intelligence (Phase 11).
+//
+// Adds (additive, no migration required for existing data):
+//
+//   drawings.tags                 — multi-entry index: ['element:pad-footing',
+//                                   'level:ground', 'kind:plan', 'kind:typical-detail',
+//                                   'inspection:pad-footing-prepour', ...] — flat
+//                                   strings so the same multi-entry index covers
+//                                   all facets. Lets us find "every plan-type
+//                                   drawing for pad footings" in one query.
+//   drawings.aiClassification     — non-indexed: cached LLM response (model + hash
+//                                   + raw JSON) so reclassifying is free.
+//   drawings.elements             — non-indexed: structured array of element refs
+//                                   (e.g. [{kind:'pad-footing', code:'PF-A'}, ...])
+//                                   populated by the future vision pass.
+//   projects.projectMap           — non-indexed: extracted general-notes JSON
+//                                   (designCriteria, bearingCapacity, geotechRef,
+//                                   coverSchedule, certifiedByOthers, materials).
+//   projects.inspectionPlan       — non-indexed: ordered [{type, drawingIds, why,
+//                                   status:'pending|done|skipped'}, ...].
+//   projects.engineers            — non-indexed: array of {name, rpeq?} for the
+//                                   inspector dropdown on this project.
+//   inspections.types             — multi-entry index: array of inspection-type
+//                                   keys for this session. Backwards-compat with
+//                                   single-type via inspectionTypeKey.
+//   inspections.drawingIds        — non-indexed: array of selected drawing ids
+//                                   for this session. Replaces primaryDrawingId
+//                                   eventually but kept alongside for compat.
+db.version(5).stores({
+  projects:      '++id, jobNumber, name, createdAt, updatedAt',
+  drawings:      '++id, projectId, sourcePdfId, pageNumber, sheetNumber, revision, *tags, [projectId+sheetNumber]',
+  pdfSources:    '++id, filename, uploadedAt',
+  inspections:   '++id, projectId, inspectionTypeId, *types, date, status, createdAt, updatedAt',
+  items:         '++id, inspectionId, itemNumber, severity, status, [inspectionId+itemNumber]',
+  photos:        '++id, itemId, createdAt',
+  highlights:    '++id, inspectionId, drawingId, [inspectionId+drawingId]',
+  reports:       '++id, inspectionId, generatedAt, [inspectionId+generatedAt]',
+  inspectionTypes:    '++id, &key, category, name',
+  commentLibrary:     '++id, &key, inspectionTypeKey, severity',
+  generalComments:    '++id, inspectionTypeKey',
+  users:         '++id, &email, rpeq, role',
+  settings:      '&key'
+});
+
 /* --------------------------------------------------------------------------
    Seeding (idempotent)
    -------------------------------------------------------------------------- */
