@@ -6,17 +6,23 @@
  * whatever you were working on with one tap.
  */
 
-import { db, listProjects, listInspections } from '../db.js';
+import {
+  db, listProjects, listInspections, listNextUpFromPlans,
+  startInspectionFromPlanEntry
+} from '../db.js';
+import { confirmDialog } from '../components/modal.js';
+import { toast } from '../components/toast.js';
 import { go } from '../router.js';
 
 export async function render(root) {
   const [projectCount, inspectionCount, draftCount,
-         recentProjects, recentInspections] = await Promise.all([
+         recentProjects, recentInspections, nextUp] = await Promise.all([
     db.projects.count(),
     db.inspections.count(),
     db.inspections.where('status').equals('draft').count().catch(() => 0),
     listProjects().then((arr) => arr.slice(0, 3)),
-    listInspections().then((arr) => arr.slice(0, 3))
+    listInspections().then((arr) => arr.slice(0, 3)),
+    listNextUpFromPlans(3)
   ]);
 
   // Need project metadata for the inspection rows (job number + project name)
@@ -62,6 +68,44 @@ export async function render(root) {
         <span class="tile__meta">Inspector profile, RPEQ, diagnostics.</span>
       </a>
     </div>
+
+    ${nextUp.length > 0 ? `
+      <div class="section-heading" style="margin-top: var(--space-6);">
+        <h2>Next up</h2>
+        <span class="muted small">from your project plans</span>
+      </div>
+      <ul class="next-up-list stack" role="list" id="next-up">
+        ${nextUp.map(({ project, entry, planIndex }) => {
+          const refs = (entry.drawingRefs || []).map((r) => r.sheetNumber).filter(Boolean);
+          const refsLabel = refs.length === 0 ? '' :
+            refs.length <= 3 ? refs.join(' · ') : `${refs.slice(0, 3).join(' · ')} +${refs.length - 3}`;
+          const status = entry.status || 'pending';
+          return `
+            <li class="next-up-card next-up-card--${status}"
+                data-project-id="${project.id}" data-plan-index="${planIndex}"
+                tabindex="0" role="link"
+                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">
+              <div class="next-up-card__seq">${entry.sequence ?? planIndex + 1}</div>
+              <div class="next-up-card__main">
+                <div class="next-up-card__project muted small">
+                  ${escapeHtml(project.jobNumber || '')}${project.jobNumber ? ' · ' : ''}${escapeHtml(project.name)}
+                </div>
+                <div class="next-up-card__title">${escapeHtml(entry.title || entry.type || '')}</div>
+                <div class="next-up-card__meta muted small">
+                  ${entry.level ? escapeHtml(entry.level) : ''}${refsLabel ? ' · ' + escapeHtml(refsLabel) : ''}
+                  ${entry.holdPoint ? ' · <span class="badge badge--hold">hold point</span>' : ''}
+                  ${status === 'in-progress' ? ' · <span class="badge badge--in-progress">in progress</span>' : ''}
+                </div>
+              </div>
+              <div class="next-up-card__cta">
+                ${status === 'in-progress' ? 'Resume' : 'Start'}
+                <span aria-hidden="true">›</span>
+              </div>
+            </li>
+          `;
+        }).join('')}
+      </ul>
+    ` : ''}
 
     ${recentInspections.length > 0 ? `
       <div class="section-heading" style="margin-top: var(--space-6);">
@@ -132,6 +176,39 @@ export async function render(root) {
     recentI.addEventListener('click', (e) => {
       const card = e.target.closest('[data-inspection-id]');
       if (card) go('inspection', card.dataset.inspectionId);
+    });
+  }
+  const nextUpEl = root.querySelector('#next-up');
+  if (nextUpEl) {
+    nextUpEl.addEventListener('click', async (e) => {
+      const card = e.target.closest('[data-project-id][data-plan-index]');
+      if (!card) return;
+      const projectId = Number(card.dataset.projectId);
+      const planIdx   = Number(card.dataset.planIndex);
+      const entry     = nextUp.find((n) => n.project.id === projectId && n.planIndex === planIdx)?.entry;
+      if (!entry) return;
+
+      // In-progress → jump straight to the linked inspection.
+      if (entry.completedInspectionId && (entry.status || 'pending') === 'in-progress') {
+        go('inspection', entry.completedInspectionId);
+        return;
+      }
+
+      // Otherwise confirm + start.
+      const ok = await confirmDialog({
+        title: `Start: ${entry.title || entry.type}?`,
+        message: entry.rationale || 'Pre-fills the inspection from the project plan.',
+        confirmLabel: 'Start inspection'
+      });
+      if (!ok) return;
+
+      try {
+        const inspection = await startInspectionFromPlanEntry(projectId, planIdx);
+        toast(`Started: ${inspection.inspectionTypeName}`, { kind: 'success' });
+        go('inspection', inspection.id);
+      } catch (err) {
+        toast(err.message || 'Couldn\u2019t start inspection', { kind: 'error', duration: 6000 });
+      }
     });
   }
 }

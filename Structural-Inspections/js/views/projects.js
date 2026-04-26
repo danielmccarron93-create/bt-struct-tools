@@ -8,6 +8,7 @@
 import { listProjects, createProject } from '../db.js';
 import { openModal } from '../components/modal.js';
 import { toast } from '../components/toast.js';
+import { openImportProject } from '../components/import-project.js';
 import { go } from '../router.js';
 
 export async function render(root) {
@@ -17,6 +18,9 @@ export async function render(root) {
     <div class="section-heading">
       <h1>Projects</h1>
       <div class="cluster">
+        <button class="btn btn--secondary" id="btn-import-project" title="Import a Cowork-built project bundle">
+          <span aria-hidden="true">↧</span> Import
+        </button>
         <button class="btn btn--primary" id="btn-new-project">
           <span aria-hidden="true">+</span> New project
         </button>
@@ -27,9 +31,13 @@ export async function render(root) {
   `;
 
   root.querySelector('#btn-new-project').addEventListener('click', onNewProject);
+  root.querySelector('#btn-import-project').addEventListener('click', () => openImportProject());
 
   const emptyBtn = root.querySelector('#btn-new-project-empty');
   if (emptyBtn) emptyBtn.addEventListener('click', onNewProject);
+
+  const emptyImportBtn = root.querySelector('#btn-import-project-empty');
+  if (emptyImportBtn) emptyImportBtn.addEventListener('click', () => openImportProject());
 
   // Delegate: clicking a project card opens it
   root.addEventListener('click', (e) => {
@@ -45,8 +53,15 @@ function renderEmpty() {
   return `
     <div class="empty card">
       <h2>No projects yet</h2>
-      <p>Set up a project with its job number, client, and site address, then upload the structural drawings against it.</p>
-      <button class="btn btn--primary" id="btn-new-project-empty">+ Create your first project</button>
+      <p>Two ways to start:</p>
+      <ul class="muted" style="margin: 0 0 var(--space-4);">
+        <li><strong>Import</strong> — pick a <code>.btproject</code> bundle Cowork built from your drawings (recommended).</li>
+        <li><strong>Create from scratch</strong> — set up project metadata manually, then upload PDFs page-by-page.</li>
+      </ul>
+      <div class="cluster">
+        <button class="btn btn--primary" id="btn-import-project-empty">↧ Import bundle</button>
+        <button class="btn btn--secondary" id="btn-new-project-empty">+ Create from scratch</button>
+      </div>
     </div>
   `;
 }

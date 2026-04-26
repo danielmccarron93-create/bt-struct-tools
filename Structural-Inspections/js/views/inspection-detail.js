@@ -80,6 +80,8 @@ export async function render(root, params) {
       </div>
     </header>
 
+    ${renderPlanContextCard(inspection)}
+
     <section class="project-section">
       <div class="section-heading"><h2>Plan</h2></div>
       ${drawing ? renderPlanCard(drawing) : `
@@ -295,6 +297,51 @@ async function onAddGeneralCustom(inspection) {
 /* --------------------------------------------------------------------------
    Rendering helpers
    -------------------------------------------------------------------------- */
+
+/**
+ * Plan-context card — only renders when this inspection was started from a
+ * project plan entry (fromPlanIndex set during startInspectionFromPlanEntry).
+ * Shows the senior-engineer rationale and the expectedChecklist so the
+ * engineer arrives on site already knowing what they're checking.
+ */
+function renderPlanContextCard(inspection) {
+  if (inspection.fromPlanIndex == null) return '';
+  const checklist = Array.isArray(inspection.expectedChecklist) ? inspection.expectedChecklist : [];
+  const hasContent = inspection.rationale || checklist.length || inspection.holdPoint;
+  if (!hasContent) return '';
+
+  const meta = [
+    inspection.level     ? escapeHtml(inspection.level) : '',
+    inspection.building && inspection.building !== 'Main' ? escapeHtml(inspection.building) : '',
+    inspection.stage     ? escapeHtml(inspection.stage) : ''
+  ].filter(Boolean).join(' · ');
+
+  return `
+    <section class="project-section">
+      <details class="plan-context-card card" open>
+        <summary>
+          <span class="plan-context-card__title">From the project plan</span>
+          ${inspection.holdPoint ? '<span class="badge badge--hold">hold point</span>' : ''}
+          ${meta ? `<span class="muted small">${meta}</span>` : ''}
+        </summary>
+        <div class="plan-context-card__body">
+          ${inspection.rationale ? `
+            <p class="plan-context-card__rationale">${escapeHtml(inspection.rationale)}</p>
+          ` : ''}
+          ${checklist.length ? `
+            <div class="plan-context-card__checklist">
+              <div class="plan-context-card__section-title muted small">Suggested checks</div>
+              <ul>
+                ${checklist.map((c) => `<li>${escapeHtml(c)}</li>`).join('')}
+              </ul>
+              <div class="muted small">Tick these off as you go on site by dropping pins on the plan.</div>
+            </div>
+          ` : ''}
+        </div>
+      </details>
+    </section>
+  `;
+}
 
 function renderPlanCard(drawing) {
   return `

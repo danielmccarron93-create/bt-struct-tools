@@ -8,7 +8,7 @@
  *   - Navigation requests fall back to cached index.html when offline.
  */
 
-const VERSION = 'bt-inspect-v2.1.0-phase11-foundation';
+const VERSION = 'bt-inspect-v2.1.0-phase11-multitype';
 const SHELL_CACHE   = `shell-${VERSION}`;
 const RUNTIME_CACHE = `runtime-${VERSION}`;
 
@@ -37,8 +37,10 @@ const SHELL_ASSETS = [
   './js/components/toast.js',
   './js/components/item-panel.js',
   './js/components/comment-library-picker.js',
+  './js/components/import-project.js',
   // Libraries (in-repo)
   './js/lib/pdf.js',
+  './js/lib/btproject.js',
   './js/lib/photos.js',
   './js/lib/report.js',
   './js/lib/pdf-fonts.js',

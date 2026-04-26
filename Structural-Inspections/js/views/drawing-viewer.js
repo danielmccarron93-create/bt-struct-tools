@@ -237,7 +237,18 @@ async function createState(drawing, { isMarkup, inspection, items, highlights })
   const stage   = document.getElementById('dv-stage');
 
   const pageNumber = drawing.pageNumber || 1;
-  const viewport = await renderPageToCanvas(doc, pageNumber, canvas, renderScale, drawing.rotation || 0);
+
+  // Auto-orient on first open: if the user hasn't manually rotated this drawing
+  // (drawing.rotation === 0) AND the page is landscape but the viewport is
+  // portrait, render it 90° rotated so the long edge of the drawing lines up
+  // with the long edge of the screen. This is what every engineer wants on a
+  // portrait phone: drawing fills the screen, no squinting at a tiny landscape
+  // strip in the middle.
+  //
+  // The user-controlled rotate button keeps working — it stores its result
+  // explicitly via updateDrawing, so a manual choice always wins on next open.
+  const initialRotation = await pickInitialRotation(doc, pageNumber, drawing, stage);
+  const viewport = await renderPageToCanvas(doc, pageNumber, canvas, renderScale, initialRotation);
 
   overlay.setAttribute('viewBox', `0 0 ${viewport.width} ${viewport.height}`);
   overlay.style.width  = `${viewport.width}px`;
@@ -270,7 +281,8 @@ async function createState(drawing, { isMarkup, inspection, items, highlights })
       points: []
     },
     // Cached for convenience
-    rotation: drawing.rotation || 0,
+    rotation:        initialRotation,
+    autoRotated:     initialRotation !== (drawing.rotation || 0),  // tag so the rotate button knows to start persisting
 
     // Markup context (Phase 4)
     isMarkup: !!isMarkup,
@@ -283,6 +295,37 @@ async function createState(drawing, { isMarkup, inspection, items, highlights })
       tempEl: null
     }
   };
+}
+
+/**
+ * Decide the rotation to render at on first open.
+ *
+ * Rules (in priority order):
+ *   1. If the user has manually rotated this drawing before
+ *      (drawing.rotation > 0), respect their choice.
+ *   2. Otherwise, if the page is landscape and the viewport is portrait,
+ *      auto-rotate 90° so the drawing fills the screen long edge.
+ *   3. Otherwise, no rotation.
+ *
+ * Caveat: this only runs at viewer mount. If the user re-orients the device
+ * after opening, the existing rotate button is one tap away.
+ */
+async function pickInitialRotation(doc, pageNumber, drawing, stage) {
+  if (drawing.rotation && drawing.rotation > 0) return drawing.rotation;
+
+  // Get the page's natural rendered dimensions (rotation = 0).
+  const page = await doc.getPage(pageNumber);
+  const natural = page.getViewport({ scale: 1, rotation: 0 });
+  const pageIsLandscape = natural.width > natural.height;
+
+  // Stage may not have laid out yet on the very first frame — getBoundingClientRect
+  // returns 0×0. Fall back to window inner size so we still make a sensible call.
+  const stageRect = stage.getBoundingClientRect();
+  const vw = stageRect.width  > 10 ? stageRect.width  : window.innerWidth;
+  const vh = stageRect.height > 10 ? stageRect.height : window.innerHeight;
+  const viewportIsPortrait = vh > vw;
+
+  return (pageIsLandscape && viewportIsPortrait) ? 90 : 0;
 }
 
 /* --------------------------------------------------------------------------
@@ -415,31 +458,35 @@ function attachGestures(s) {
   });
   stage.addEventListener('pointerup', () => { panStart = null; });
 
-  // --- Extent drag (single finger only) ---
+  // --- Extent freehand drag (single finger only) — captures a polygon outline ---
   stage.addEventListener('pointerdown', (e) => {
     if (s.activeMode !== 'extent') return;
     if (e.pointerType === 'touch' && s.pointers.size > 1) return;
-    // Ignore clicks on an existing highlight rect — those are handled via click.
+    // Ignore clicks on an existing highlight — those are handled via click.
     if (e.target.closest('[data-highlight-id]')) return;
-    s.extent.dragStartCanvas = clientToCanvas(s, e.clientX, e.clientY);
-    s.extent.tempEl = createTempExtentRect(s, s.extent.dragStartCanvas);
+    const startPt = clientToCanvas(s, e.clientX, e.clientY);
+    s.extent.points       = [startPt];
+    s.extent.tempEl       = createTempExtentPolygon(s, startPt);
+    s.extent.dragStartCanvas = startPt;       // kept for backwards-compat checks below
   });
   stage.addEventListener('pointermove', (e) => {
     if (s.activeMode !== 'extent' || !s.extent.dragStartCanvas) return;
     if (s.pointers.size > 1) return;
     const cur = clientToCanvas(s, e.clientX, e.clientY);
-    updateTempExtentRect(s.extent.tempEl, s.extent.dragStartCanvas, cur);
+    appendPolygonPoint(s, cur);
   });
   stage.addEventListener('pointerup', async (e) => {
     if (s.activeMode !== 'extent' || !s.extent.dragStartCanvas) return;
-    const end = clientToCanvas(s, e.clientX, e.clientY);
-    const start = s.extent.dragStartCanvas;
-    // Clean up temp rect
+    const points = s.extent.points || [];
+    // Clean up temp shape
     if (s.extent.tempEl) { s.extent.tempEl.remove(); s.extent.tempEl = null; }
     s.extent.dragStartCanvas = null;
-    // Commit if big enough (at least 8px in either direction at current render scale)
-    if (Math.abs(end.x - start.x) < 8 || Math.abs(end.y - start.y) < 8) return;
-    await commitHighlight(s, start, end);
+    s.extent.points = null;
+    // Sanity: need at least 4 points and a meaningful bbox to be a closed polygon.
+    if (points.length < 4) return;
+    const bbox = polygonBbox(points);
+    if (bbox.w < 12 || bbox.h < 12) return;     // ignore tiny taps
+    await commitHighlightPolygon(s, points);
   });
 
   // --- Mouse wheel zoom (desktop) ---
@@ -859,7 +906,7 @@ function enterExtentMode(s) {
   exitAnyMode(s, { silent: true });
   s.activeMode = 'extent';
   s.stage.classList.add('is-extenting');
-  showModeBar('Drag across the plan to mark the area inspected · tap an existing area to remove it');
+  showModeBar('Trace around the area inspected with one finger · tap an existing area to remove it');
   const btn = document.getElementById('btn-extent');
   if (btn) btn.setAttribute('aria-pressed', 'true');
 }
@@ -875,42 +922,54 @@ function exitExtentMode(s) {
   if (btn) btn.setAttribute('aria-pressed', 'false');
 }
 
-function createTempExtentRect(s, startCanvas) {
-  const rect = document.createElementNS(SVG_NS, 'rect');
-  rect.setAttribute('class', 'highlight-rect highlight-rect--temp');
-  rect.setAttribute('x', startCanvas.x);
-  rect.setAttribute('y', startCanvas.y);
-  rect.setAttribute('width', '0');
-  rect.setAttribute('height', '0');
-  s.overlay.appendChild(rect);
-  return rect;
+/**
+ * Create the in-progress polygon element for the extent drag. We use SVG
+ * <polygon> so the shape closes visually as the user drags, even mid-stroke.
+ */
+function createTempExtentPolygon(s, startCanvas) {
+  const poly = document.createElementNS(SVG_NS, 'polygon');
+  poly.setAttribute('class', 'highlight-poly highlight-poly--temp');
+  poly.setAttribute('points', `${startCanvas.x},${startCanvas.y}`);
+  s.overlay.appendChild(poly);
+  return poly;
 }
 
-function updateTempExtentRect(rect, a, b) {
-  const x = Math.min(a.x, b.x);
-  const y = Math.min(a.y, b.y);
-  const w = Math.abs(b.x - a.x);
-  const h = Math.abs(b.y - a.y);
-  rect.setAttribute('x', x);
-  rect.setAttribute('y', y);
-  rect.setAttribute('width',  w);
-  rect.setAttribute('height', h);
+/**
+ * Append a point to the in-progress polygon. For performance and clean
+ * visuals we skip points that are very close to the previous one (sub-pixel
+ * jitter from a stationary finger). The DB stores a simplified version
+ * after pointerup via simplifyPolygon().
+ */
+function appendPolygonPoint(s, pt) {
+  if (!s.extent.tempEl) return;
+  const last = s.extent.points[s.extent.points.length - 1];
+  if (last && Math.hypot(pt.x - last.x, pt.y - last.y) < 2) return;  // dedupe ~< 2px
+  s.extent.points.push(pt);
+  const attr = s.extent.points.map((p) => `${p.x},${p.y}`).join(' ');
+  s.extent.tempEl.setAttribute('points', attr);
 }
 
-async function commitHighlight(s, aCanvas, bCanvas) {
+/**
+ * Convert a canvas-space polygon to PDF space, simplify, and store. The
+ * simplification keeps the visible silhouette while shrinking the JSON
+ * footprint — typical 100-point freehand outline drops to ~15-20 points.
+ */
+async function commitHighlightPolygon(s, canvasPoints) {
   const vp = s.viewport;
-  const [pdfAx, pdfAy] = vp.convertToPdfPoint(aCanvas.x, aCanvas.y);
-  const [pdfBx, pdfBy] = vp.convertToPdfPoint(bCanvas.x, bCanvas.y);
-  const pdfX = Math.min(pdfAx, pdfBx);
-  const pdfY = Math.min(pdfAy, pdfBy);
-  const pdfW = Math.abs(pdfBx - pdfAx);
-  const pdfH = Math.abs(pdfBy - pdfAy);
+  const pdfPoints = canvasPoints.map((p) => {
+    const [px, py] = vp.convertToPdfPoint(p.x, p.y);
+    return { x: px, y: py };
+  });
+
+  // Douglas–Peucker tolerance ≈ 1.5 PDF points (~0.5 mm at typical scales).
+  const simplified = simplifyPolygon(pdfPoints, 1.5);
+  if (simplified.length < 3) return;
 
   try {
     const hl = await addHighlight(s.inspection.id, {
       drawingId: s.drawing.id,
       page: 1,
-      pdfX, pdfY, pdfW, pdfH
+      pdfPoints: simplified
     });
     s.highlights.push(hl);
     renderMarkupOverlay(s);
@@ -918,6 +977,61 @@ async function commitHighlight(s, aCanvas, bCanvas) {
     console.error(err);
     toast('Couldn\u2019t save area', { kind: 'error' });
   }
+}
+
+/* ----- Polygon utilities ----- */
+
+function polygonBbox(points) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const p of points) {
+    if (p.x < minX) minX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y > maxY) maxY = p.y;
+  }
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+}
+
+/**
+ * Iterative Douglas–Peucker polyline simplification. Keeps the points that
+ * matter for the silhouette and drops noise. Always preserves first + last.
+ */
+function simplifyPolygon(points, tolerance) {
+  if (points.length <= 2) return points;
+  const sqTol = tolerance * tolerance;
+
+  const keep = new Array(points.length).fill(false);
+  keep[0] = true;
+  keep[points.length - 1] = true;
+
+  const stack = [[0, points.length - 1]];
+  while (stack.length) {
+    const [first, last] = stack.pop();
+    let maxDist = 0;
+    let index   = first;
+    for (let i = first + 1; i < last; i++) {
+      const d = sqDistToSegment(points[i], points[first], points[last]);
+      if (d > maxDist) { maxDist = d; index = i; }
+    }
+    if (maxDist > sqTol) {
+      keep[index] = true;
+      stack.push([first, index]);
+      stack.push([index, last]);
+    }
+  }
+  return points.filter((_, i) => keep[i]);
+}
+
+function sqDistToSegment(p, a, b) {
+  let x = a.x, y = a.y;
+  let dx = b.x - x, dy = b.y - y;
+  if (dx !== 0 || dy !== 0) {
+    const t = ((p.x - x) * dx + (p.y - y) * dy) / (dx * dx + dy * dy);
+    if (t > 1) { x = b.x; y = b.y; }
+    else if (t > 0) { x += dx * t; y += dy * t; }
+  }
+  dx = p.x - x; dy = p.y - y;
+  return dx * dx + dy * dy;
 }
 
 async function confirmAndDeleteHighlight(s, highlightId) {
@@ -965,6 +1079,22 @@ function renderMarkupOverlay(s) {
 
 function renderHighlight(s, layer, h) {
   const vp = s.viewport;
+
+  // New polygon shape (Phase 11+).
+  if (Array.isArray(h.pdfPoints) && h.pdfPoints.length >= 3) {
+    const ptsAttr = h.pdfPoints.map((p) => {
+      const [cx, cy] = vp.convertToViewportPoint(p.x, p.y);
+      return `${cx},${cy}`;
+    }).join(' ');
+    const poly = document.createElementNS(SVG_NS, 'polygon');
+    poly.setAttribute('class', 'highlight-poly');
+    poly.setAttribute('data-highlight-id', h.id);
+    poly.setAttribute('points', ptsAttr);
+    layer.appendChild(poly);
+    return;
+  }
+
+  // Legacy rectangle.
   const [cx0, cy0] = vp.convertToViewportPoint(h.pdfX, h.pdfY);
   const [cx1, cy1] = vp.convertToViewportPoint(h.pdfX + h.pdfW, h.pdfY + h.pdfH);
   const x = Math.min(cx0, cx1);

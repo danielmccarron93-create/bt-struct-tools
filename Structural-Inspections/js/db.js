@@ -1022,6 +1022,307 @@ export async function addDrawingsFromSource(projectId, { pdfBlob, filename, page
 }
 
 /**
+ * Start an inspection from a project's inspection-plan entry.
+ *
+ * Resolves drawingRefs (sheet numbers) → drawing ids, picks the lowest-page
+ * drawing as the primary, and creates the inspection. Marks the plan entry
+ * as 'in-progress' with the new inspection id linked back so the project
+ * view can show progress.
+ *
+ * @param {number} projectId
+ * @param {number} planIndex      — 0-based index into project.inspectionPlan
+ * @param {Object} [overrides]    — optional { date, inspectorName, etc. } to override defaults
+ * @returns {Promise<Object>} the created inspection record
+ */
+export async function startInspectionFromPlanEntry(projectId, planIndex, overrides = {}) {
+  const project = await db.projects.get(Number(projectId));
+  if (!project)                  throw new Error('Project not found');
+  if (!project.inspectionPlan)   throw new Error('Project has no inspection plan');
+  const entry = project.inspectionPlan[planIndex];
+  if (!entry)                    throw new Error(`Plan entry ${planIndex} not found`);
+
+  const allDrawings = await listDrawingsForProject(Number(projectId));
+  const sheetMap = new Map(allDrawings.map((d) => [(d.sheetNumber || '').toUpperCase(), d]));
+  const refSheets = (entry.drawingRefs || []).map((r) => (r.sheetNumber || '').toUpperCase()).filter(Boolean);
+  const matched = refSheets.map((s) => sheetMap.get(s)).filter(Boolean);
+
+  if (matched.length === 0) {
+    throw new Error(`Plan entry "${entry.title}" references no drawings that exist in this project. Pick drawings manually instead.`);
+  }
+  const primary = matched.sort((a, b) => (a.pageNumber || 0) - (b.pageNumber || 0))[0];
+
+  // Build the inspection record. Use existing createInspection() so the
+  // legacy fields (inspectionTypeKey, primaryDrawingId, etc.) all populate.
+  // Default inspectorName to the user-profile name so plan-driven inspections
+  // arrive on site already credited to whoever's logged into the device.
+  let defaultInspector = overrides.inspectorName || '';
+  if (!defaultInspector) {
+    try {
+      const profile = await getUserProfile();
+      defaultInspector = (profile?.name || '').trim();
+    } catch {}
+  }
+
+  const inspection = await createInspection({
+    projectId:         Number(projectId),
+    inspectionTypeKey: entry.type,
+    primaryDrawingId:  primary.id,
+    date:              overrides.date || new Date().toISOString().slice(0, 10),
+    inspectorName:     defaultInspector,
+    attendees:         overrides.attendees || '',
+    weather:           overrides.weather || '',
+    notes:             overrides.notes || ''
+  });
+
+  // Add the new multi-type / multi-drawing fields plus a back-link to the plan
+  // entry, then write the augmented record.
+  const augmented = {
+    types:        [entry.type],
+    drawingIds:   matched.map((d) => d.id),
+    fromPlanIndex: planIndex,
+    expectedChecklist: entry.expectedChecklist || [],
+    holdPoint:    !!entry.holdPoint,
+    defaultSeverity: entry.defaultSeverity || 'observation',
+    rationale:    entry.rationale || '',
+    stage:        entry.stage || '',
+    building:     entry.building || 'Main',
+    level:        entry.level || ''
+  };
+  await db.inspections.update(inspection.id, augmented);
+
+  // Mark the plan entry in-progress and link the inspection.
+  const planCopy = project.inspectionPlan.slice();
+  planCopy[planIndex] = {
+    ...entry,
+    status: 'in-progress',
+    completedInspectionId: inspection.id
+  };
+  await db.projects.update(Number(projectId), {
+    inspectionPlan: planCopy,
+    updatedAt: new Date().toISOString()
+  });
+
+  return { ...inspection, ...augmented };
+}
+
+/**
+ * Return the next-up pending plan entries across all projects, lowest sequence
+ * first. Each result includes the parent project so the home screen can show
+ * project context. Skipped and done entries are excluded; in-progress entries
+ * surface separately ahead of pending.
+ *
+ * @param {number} [limit=3]
+ */
+export async function listNextUpFromPlans(limit = 3) {
+  const projects = await db.projects.toArray();
+  const inProgress = [];
+  const pending = [];
+
+  for (const p of projects) {
+    if (!Array.isArray(p.inspectionPlan)) continue;
+    p.inspectionPlan.forEach((entry, index) => {
+      if (!entry) return;
+      // Auto-promote: if linked inspection is complete, treat as done (skip)
+      if (entry.completedInspectionId) {
+        // We don't fetch the linked inspection here for performance — the
+        // home screen tolerates briefly stale state. The proper update happens
+        // on inspection.status change in updateInspection().
+      }
+      const status = entry.status || 'pending';
+      if (status === 'done' || status === 'skipped') return;
+      const enriched = { project: p, entry, planIndex: index };
+      if (status === 'in-progress') inProgress.push(enriched);
+      else pending.push(enriched);
+    });
+  }
+
+  // Sort: in-progress first, then by sequence ascending, project updatedAt as tiebreak.
+  inProgress.sort((a, b) => (a.entry.sequence || 0) - (b.entry.sequence || 0));
+  pending.sort((a, b) => (a.entry.sequence || 0) - (b.entry.sequence || 0));
+
+  return [...inProgress, ...pending].slice(0, limit);
+}
+
+/**
+ * Mark a plan entry as skipped with a reason.
+ */
+export async function skipPlanEntry(projectId, planIndex, reason) {
+  const project = await db.projects.get(Number(projectId));
+  if (!project?.inspectionPlan) return;
+  const planCopy = project.inspectionPlan.slice();
+  if (!planCopy[planIndex]) return;
+  planCopy[planIndex] = {
+    ...planCopy[planIndex],
+    status: 'skipped',
+    skippedReason: String(reason || '').trim()
+  };
+  await db.projects.update(Number(projectId), {
+    inspectionPlan: planCopy,
+    updatedAt: new Date().toISOString()
+  });
+}
+
+/**
+ * Reset a plan entry back to pending (clears the link to the inspection,
+ * does NOT delete the inspection itself).
+ */
+export async function resetPlanEntry(projectId, planIndex) {
+  const project = await db.projects.get(Number(projectId));
+  if (!project?.inspectionPlan) return;
+  const planCopy = project.inspectionPlan.slice();
+  if (!planCopy[planIndex]) return;
+  planCopy[planIndex] = {
+    ...planCopy[planIndex],
+    status: 'pending',
+    completedInspectionId: null,
+    skippedReason: null
+  };
+  await db.projects.update(Number(projectId), {
+    inspectionPlan: planCopy,
+    updatedAt: new Date().toISOString()
+  });
+}
+
+/**
+ * Atomically create a project + pdfSources + drawings from a parsed Cowork
+ * bundle (see lib/btproject.js → readBundle()).
+ *
+ * The project gets the rich metadata from the project-map (general notes,
+ * inspection plan, classified drawings, warnings). Drawings get tags +
+ * applicableInspectionTypes so the multi-entry index lights up.
+ *
+ * @param {Object} parsed
+ * @param {Object} parsed.projectMap   — the validated project-map.json contents
+ * @param {Array}  parsed.pdfBlobs     — [{ filename, blob, sizeBytes }]
+ *
+ * @returns {Promise<{ id: number, project: Object, drawingCount: number }>}
+ */
+export async function createProjectFromBundle({ projectMap, pdfBlobs }) {
+  if (!projectMap || !Array.isArray(pdfBlobs)) {
+    throw new Error('createProjectFromBundle: missing projectMap or pdfBlobs');
+  }
+  const now = new Date().toISOString();
+  const p = projectMap.project || {};
+
+  // Build the project row. Required fields fall back to sensible defaults so
+  // the import never blocks on a missing job number for residential projects.
+  const projectRecord = {
+    jobNumber:       String(p.jobNumber || '').trim(),
+    name:            String(p.name || '').trim(),
+    client:          String(p.client || '').trim(),
+    siteAddress:     String(p.siteAddress || '').trim(),
+    notes:           '',                                 // engineer-editable later
+
+    // Extended metadata from the project-map (non-indexed).
+    builder:           p.builder            || null,
+    architect:         p.architect          || null,
+    engineerOfRecord:  p.engineerOfRecord   || null,
+    rpeqSignatory:     p.rpeqSignatory      || null,
+    discipline:        p.discipline         || 'structural',
+    issueStatus:       p.issueStatus        || null,
+
+    // Project map: read-only baseline (general notes, warnings, metadata).
+    projectMap: {
+      schemaVersion: projectMap.schemaVersion,
+      generatedAt:   projectMap.generatedAt   || now,
+      generator:     projectMap.generator     || 'cowork',
+      sourceFolder:  projectMap.sourceFolder  || '',
+      generalNotes:  projectMap.generalNotes  || {},
+      warnings:      projectMap.warnings      || [],
+      metadata:      projectMap.metadata      || {}
+    },
+
+    // Working copy of the inspection plan — mutable, tracks status.
+    inspectionPlan: (projectMap.inspectionPlan || []).map((entry) => ({
+      ...entry,
+      status: 'pending',
+      completedInspectionId: null,
+      skippedReason: null
+    })),
+
+    // Engineers — seeded empty here; the import flow can pre-fill from
+    // user.profile.name. Project view exposes a manage UI.
+    engineers: [],
+
+    createdAt: now,
+    updatedAt: now
+  };
+
+  if (!projectRecord.name) throw new Error('Bundle has no project name');
+
+  return db.transaction('rw',
+    [db.projects, db.pdfSources, db.drawings],
+    async () => {
+      const projectId = await db.projects.add(projectRecord);
+
+      // 1) Create one pdfSources row per source file. Map filename → sourceId.
+      const sourceIdByFilename = new Map();
+      for (const pdf of pdfBlobs) {
+        // Look up the declared page count from sourceFiles[] for accuracy.
+        const decl = (projectMap.sourceFiles || []).find((f) => f.filename === pdf.filename);
+        const pageCount = decl?.pageCount || 0;
+
+        const sourceId = await db.pdfSources.add({
+          blob:       pdf.blob,
+          filename:   pdf.filename,
+          sizeBytes:  pdf.sizeBytes || pdf.blob.size || 0,
+          pageCount,
+          uploadedAt: now
+        });
+        sourceIdByFilename.set(pdf.filename, sourceId);
+      }
+
+      // 2) Create one drawing row per project-map drawings entry.
+      let drawingCount = 0;
+      for (const d of (projectMap.drawings || [])) {
+        const sourceId = sourceIdByFilename.get(d.sourceFile);
+        if (!sourceId) {
+          // Validation should have caught this, but be defensive.
+          console.warn('Skipping drawing — sourceFile not found:', d.sourceFile);
+          continue;
+        }
+        const tags = Array.isArray(d.tags) ? d.tags.filter((t) => typeof t === 'string') : [];
+        const record = {
+          projectId,
+          sourcePdfId: sourceId,
+          pageNumber:  Number(d.pageNumber || 1),
+          sheetNumber: String(d.sheetNumber || '').trim(),
+          revision:    String(d.revision || '').trim(),
+          description: String(d.description || '').trim(),
+          scale:       d.scale || null,
+          drawnBy:     d.drawnBy || null,
+          checkedBy:   d.checkedBy || null,
+          approvedBy:  d.approvedBy || null,
+          filename:    d.sourceFile,
+
+          // The structured intelligence — drives smart features on the phone.
+          tags,                                             // *tags multi-entry index
+          applicableInspectionTypes: Array.isArray(d.applicableInspectionTypes)
+            ? d.applicableInspectionTypes : [],
+          elements:    Array.isArray(d.elements) ? d.elements : [],
+          confidence:  typeof d.confidence === 'number' ? d.confidence : null,
+
+          // Filled in lazily by the viewer.
+          pageWidth:   null,
+          pageHeight:  null,
+          rotation:    0,
+          calibration: null,
+          gridCalibration: null,
+
+          uploadedAt:  now,
+          updatedAt:   now
+        };
+        await db.drawings.add(record);
+        drawingCount += 1;
+      }
+
+      const created = await db.projects.get(projectId);
+      return { id: projectId, project: created, drawingCount };
+    }
+  );
+}
+
+/**
  * Fetch the Blob behind a drawing. Prefers the new pdfSources record but
  * falls back to a legacy drawing.pdfBlob (pre-v4 data that survived
  * migration without a source row for any reason).
@@ -1248,8 +1549,37 @@ export async function updateInspection(id, patch) {
   record.updatedAt = new Date().toISOString();
   await db.inspections.update(inspectionId, record);
   const i = await db.inspections.get(inspectionId);
-  if (i) await touchProject(i.projectId);
+  if (i) {
+    await touchProject(i.projectId);
+    // If status flipped to 'complete' and this inspection was started from a
+    // plan entry, mark the plan entry as 'done' so progress on the project
+    // view stays correct even after a refresh.
+    if (record.status === 'complete' && i.fromPlanIndex != null) {
+      await markPlanEntryDone(i.projectId, i.fromPlanIndex, inspectionId);
+    }
+  }
   return i;
+}
+
+/**
+ * Set a plan entry to 'done' linked to the inspection that completed it.
+ * No-op if the project has no plan or the index doesn't exist.
+ */
+async function markPlanEntryDone(projectId, planIndex, inspectionId) {
+  const project = await db.projects.get(Number(projectId));
+  if (!project?.inspectionPlan) return;
+  const planCopy = project.inspectionPlan.slice();
+  if (!planCopy[planIndex]) return;
+  if (planCopy[planIndex].status === 'done') return;
+  planCopy[planIndex] = {
+    ...planCopy[planIndex],
+    status: 'done',
+    completedInspectionId: inspectionId
+  };
+  await db.projects.update(Number(projectId), {
+    inspectionPlan: planCopy,
+    updatedAt: new Date().toISOString()
+  });
 }
 
 /**
@@ -1456,18 +1786,36 @@ export function listPhotosForItem(itemId) {
  *
  * data = { drawingId, page, pdfX, pdfY, pdfW, pdfH }
  */
+/**
+ * Save a highlighted area on a drawing.
+ *
+ * Two shapes supported:
+ *
+ *   • Polygon (Phase 11+, default for new captures):
+ *       data.pdfPoints = [{ x, y }, ...]   // PDF-space, closed implicitly
+ *
+ *   • Rectangle (legacy, still readable):
+ *       data.pdfX, data.pdfY, data.pdfW, data.pdfH
+ *
+ * The renderer handles both — rectangles are kept around so old inspections
+ * still display correctly.
+ */
 export async function addHighlight(inspectionId, data) {
   const now = new Date().toISOString();
   const record = {
     inspectionId: Number(inspectionId),
     drawingId:    Number(data.drawingId),
     page:         data.page || 1,
-    pdfX:         data.pdfX,
-    pdfY:         data.pdfY,
-    pdfW:         data.pdfW,
-    pdfH:         data.pdfH,
     createdAt:    now
   };
+  if (Array.isArray(data.pdfPoints) && data.pdfPoints.length >= 3) {
+    record.pdfPoints = data.pdfPoints.map((p) => ({ x: Number(p.x), y: Number(p.y) }));
+  } else {
+    record.pdfX = Number(data.pdfX);
+    record.pdfY = Number(data.pdfY);
+    record.pdfW = Number(data.pdfW);
+    record.pdfH = Number(data.pdfH);
+  }
   const id = await db.highlights.add(record);
   await db.inspections.update(record.inspectionId, { updatedAt: now });
   return { id, ...record };
@@ -1612,7 +1960,8 @@ const EMPTY_PROFILE = Object.freeze({
   role:    'Senior Structural Engineer',
   signatureBlob: null,   // optional: PNG / JPEG Blob of the engineer's signature
   anthropicKey:  '',     // optional: Claude API key for AI comment expansion (stored per-device only)
-  builderEmail:  ''      // optional: default builder email for close-out mailto links
+  builderEmail:  '',     // optional: default builder email for close-out mailto links
+  engineers:     []      // saved list of [{ name, rpeq? }] for the inspector dropdown — Phase 11
 });
 
 export async function getUserProfile() {
@@ -1640,8 +1989,54 @@ export async function saveUserProfile(profile) {
       : existing.anthropicKey,
     builderEmail: Object.prototype.hasOwnProperty.call(profile, 'builderEmail')
       ? String(profile.builderEmail || '').trim()
-      : existing.builderEmail
+      : existing.builderEmail,
+    engineers: Object.prototype.hasOwnProperty.call(profile, 'engineers')
+      ? sanitiseEngineers(profile.engineers)
+      : (existing.engineers || [])
   };
   await db.settings.put({ key: PROFILE_KEY, value });
   return value;
+}
+
+function sanitiseEngineers(arr) {
+  if (!Array.isArray(arr)) return [];
+  const seen = new Set();
+  const out = [];
+  for (const e of arr) {
+    const name = String(e?.name || '').trim();
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ name, rpeq: String(e?.rpeq || '').trim() });
+  }
+  return out;
+}
+
+/**
+ * Append an engineer to the saved list (no-op if already present by name).
+ * Returns the updated list.
+ */
+export async function addEngineer({ name, rpeq }) {
+  const profile = await getUserProfile();
+  const list = Array.isArray(profile.engineers) ? profile.engineers.slice() : [];
+  const cleanName = String(name || '').trim();
+  if (!cleanName) throw new Error('Engineer name is required');
+  if (list.some((e) => e.name.toLowerCase() === cleanName.toLowerCase())) {
+    return list;
+  }
+  list.push({ name: cleanName, rpeq: String(rpeq || '').trim() });
+  await saveUserProfile({ ...profile, engineers: list });
+  return list;
+}
+
+/**
+ * Remove an engineer by name (no-op if not present).
+ */
+export async function removeEngineer(name) {
+  const profile = await getUserProfile();
+  const list = (profile.engineers || []).filter((e) =>
+    e.name.toLowerCase() !== String(name || '').toLowerCase());
+  await saveUserProfile({ ...profile, engineers: list });
+  return list;
 }
