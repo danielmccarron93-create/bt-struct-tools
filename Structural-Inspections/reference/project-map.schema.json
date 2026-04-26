@@ -1,0 +1,226 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://blightanner.com.au/schemas/project-map.schema.json",
+  "title": "BT Inspect Project Map",
+  "description": "Schema for the project-map.json produced by Cowork and consumed by the BT Inspect PWA. Generated once per project; drives every smart feature on the phone without requiring API calls.",
+  "type": "object",
+  "required": ["schemaVersion", "generatedAt", "generator", "project", "sourceFiles", "drawings", "inspectionPlan"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "generatedAt":   { "type": "string", "format": "date-time" },
+    "generator":     { "type": "string", "description": "Tool identifier, e.g. 'cowork-btinspect/1.0'" },
+    "sourceFolder":  { "type": "string", "description": "Relative path from the Drawings/ root for traceability" },
+
+    "project": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "jobNumber":         { "type": ["string", "null"], "description": "e.g. 2023.0092 or B4069" },
+        "name":              { "type": "string" },
+        "client":            { "type": ["string", "null"] },
+        "siteAddress":       { "type": ["string", "null"] },
+        "discipline":        { "type": "string", "enum": ["structural", "civil", "combined"] },
+        "issueStatus":       { "type": ["string", "null"], "examples": ["TENDER ISSUE", "CONSTRUCTION ISSUE", "DA ISSUE", "PRELIMINARY"] },
+        "builder":           { "type": ["string", "null"] },
+        "architect":         { "type": ["string", "null"] },
+        "engineerOfRecord":  { "type": ["string", "null"], "description": "'Bligh Tanner' for BT-authored, or external engineer for reviewed sets" },
+        "rpeqSignatory":     { "type": ["string", "null"] }
+      }
+    },
+
+    "sourceFiles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["filename", "pageCount"],
+        "properties": {
+          "filename":   { "type": "string" },
+          "pageCount":  { "type": "integer", "minimum": 1 },
+          "sizeBytes":  { "type": ["integer", "null"] },
+          "sha256":     { "type": ["string", "null"] }
+        }
+      }
+    },
+
+    "drawings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["sourceFile", "pageNumber"],
+        "properties": {
+          "sourceFile":               { "type": "string", "description": "Matches a sourceFiles[].filename" },
+          "pageNumber":               { "type": "integer", "minimum": 1 },
+          "sheetNumber":              { "type": ["string", "null"] },
+          "revision":                 { "type": ["string", "null"] },
+          "revisionDate":             { "type": ["string", "null"] },
+          "description":              { "type": ["string", "null"] },
+          "scale":                    { "type": ["string", "null"] },
+          "drawnBy":                  { "type": ["string", "null"] },
+          "checkedBy":                { "type": ["string", "null"] },
+          "approvedBy":               { "type": ["string", "null"] },
+          "tags":                     {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^(kind|level|element|zone):[a-z0-9-]+$" },
+            "description": "Flat tag strings, e.g. 'kind:plan', 'level:ground', 'element:pad-footing'. Multi-entry indexable on the phone side."
+          },
+          "applicableInspectionTypes": {
+            "type": "array",
+            "items": { "type": "string", "description": "Inspection-type key from inspection-types.json" }
+          },
+          "elements": {
+            "type": "array",
+            "description": "Optional — populated by vision pass. Each is a structural element reference discovered on the drawing.",
+            "items": {
+              "type": "object",
+              "required": ["type"],
+              "properties": {
+                "type":  { "type": "string", "description": "e.g. pad-footing, concrete-column" },
+                "code":  { "type": ["string", "null"], "description": "e.g. PF-A, CC-B" },
+                "count": { "type": ["integer", "null"] },
+                "size":  { "type": ["string", "null"], "description": "e.g. '400x400', 'Ø500'" }
+              }
+            }
+          },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+        }
+      }
+    },
+
+    "generalNotes": {
+      "type": "object",
+      "properties": {
+        "designCodes":         { "type": "array", "items": { "type": "string" } },
+        "exposureClass":       { "type": ["string", "null"] },
+        "concreteCover": {
+          "type": "object",
+          "description": "Cover in mm per element type",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "bottom": { "type": ["number", "null"] },
+              "top":    { "type": ["number", "null"] },
+              "sides":  { "type": ["number", "null"] }
+            }
+          }
+        },
+        "concreteStrengths": {
+          "type": "object",
+          "description": "Strength in MPa per element type",
+          "properties": {
+            "unit": { "type": "string", "const": "MPa" }
+          },
+          "additionalProperties": { "type": ["number", "null"] }
+        },
+        "bearingCapacity": {
+          "type": "object",
+          "properties": {
+            "padFootings":     { "type": ["number", "null"] },
+            "stripFootings":   { "type": ["number", "null"] },
+            "boredPiers":      { "type": ["number", "null"] },
+            "shaftAdhesion":   { "type": ["number", "null"] },
+            "unit":            { "type": "string", "const": "kPa" }
+          }
+        },
+        "windRegion":       { "type": ["string", "null"] },
+        "windVelocity": {
+          "type": "object",
+          "properties": {
+            "ultimate":        { "type": ["number", "null"] },
+            "serviceability":  { "type": ["number", "null"] },
+            "unit":            { "type": "string", "const": "m/s" }
+          }
+        },
+        "terrainCategory":  { "type": ["number", "null"] },
+        "importanceLevel":  { "type": ["integer", "null"] },
+        "earthquake": {
+          "type": "object",
+          "properties": {
+            "hazardZ":      { "type": ["number", "null"] },
+            "category":     { "type": ["string", "null"] },
+            "probabilityKp":{ "type": ["number", "null"] },
+            "subSoilClass": { "type": ["string", "null"] }
+          }
+        },
+        "geotechReport": {
+          "type": "object",
+          "properties": {
+            "consultant":   { "type": ["string", "null"] },
+            "reportNumber": { "type": ["string", "null"] },
+            "date":         { "type": ["string", "null"] }
+          }
+        },
+        "certifiedByOthers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["element"],
+            "properties": {
+              "element":        { "type": "string" },
+              "responsibility": { "type": ["string", "null"] },
+              "noteRef":        { "type": ["string", "null"] },
+              "scope":          { "type": ["string", "null"] }
+            }
+          }
+        },
+        "specialNotes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Project-specific constraints worth surfacing on inspections"
+        }
+      }
+    },
+
+    "inspectionPlan": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["sequence", "type", "title"],
+        "properties": {
+          "sequence":          { "type": "integer", "minimum": 1, "description": "1-based expected build order" },
+          "type":              { "type": "string", "description": "Inspection-type key from inspection-types.json" },
+          "title":             { "type": "string" },
+          "building":          { "type": "string", "description": "For multi-building projects", "default": "Main" },
+          "level":             { "type": "string" },
+          "zone":              { "type": ["string", "null"] },
+          "drawingRefs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["sheetNumber"],
+              "properties": {
+                "sheetNumber":  { "type": "string" },
+                "reason":       { "type": "string" }
+              }
+            }
+          },
+          "rationale":         { "type": "string" },
+          "stage":             { "type": "string", "examples": ["pre-reinforcement", "pre-pour", "post-pour", "pre-cover", "post-install"] },
+          "holdPoint":         { "type": "boolean", "default": false },
+          "defaultSeverity":   { "type": "string", "enum": ["observation", "defect", "hold-point", "closed"], "default": "observation" },
+          "expectedChecklist": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "scopeNote":         { "type": ["string", "null"], "description": "e.g. 'BT engineering review, not BT-authored' for client-issued sets" }
+        }
+      }
+    },
+
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "llmModel":               { "type": "string" },
+        "processingDurationSec":  { "type": "number" },
+        "drawingsAnalysed":       { "type": "integer" },
+        "generalNotesPagesScanned": { "type": "array", "items": { "type": "integer" } },
+        "templatesDetected":      { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

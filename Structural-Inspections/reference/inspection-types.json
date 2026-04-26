@@ -1,0 +1,53 @@
+{
+  "_comment": "Canonical inspection-type catalogue for the BT Inspect app. Must match the seed in js/db.js. Cowork must not invent new keys — pick from this list.",
+  "_version": 1,
+  "types": [
+    { "key": "subgrade",                 "category": "Other",    "name": "Subgrade / Bearing Inspection",
+      "keywords": ["bearing", "subgrade", "founding level", "geotechnical"] },
+
+    { "key": "pad-footing-prepour",      "category": "Concrete", "name": "Pad Footing Pre-Pour Reinforcement",
+      "keywords": ["pad footing", "isolated footing", "pf"] },
+    { "key": "strip-footing-prepour",    "category": "Concrete", "name": "Strip Footing Pre-Pour Reinforcement",
+      "keywords": ["strip footing", "sf"] },
+    { "key": "raft-footing-prepour",     "category": "Concrete", "name": "Raft / Waffle Footing Pre-Pour Reinforcement",
+      "keywords": ["raft", "waffle"] },
+    { "key": "slab-prepour-ground",      "category": "Concrete", "name": "Slab on Ground Pre-Pour Reinforcement",
+      "keywords": ["slab on ground", "sog", "ground slab"] },
+    { "key": "slab-prepour-suspended",   "category": "Concrete", "name": "Suspended Slab Pre-Pour Reinforcement",
+      "keywords": ["suspended slab", "level 1 slab", "level 2 slab", "upper slab"] },
+    { "key": "beam-prepour",             "category": "Concrete", "name": "Beam Pre-Pour Reinforcement",
+      "keywords": ["beam reinforcement"] },
+    { "key": "column-prepour",           "category": "Concrete", "name": "Column Pre-Pour Reinforcement",
+      "keywords": ["column reinforcement", "concrete column"] },
+    { "key": "retaining-wall-prepour",   "category": "Concrete", "name": "Retaining Wall Pre-Pour Reinforcement",
+      "keywords": ["retaining wall", "rw"] },
+    { "key": "post-tension-strand",      "category": "Concrete", "name": "Post-Tension Strand Placement",
+      "keywords": ["post-tension", "pt strand"] },
+    { "key": "concrete-pour-witness",    "category": "Concrete", "name": "Concrete Pour Witness",
+      "keywords": ["pour witness", "concrete pour"] },
+
+    { "key": "blockwork-wall-reinf",     "category": "Masonry",  "name": "Blockwork Wall Vertical Reinforcement",
+      "keywords": ["blockwork", "vertical reinforcement", "masonry wall reinf"] },
+    { "key": "blockwork-core-fill",      "category": "Masonry",  "name": "Blockwork Core-Fill Pre-Pour",
+      "keywords": ["core fill", "grout fill"] },
+
+    { "key": "baseplate-anchor",         "category": "Steel",    "name": "Baseplate / Anchor Bolt Inspection",
+      "keywords": ["baseplate", "anchor bolt", "hold-down"] },
+    { "key": "steel-frame-erection",     "category": "Steel",    "name": "Steel Frame Erection",
+      "keywords": ["steel frame", "erection"] },
+    { "key": "steel-connection",         "category": "Steel",    "name": "Steel Connection Inspection",
+      "keywords": ["connection", "welded", "bolted"] },
+
+    { "key": "timber-framing",           "category": "Timber",   "name": "Timber Framing Inspection",
+      "keywords": ["timber frame", "stud wall"] },
+    { "key": "mass-timber-install",      "category": "Timber",   "name": "Mass Timber (GLT/CLT) Installation",
+      "keywords": ["glt", "clt", "mass timber", "clt panel"] },
+    { "key": "bracing",                  "category": "Timber",   "name": "Bracing Inspection",
+      "keywords": ["bracing"] },
+
+    { "key": "waterproofing-precover",   "category": "Other",    "name": "Waterproofing Pre-Cover",
+      "keywords": ["waterproofing", "membrane"] },
+    { "key": "adhoc",                    "category": "Other",    "name": "Ad-hoc (free form)",
+      "keywords": [] }
+  ]
+}
