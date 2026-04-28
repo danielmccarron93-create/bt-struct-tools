@@ -1,0 +1,2643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pad Footing Designer · AS 3600:2018</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style id="errOverlayCSS">
+#globalErrors { position: fixed; bottom: 12px; right: 12px; max-width: 480px; z-index: 9999; display: none; }
+#globalErrors.show { display: block; }
+.gerr { background: #c15a3e; color: #faf9f5; padding: 10px 14px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-top: 6px; font-family: 'Poppins', Arial, sans-serif; font-size: 12px; line-height: 1.4; }
+.gerr strong { display: block; font-weight: 700; font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; opacity: 0.9; margin-bottom: 4px; }
+.gerr code { font-family: 'JetBrains Mono', monospace; font-size: 11px; background: rgba(0,0,0,0.25); padding: 1px 5px; border-radius: 3px; }
+.gerr-close { float: right; cursor: pointer; opacity: 0.7; padding: 0 6px; }
+.gerr-close:hover { opacity: 1; }
+</style>
+<script>
+window.__earlyErrors = [];
+window.addEventListener('error', function(e){
+  window.__earlyErrors.push({ msg: e.message, src: e.filename, line: e.lineno, col: e.colno });
+});
+</script>
+<style>
+:root {
+  --cream:        #faf9f5;
+  --surface:      #ffffff;
+  --surface-2:    #f3f1e8;
+  --hairline:     rgba(20,20,19,0.06);
+  --hairline-2:   rgba(20,20,19,0.10);
+  --ink:          #141413;
+  --ink-2:        #4a4a47;
+  --mute:         #b0aea5;
+  --light-gray:   #e8e6dc;
+  --orange:       #d97757;
+  --orange-soft:  rgba(217,119,87,0.10);
+  --orange-mid:   rgba(217,119,87,0.20);
+  --green:        #788c5d;
+  --green-soft:   rgba(120,140,93,0.12);
+  --blue:         #6a9bcc;
+  --blue-soft:    rgba(106,155,204,0.10);
+  --rust:         #c15a3e;
+  --rust-soft:    rgba(193,90,62,0.10);
+  --soil:         #b8a378;
+  --soil-soft:    rgba(184,163,120,0.18);
+  --shadow-sm:    0 1px 2px rgba(20,20,19,0.04);
+  --shadow:       0 1px 2px rgba(20,20,19,0.04), 0 4px 12px rgba(20,20,19,0.04);
+  --shadow-lg:    0 1px 3px rgba(20,20,19,0.06), 0 12px 28px rgba(20,20,19,0.06);
+  --radius:       10px;
+  --radius-sm:    6px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height: 100%; }
+body {
+  font-family: 'Poppins', Arial, sans-serif;
+  background: var(--cream);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+button { font-family: inherit; cursor: pointer; }
+input, select { font-family: inherit; }
+
+/* ── TOP BAR ── */
+.topbar {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--hairline);
+}
+.brand-block { display: flex; align-items: center; gap: 14px; }
+.brand-mark {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--orange) 0%, #c5663b 100%);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--cream); font-weight: 700; font-size: 14px; letter-spacing: -0.5px;
+  box-shadow: var(--shadow-sm);
+}
+.brand-meta { display: flex; flex-direction: column; line-height: 1.1; }
+.brand-name { font-size: 13px; font-weight: 600; letter-spacing: -0.1px; }
+.brand-tag  { font-size: 10.5px; color: var(--mute); font-weight: 500; }
+
+.project-name {
+  flex: 1;
+  max-width: 380px;
+  margin: 0 24px;
+  padding: 8px 14px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  text-align: center;
+  font-family: 'Lora', Georgia, serif;
+  font-style: italic;
+}
+.project-name:hover, .project-name:focus {
+  background: var(--surface-2);
+  outline: none;
+  border-color: var(--hairline);
+  font-style: normal;
+}
+.project-name::placeholder { color: var(--mute); }
+
+.actions { display: flex; gap: 8px; }
+.btn {
+  padding: 8px 14px;
+  border: 1px solid var(--hairline-2);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+}
+.btn:hover { background: var(--surface-2); border-color: var(--mute); }
+.btn.primary {
+  background: var(--orange);
+  color: var(--cream);
+  border-color: var(--orange);
+}
+.btn.primary:hover { background: #c5663b; border-color: #c5663b; }
+.btn svg { width: 14px; height: 14px; }
+
+/* ── LAYOUT ── */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(360px, 36%) 1fr;
+  height: calc(100vh - 56px);
+  gap: 0;
+}
+.inputs-pane {
+  background: var(--cream);
+  border-right: 1px solid var(--hairline);
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.outputs-pane {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: 16px;
+  gap: 12px;
+  min-height: 0;
+}
+
+/* ── INPUT CARDS ── */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+}
+.card-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--mute);
+  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.card-title::before {
+  content: '';
+  width: 4px; height: 4px;
+  background: var(--orange);
+  border-radius: 50%;
+}
+.row { display: flex; gap: 8px; align-items: flex-end; }
+.row + .row { margin-top: 10px; }
+
+.field {
+  flex: 1;
+  display: flex; flex-direction: column;
+}
+.field label {
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--mute);
+  margin-bottom: 4px;
+}
+.field input[type="number"], .field select, .field input[type="text"] {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--hairline-2);
+  background: var(--cream);
+  color: var(--ink);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  transition: all 0.12s;
+}
+.field input[type="number"]:focus, .field select:focus, .field input[type="text"]:focus {
+  border-color: var(--orange);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px var(--orange-soft);
+}
+.field input[type="number"]:hover, .field select:hover, .field input[type="text"]:hover {
+  border-color: var(--mute);
+}
+
+/* ── CHIP GROUPS ── */
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip {
+  padding: 6px 11px;
+  border: 1px solid var(--hairline-2);
+  background: var(--cream);
+  color: var(--ink-2);
+  font-size: 11.5px;
+  font-weight: 500;
+  border-radius: 999px;
+  transition: all 0.12s;
+  font-variant-numeric: tabular-nums;
+}
+.chip:hover { border-color: var(--mute); background: var(--surface); }
+.chip.active {
+  background: var(--ink);
+  color: var(--cream);
+  border-color: var(--ink);
+}
+.chip.shape { padding: 7px 13px; font-size: 11px; }
+
+/* ── HERO STRIP ── */
+.hero-strip {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow);
+  padding: 16px 20px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 22px;
+  align-items: center;
+  min-height: 110px;
+}
+.util-ring-wrap {
+  position: relative;
+  width: 84px; height: 84px;
+}
+.util-ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.util-ring-bg { fill: none; stroke: var(--light-gray); stroke-width: 8; }
+.util-ring-fg { fill: none; stroke: var(--orange); stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 0.6s cubic-bezier(.2,.7,.3,1), stroke 0.3s; }
+.util-ring-text {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  line-height: 1;
+}
+.util-num {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.4px;
+}
+.util-pct { font-size: 9px; color: var(--mute); font-weight: 600; letter-spacing: 1px; margin-top: 2px; }
+
+.hero-info { display: flex; flex-direction: column; gap: 4px; }
+.hero-status {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  width: fit-content;
+}
+.hero-status.pass { background: var(--green-soft); color: var(--green); }
+.hero-status.fail { background: var(--rust-soft); color: var(--rust); }
+.hero-status.warn { background: var(--orange-soft); color: var(--orange); }
+.hero-status::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+}
+.hero-headline {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1.3;
+}
+.hero-headline strong { font-weight: 600; color: var(--orange); }
+.hero-meta {
+  font-size: 11.5px;
+  color: var(--mute);
+  font-variant-numeric: tabular-nums;
+  display: flex; gap: 14px;
+  flex-wrap: wrap;
+}
+.hero-meta span strong { color: var(--ink-2); font-weight: 600; }
+
+/* ── VISUALS BAND ── */
+.visuals {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  min-height: 0;
+}
+.visual {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+.visual-head {
+  padding: 10px 14px 8px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--hairline);
+}
+.visual-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.tabs { display: flex; gap: 2px; }
+.tab {
+  padding: 4px 9px;
+  font-size: 10.5px;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  color: var(--mute);
+  border-radius: var(--radius-sm);
+  transition: all 0.12s;
+  letter-spacing: 0.2px;
+}
+.tab:hover { color: var(--ink); background: var(--surface-2); }
+.tab.active { color: var(--ink); background: var(--surface-2); }
+.visual-body { flex: 1; min-height: 0; position: relative; }
+.visual-canvas { position: absolute; inset: 0; }
+
+/* ── CHECK GRID ── */
+.checks {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.check-tile {
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-sm);
+  padding: 10px 12px;
+  display: flex; flex-direction: column;
+  gap: 4px;
+  transition: all 0.15s;
+  cursor: pointer;
+}
+.check-tile:hover { border-color: var(--hairline-2); box-shadow: var(--shadow); }
+.check-tile-head {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.check-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.check-status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 3px var(--green-soft);
+}
+.check-status-dot.fail { background: var(--rust); box-shadow: 0 0 0 3px var(--rust-soft); }
+.check-status-dot.warn { background: var(--orange); box-shadow: 0 0 0 3px var(--orange-soft); }
+.check-status-dot.na   { background: var(--mute); box-shadow: 0 0 0 3px rgba(176,174,165,0.18); }
+.check-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.3px;
+}
+.check-detail {
+  font-size: 10.5px;
+  color: var(--mute);
+  font-variant-numeric: tabular-nums;
+}
+.check-bar {
+  height: 3px;
+  background: var(--light-gray);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+.check-bar-fill {
+  height: 100%;
+  background: var(--green);
+  border-radius: 2px;
+  transition: width 0.4s ease-out, background 0.3s;
+}
+.check-tile.fail .check-bar-fill { background: var(--rust); }
+.check-tile.warn .check-bar-fill { background: var(--orange); }
+
+/* ── COMBO TABLE ── */
+.combo-table-wrap { margin-top: 6px; overflow-x: auto; }
+.combo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.combo-table th, .combo-table td {
+  text-align: right;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--hairline);
+}
+.combo-table th {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--mute);
+  background: transparent;
+}
+.combo-table td:first-child, .combo-table th:first-child {
+  text-align: left;
+  font-weight: 500;
+}
+.combo-table tr.governing td {
+  background: var(--orange-soft);
+  font-weight: 600;
+}
+.combo-table tr.governing td:first-child::before {
+  content: '◆ ';
+  color: var(--orange);
+}
+.combo-table tr.service td:first-child::after {
+  content: ' SLS';
+  font-size: 8.5px;
+  color: var(--blue);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* ── INPUT GRID HELPERS ── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; }
+
+.help {
+  font-size: 10.5px;
+  color: var(--mute);
+  font-style: italic;
+  margin-top: 4px;
+  font-family: 'Lora', Georgia, serif;
+}
+.help strong { color: var(--ink-2); font-style: normal; font-weight: 600; }
+
+.assumption-pill {
+  display: inline-block;
+  padding: 1px 7px;
+  background: var(--blue-soft);
+  color: var(--blue);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 500;
+  margin-left: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* scrollbars */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--hairline-2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--mute); }
+
+/* PDF print container (hidden) */
+#pdfRoot {
+  position: fixed; left: -10000px; top: 0;
+  width: 794px;
+  background: white;
+  color: #141413;
+  font-family: 'Lora', Georgia, serif;
+}
+.pdf-page {
+  width: 794px;
+  min-height: 1123px;
+  padding: 60px 60px 80px 60px;
+  background: white;
+  page-break-after: always;
+  position: relative;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.pdf-header {
+  border-bottom: 2px solid #141413;
+  padding-bottom: 12px;
+  margin-bottom: 18px;
+  display: flex; justify-content: space-between; align-items: flex-start;
+}
+.pdf-header-l { display: flex; align-items: center; gap: 12px; }
+.pdf-mark {
+  width: 36px; height: 36px;
+  background: #d97757; color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Poppins'; font-weight: 800; border-radius: 8px;
+}
+.pdf-header h1 { font-family: 'Poppins'; font-size: 17px; font-weight: 700; margin-bottom: 2px; }
+.pdf-header .sub { font-size: 10px; color: #777; font-family: 'Poppins'; }
+.pdf-header-r { font-size: 10px; color: #444; text-align: right; line-height: 1.4; font-family: 'Poppins'; }
+.pdf-title { font-family: 'Poppins'; font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.pdf-subtitle { font-family: 'Lora'; font-style: italic; color: #555; margin-bottom: 18px; }
+.pdf-h2 { font-family: 'Poppins'; font-size: 14px; font-weight: 600; color: #141413; margin: 18px 0 8px; padding-bottom: 4px; border-bottom: 1px solid #d97757; }
+.pdf-h3 { font-family: 'Poppins'; font-size: 12px; font-weight: 600; color: #141413; margin: 12px 0 4px; }
+.pdf-narrative { font-family: 'Lora'; font-size: 11.5px; line-height: 1.55; }
+.pdf-narrative p { margin-bottom: 8px; }
+.pdf-narrative .as-ref { color: #d97757; font-style: italic; font-size: 10.5px; }
+.pdf-eq {
+  background: #faf9f5;
+  border-left: 3px solid #d97757;
+  padding: 8px 12px;
+  margin: 8px 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.pdf-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-family: 'Poppins'; font-size: 10.5px; }
+.pdf-table th { background: #141413; color: white; font-weight: 600; text-align: left; padding: 6px 8px; }
+.pdf-table td { padding: 5px 8px; border-bottom: 1px solid #e8e6dc; font-variant-numeric: tabular-nums; }
+.pdf-table tr.gov td { background: #fef0e9; font-weight: 600; }
+.pdf-pass { color: #788c5d; font-weight: 600; }
+.pdf-fail { color: #c15a3e; font-weight: 600; }
+.pdf-warn { color: #d97757; font-weight: 600; }
+.pdf-footer {
+  position: absolute; bottom: 30px; left: 60px; right: 60px;
+  border-top: 1px solid #e8e6dc;
+  padding-top: 8px;
+  font-family: 'Poppins'; font-size: 9px; color: #999;
+  display: flex; justify-content: space-between;
+}
+
+/* tooltip / detail expand for check tiles */
+.check-detail-panel {
+  display: none;
+  margin-top: 6px;
+  padding: 8px 10px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  font-size: 10.5px;
+  font-family: 'Lora', Georgia, serif;
+  color: var(--ink-2);
+  line-height: 1.45;
+}
+.check-tile.expanded .check-detail-panel { display: block; }
+
+/* notification banner */
+.banner {
+  background: var(--blue-soft);
+  border: 1px solid var(--blue);
+  color: var(--blue);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 11.5px;
+  margin-bottom: 8px;
+  font-family: 'Lora', Georgia, serif;
+  display: none;
+}
+
+/* small inline value tag */
+.tag {
+  display: inline-block;
+  padding: 2px 6px;
+  background: var(--surface-2);
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+  margin-left: 4px;
+}
+.tag.green { background: var(--green-soft); color: var(--green); }
+.tag.orange { background: var(--orange-soft); color: var(--orange); }
+.tag.rust { background: var(--rust-soft); color: var(--rust); }
+.tag.blue { background: var(--blue-soft); color: var(--blue); }
+
+/* responsiveness */
+@media (max-width: 1280px) {
+  .layout { grid-template-columns: 380px 1fr; }
+  .visuals { grid-template-columns: 1fr; }
+  .checks { grid-template-columns: repeat(4, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- ─────────────────────────  TOP BAR  ───────────────────────── -->
+<header class="topbar">
+  <div class="brand-block">
+    <div class="brand-mark">BT</div>
+    <div class="brand-meta">
+      <div class="brand-name">Pad Footing Designer</div>
+      <div class="brand-tag">AS 3600:2018 · Bligh Tanner</div>
+    </div>
+  </div>
+  <input class="project-name" id="projectName" placeholder="Untitled footing · click to name…" value="">
+  <div class="actions">
+    <button class="btn" id="btnLoadExample">Example 6.2</button>
+    <button class="btn" id="btnSaveJSON">Save</button>
+    <button class="btn" id="btnLoadJSON">Load</button>
+    <button class="btn primary" id="btnPrintPDF">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"/><rect x="6" y="14" width="12" height="8"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/></svg>
+      Print Calculations
+    </button>
+    <input type="file" id="fileLoader" accept=".json" style="display:none">
+  </div>
+</header>
+
+<!-- ─────────────────────────  MAIN LAYOUT  ───────────────────────── -->
+<div class="layout">
+
+  <!-- INPUTS PANE -->
+  <aside class="inputs-pane" id="inputsPane">
+
+    <!-- COLUMN CARD -->
+    <div class="card">
+      <div class="card-title">Column</div>
+      <div class="row">
+        <div class="field" style="flex: 0 0 auto;">
+          <label>Shape</label>
+          <div class="chips" id="colShapeChips">
+            <button class="chip shape active" data-shape="square">Square</button>
+            <button class="chip shape" data-shape="rect">Rectangular</button>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field"><label>cx (mm)</label><input type="number" id="inCx" value="400" step="25"></div>
+        <div class="field" id="cyWrap" style="display:none;"><label>cy (mm)</label><input type="number" id="inCy" value="400" step="25"></div>
+      </div>
+    </div>
+
+    <!-- FOOTING CARD -->
+    <div class="card">
+      <div class="card-title">Footing</div>
+      <div class="row">
+        <div class="field" style="flex: 0 0 auto;">
+          <label>Plan</label>
+          <div class="chips" id="ftgShapeChips">
+            <button class="chip shape active" data-shape="square">Square</button>
+            <button class="chip shape" data-shape="rect">Rectangular</button>
+          </div>
+        </div>
+        <div class="field" style="flex: 0 0 auto;">
+          <label>Sizing</label>
+          <div class="chips" id="sizingChips">
+            <button class="chip active" data-sizing="auto">Auto</button>
+            <button class="chip" data-sizing="manual">Manual</button>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field"><label>L — length (mm)</label><input type="number" id="inL" value="1600" step="50"></div>
+        <div class="field" id="WWrap" style="display:none;"><label>W — width (mm)</label><input type="number" id="inW" value="1600" step="50"></div>
+        <div class="field"><label>D — depth (mm)</label><input type="number" id="inD" value="350" step="25"></div>
+      </div>
+      <div class="help" id="ftgHelp">Self-weight: <strong id="ftgSW">9</strong> kPa · q<sub>a,net</sub> = <strong id="ftgQaNet">241</strong> kPa</div>
+    </div>
+
+    <!-- MATERIALS CARD -->
+    <div class="card">
+      <div class="card-title">Materials</div>
+      <div class="row">
+        <div class="field"><label>fc′ (MPa)</label>
+          <div class="chips" id="fcChips">
+            <button class="chip active" data-fc="25">25</button>
+            <button class="chip" data-fc="32">32</button>
+            <button class="chip" data-fc="40">40</button>
+            <button class="chip" data-fc="50">50</button>
+            <button class="chip" data-fc="65">65</button>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field"><label>fsy (MPa)</label>
+          <select id="inFsy"><option value="500">500 (N grade)</option></select>
+        </div>
+        <div class="field"><label>Cover (mm)</label><input type="number" id="inCover" value="75" step="5"></div>
+        <div class="field"><label>Exposure</label>
+          <select id="inExposure">
+            <option value="A1">A1 (interior, dry)</option>
+            <option value="A2">A2 (interior, mild)</option>
+            <option value="B1" selected>B1 (above ground, exterior)</option>
+            <option value="B2">B2 (coastal &gt;1 km)</option>
+            <option value="C1">C1 (saline near coast)</option>
+            <option value="C2">C2 (saltwater splash)</option>
+            <option value="U">U (special — buried/aggressive)</option>
+          </select>
+        </div>
+      </div>
+      <div class="help">Required cover: <strong id="reqCover">75</strong> mm (75 typ. against ground without blinding)</div>
+    </div>
+
+    <!-- REINFORCEMENT CARD -->
+    <div class="card">
+      <div class="card-title">Bottom Reinforcement</div>
+      <div class="row">
+        <div class="field"><label>Bar size</label>
+          <div class="chips" id="barChips">
+            <button class="chip" data-bar="12">N12</button>
+            <button class="chip active" data-bar="16">N16</button>
+            <button class="chip" data-bar="20">N20</button>
+            <button class="chip" data-bar="24">N24</button>
+            <button class="chip" data-bar="28">N28</button>
+            <button class="chip" data-bar="32">N32</button>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Spacing X (mm)</label><input type="number" id="inSpaceX" value="300" step="25"></div>
+        <div class="field"><label>Spacing Y (mm)</label><input type="number" id="inSpaceY" value="300" step="25"></div>
+        <div class="field"><label>Layout</label>
+          <select id="inLayout"><option value="auto">Auto by direction</option><option value="match">Match each way</option></select>
+        </div>
+      </div>
+      <div class="help">A<sub>st,x</sub> = <strong id="astX">670</strong> mm²/m · A<sub>st,y</sub> = <strong id="astY">670</strong> mm²/m · ρ<sub>x</sub> = <strong id="rhoX">0.26</strong>%</div>
+    </div>
+
+    <!-- SOIL CARD -->
+    <div class="card">
+      <div class="card-title">Foundation Material</div>
+      <div class="row">
+        <div class="field"><label>Description</label>
+          <select id="inSoil">
+            <option value="100">Soft clay (50–100 kPa)</option>
+            <option value="200">Medium clay (100–200 kPa)</option>
+            <option value="250" selected>Stiff clay (200–400 kPa)</option>
+            <option value="200_sand">Medium dense sand (100–300 kPa)</option>
+            <option value="600">Dense gravel (400–800 kPa)</option>
+            <option value="800">Shale (500–800 kPa)</option>
+            <option value="1500">Sandstone (1000–2000 kPa)</option>
+            <option value="custom">Custom — enter q<sub>a</sub></option>
+          </select>
+        </div>
+        <div class="field"><label>q<sub>a</sub> (kPa)</label><input type="number" id="inQa" value="250" step="25"></div>
+      </div>
+      <div class="help">Typical for stiff clay (Table 6.1, RCB 3e). Use site-specific geotechnical report value in practice.</div>
+    </div>
+
+    <!-- LOADS CARD -->
+    <div class="card">
+      <div class="card-title">Loads (Service / Unfactored)</div>
+      <div class="row">
+        <div class="field"><label>N<sub>G</sub> (kN)</label><input type="number" id="inNG" value="400" step="10"></div>
+        <div class="field"><label>N<sub>Q</sub> (kN)</label><input type="number" id="inNQ" value="200" step="10"></div>
+        <div class="field"><label>N<sub>Wu</sub> (kN)</label><input type="number" id="inNW" value="0" step="10"></div>
+        <div class="field"><label>N<sub>Eu</sub> (kN)</label><input type="number" id="inNE" value="0" step="10"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>M<sub>Gx</sub> (kNm)</label><input type="number" id="inMGx" value="0" step="5"></div>
+        <div class="field"><label>M<sub>Gy</sub> (kNm)</label><input type="number" id="inMGy" value="0" step="5"></div>
+        <div class="field"><label>M<sub>Qx</sub> (kNm)</label><input type="number" id="inMQx" value="0" step="5"></div>
+        <div class="field"><label>M<sub>Qy</sub> (kNm)</label><input type="number" id="inMQy" value="0" step="5"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>M<sub>Wx</sub> (kNm)</label><input type="number" id="inMWx" value="0" step="5"></div>
+        <div class="field"><label>M<sub>Wy</sub> (kNm)</label><input type="number" id="inMWy" value="0" step="5"></div>
+        <div class="field"><label>ψ<sub>c</sub></label><input type="number" id="inPsiC" value="0.4" step="0.1" min="0" max="1"></div>
+        <div class="field"><label>ψ<sub>l</sub></label><input type="number" id="inPsiL" value="0.4" step="0.1" min="0" max="1"></div>
+      </div>
+      <div class="combo-table-wrap">
+        <table class="combo-table" id="comboTable">
+          <thead><tr><th>Combo</th><th>N (kN)</th><th>Mx (kNm)</th><th>My (kNm)</th><th>q<sub>max</sub></th><th>Util</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- OUTPUTS PANE -->
+  <main class="outputs-pane">
+
+    <!-- HERO STRIP -->
+    <div class="hero-strip">
+      <div class="util-ring-wrap">
+        <svg viewBox="0 0 100 100">
+          <circle class="util-ring-bg" cx="50" cy="50" r="42"/>
+          <circle class="util-ring-fg" id="utilRingFg" cx="50" cy="50" r="42"
+                  stroke-dasharray="263.9" stroke-dashoffset="263.9"/>
+        </svg>
+        <div class="util-ring-text">
+          <div class="util-num" id="utilNum">—</div>
+          <div class="util-pct">UTIL</div>
+        </div>
+      </div>
+      <div class="hero-info">
+        <div class="hero-status pass" id="heroStatus">computing…</div>
+        <div class="hero-headline" id="heroHeadline">Footing adequate for governing combination</div>
+        <div class="hero-meta" id="heroMeta">
+          <span><strong>Combo:</strong> 1.2G + 1.5Q</span>
+          <span><strong>q*:</strong> 305 kPa</span>
+          <span><strong>M*:</strong> 66 kNm/m</span>
+          <span><strong>V*<sub>punch</sub>:</strong> 650 kN</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- VISUALS -->
+    <div class="visuals">
+
+      <!-- GEOMETRY -->
+      <div class="visual">
+        <div class="visual-head">
+          <div class="visual-title">Geometry</div>
+          <div class="tabs" id="geomTabs">
+            <button class="tab active" data-view="3d">3D</button>
+            <button class="tab" data-view="plan">Plan</button>
+            <button class="tab" data-view="section">Section</button>
+          </div>
+        </div>
+        <div class="visual-body">
+          <div class="visual-canvas" id="canvas3d"></div>
+          <canvas class="visual-canvas" id="canvasPlan" style="display:none;"></canvas>
+          <canvas class="visual-canvas" id="canvasSection" style="display:none;"></canvas>
+        </div>
+      </div>
+
+      <!-- PRESSURE / CAPACITY -->
+      <div class="visual">
+        <div class="visual-head">
+          <div class="visual-title">Soil Pressure & Capacity</div>
+          <div class="tabs" id="chartTabs">
+            <button class="tab active" data-chart="pressure">Pressure</button>
+            <button class="tab" data-chart="moment">Moment</button>
+            <button class="tab" data-chart="shear">Shear</button>
+          </div>
+        </div>
+        <div class="visual-body">
+          <div class="visual-canvas" style="padding: 10px;">
+            <canvas id="chartCanvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CHECKS GRID -->
+    <div class="checks" id="checksGrid">
+      <div class="check-tile" data-check="bearing">
+        <div class="check-tile-head"><span class="check-label">Bearing</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">q<sub>max</sub> / q<sub>a,net</sub></div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="ecc">
+        <div class="check-tile-head"><span class="check-label">Eccentricity</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">e / (L/6)</div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="bend-x">
+        <div class="check-tile-head"><span class="check-label">Bending X</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">M*<sub>x</sub> / φM<sub>ux</sub></div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="bend-y">
+        <div class="check-tile-head"><span class="check-label">Bending Y</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">M*<sub>y</sub> / φM<sub>uy</sub></div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="shear-x">
+        <div class="check-tile-head"><span class="check-label">One-Way Shear</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">V*<sub>x</sub> / φV<sub>uc,x</sub></div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="punch">
+        <div class="check-tile-head"><span class="check-label">Punching Shear</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">V*<sub>p</sub> / φV<sub>uo</sub></div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="reo">
+        <div class="check-tile-head"><span class="check-label">Min Steel</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">ρ ≥ ρ<sub>min</sub></div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="anchor">
+        <div class="check-tile-head"><span class="check-label">Anchorage</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">L<sub>sy.t</sub> / available</div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+    </div>
+
+  </main>
+
+</div>
+
+<!-- Hidden PDF root -->
+<div id="pdfRoot"></div>
+
+<!-- Error overlay -->
+<div id="globalErrors"></div>
+
+<script>
+'use strict';
+
+// ════════════════════════════════════════════════════════════════════════
+// PAD FOOTING ENGINE — AS 3600:2018
+// Reference: Reinforced Concrete Basics 3e (2018), Chapter 6
+// ════════════════════════════════════════════════════════════════════════
+
+const ENGINE_VERSION = '1.0.0';
+
+const BAR_AREAS = {12:113.1, 16:201.1, 20:314.2, 24:452.4, 28:615.8, 32:804.2, 36:1017.9, 40:1256.6};
+const GAMMA_C = 25;       // kN/m³ — RC unit weight
+const E_S = 200000;       // MPa — steel modulus
+const FSY = 500;          // MPa — N grade reo
+const PHI_BEND = 0.85;    // simplified for under-reinforced flexure (refined per ku)
+const PHI_SHEAR = 0.7;    // φ for shear (Table 2.2.2)
+
+// ── Concrete stress-block parameters per AS 3600 Cl 8.1.3 ──
+function alpha2(fc) { return Math.max(0.67, Math.min(0.85, 0.85 - 0.0015*fc)); }
+function gammaCo(fc) { return Math.max(0.67, Math.min(0.85, 0.97 - 0.0025*fc)); }
+function fctf(fc) { return 0.6 * Math.sqrt(fc); }     // characteristic flexural tensile
+function fct(fc)  { return 0.36 * Math.sqrt(fc); }    // characteristic principal tensile
+
+// ── Capacity reduction factor for flexure with axial = 0 ──
+function phiFlex(ku) {
+  // Cl 2.2.2 Table 2.2.2: φ = 1.24 − 13ku/12, bounded [0.65, 0.85]
+  return Math.max(0.65, Math.min(0.85, 1.24 - 13*ku/12));
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// BEARING PRESSURE
+// ════════════════════════════════════════════════════════════════════════
+//
+// Inputs: N (kN), Mx (kNm about y-axis → varies q along L),
+//         My (kNm about x-axis → varies q along W),
+//         L, W in m
+//
+// Returns:
+//   case: 'full' | 'partial-x' | 'partial-y' | 'meyerhof' | 'overturn'
+//   qmax, qmin (kPa), corner pressures, ex, ey
+//
+function bearingPressure(N, Mx, My, L, W) {
+  if (N <= 0) return { case: 'overturn', qmax: 0, qmin: 0, ex: 0, ey: 0 };
+  const ex = Math.abs(Mx) / N;     // m
+  const ey = Math.abs(My) / N;
+  const exLim = L / 6;
+  const eyLim = W / 6;
+  const A = L * W;
+  const q_avg = N / A;             // kPa = kN/m²
+
+  // Case 1: both within middle third → trapezoidal/biaxial linear
+  if (ex <= exLim && ey <= eyLim) {
+    // Four corner pressures: q = N/A ± 6Mx/(W·L²) ± 6My/(L·W²)
+    const dx = 6 * Math.abs(Mx) / (W * L * L);   // half-range due to Mx
+    const dy = 6 * Math.abs(My) / (L * W * W);
+    const qmax = q_avg + dx + dy;
+    const qmin = q_avg - dx - dy;
+    return {
+      case: 'full',
+      qmax, qmin,
+      q_avg, dx, dy,
+      ex, ey,
+      // Corner pressures clockwise from +x,+y
+      qcorners: { pp: q_avg+dx+dy, pn: q_avg+dx-dy, nn: q_avg-dx-dy, np: q_avg-dx+dy },
+    };
+  }
+
+  // Case 2: uniaxial moment with e > L/6 → triangular
+  if (My === 0 || ey === 0) {
+    const a = 3 * (L/2 - ex);
+    if (a <= 0) return { case: 'overturn', qmax: Infinity, qmin: 0, ex, ey };
+    const qmax = 2 * N / (W * a);
+    return { case: 'partial-x', qmax, qmin: 0, a, ex, ey };
+  }
+  if (Mx === 0 || ex === 0) {
+    const a = 3 * (W/2 - ey);
+    if (a <= 0) return { case: 'overturn', qmax: Infinity, qmin: 0, ex, ey };
+    const qmax = 2 * N / (L * a);
+    return { case: 'partial-y', qmax, qmin: 0, a, ex, ey };
+  }
+
+  // Case 3: biaxial with one or both eccentricities outside middle third → Meyerhof effective area
+  const Le = L - 2*ex;
+  const We = W - 2*ey;
+  if (Le <= 0 || We <= 0) return { case: 'overturn', qmax: Infinity, qmin: 0, ex, ey };
+  const qmax = N / (Le * We);
+  return { case: 'meyerhof', qmax, qmin: 0, Le, We, ex, ey };
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// FLEXURAL DESIGN
+// ════════════════════════════════════════════════════════════════════════
+
+// Required steel area for a singly-reinforced rectangular section
+// M* in kNm, b in mm, d in mm, fc, fsy in MPa → As in mm²
+function requiredAs(MStar, b, d, fc, fsy) {
+  if (MStar <= 0) return 0;
+  const a2 = alpha2(fc);
+  const Mn = MStar * 1e6 / PHI_BEND;   // unfactored Mn assuming φ = 0.85
+  // Mn = As·fsy·(d − a/2), where a = As·fsy/(α2·fc·b)
+  // → quadratic: A·As² + B·As + C = 0
+  // A·As² − fsy·d·As + Mn = 0  with  A = fsy²/(2·α2·fc·b)
+  const A = fsy * fsy / (2 * a2 * fc * b);
+  const B = -fsy * d;
+  const C = Mn;
+  const disc = B*B - 4*A*C;
+  if (disc < 0) return Infinity;
+  const As1 = (-B - Math.sqrt(disc)) / (2*A);
+  const As2 = (-B + Math.sqrt(disc)) / (2*A);
+  return Math.min(As1, As2) > 0 ? Math.min(As1, As2) : Math.max(As1, As2);
+}
+
+// Provided flexural capacity given As, b, d, fc, fsy
+function flexuralCapacity(b, d, fc, fsy, As) {
+  if (As <= 0) return { Mu: 0, phiMu: 0, ku: 0, phi: 0.85, a: 0 };
+  const a2 = alpha2(fc);
+  const g = gammaCo(fc);
+  const a = As * fsy / (a2 * fc * b);    // depth of equivalent stress block
+  const ku = a / (g * d);
+  const phi = phiFlex(ku);
+  const z = d - a/2;
+  const Mu = As * fsy * z / 1e6;          // kNm
+  return { Mu, phiMu: phi * Mu, ku, phi, a, z };
+}
+
+// Minimum reinforcement ratios (RCB §6.2.4–6.2.5; AS 3600 §8.1.6.1, §9.1.1)
+function rhoMinPad(D, d, fc) {
+  // Two-way (pad) footing: ρ_min = 0.19·(D/d)²·(fct.f/fsy)
+  return 0.19 * Math.pow(D/d, 2) * fctf(fc) / FSY;
+}
+function rhoMinStrip(D, d, fc) {
+  // One-way (strip/slab): ρ_min = 0.20·(D/d)²·(fct.f/fsy)
+  return 0.20 * Math.pow(D/d, 2) * fctf(fc) / FSY;
+}
+const RHO_SHRINKAGE = 0.0035;   // moderate crack control on partially-restrained slab
+
+// ════════════════════════════════════════════════════════════════════════
+// ONE-WAY (FLEXURAL) SHEAR
+// AS 3600 Cl 8.2 — simplified method for members without shear reinforcement.
+// RCB Eq 3.88: φVuc = φ · ks · kv · bv · dv · √fc'
+// ────────────────────────────────────────────────────────────────────────
+function oneWayShearCapacity(bv, dv, fc, asProv, options={}) {
+  // ks — size effect factor: ks = (1000 − D)/700, bounded 0.5..1
+  const D = options.D || dv / 0.9;
+  const ks = Math.max(0.5, Math.min(1.0, (1000 - D) / 700));
+  // kv — for members without minimum shear reinforcement (simplified)
+  // RCB uses kv = 0.15 for general slabs, but Cl 8.2.4.2 gives:
+  //   kv = max(0.10, 0.05/(1 + dv/700))  for members without min shear reo
+  // For footings, the simplified RCB approach uses kv = 0.15 (Ex 6.1) or
+  // kv = 0.10 + something — we use the AS 3600 formula:
+  const kvA = 200 / (1000 + 1.3 * dv);          // Cl 8.2.4.2 simpler bound
+  const kv = Math.max(0.10, Math.min(0.15, kvA));
+  // φVuc
+  const Vuc = ks * kv * bv * dv * Math.sqrt(fc);   // N
+  return { Vuc: Vuc/1000, phiVuc: PHI_SHEAR * Vuc / 1000, ks, kv };  // kN
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// PUNCHING (TWO-WAY) SHEAR
+// AS 3600 Cl 9.2.3 — concentric load only; for unbalanced moment, use Cl 9.2.4
+// φVuo = φ · u · dom · fcv     where:
+//   u   = critical perimeter at dom/2 from column faces
+//   fcv = min[ 0.17·(1 + 2/βh)·√fc' ,  0.34·√fc' ]
+//   βh  = ratio of long to short side of column (or loaded area)
+// ────────────────────────────────────────────────────────────────────────
+function punchingShearCapacity(c1, c2, dom, fc) {
+  const cLong = Math.max(c1, c2);
+  const cShort = Math.min(c1, c2);
+  const betaH = cLong / cShort;
+  const u = 2 * (c1 + dom) + 2 * (c2 + dom);     // mm, rectangular column
+  const fcvA = 0.17 * (1 + 2/betaH) * Math.sqrt(fc);
+  const fcvB = 0.34 * Math.sqrt(fc);
+  const fcv = Math.min(fcvA, fcvB);
+  const Vuo = u * dom * fcv;                      // N
+  return { Vuo: Vuo/1000, phiVuo: PHI_SHEAR * Vuo / 1000, u, fcv, betaH };  // kN
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// DEVELOPMENT LENGTH (anchorage) — AS 3600 Cl 13.1.2
+// Lsy.tb = 0.5·k1·k3·fsy·db / (k2·√fc')
+// Lsy.t  = k4·k5·Lsy.tb,  with min(29db, 300mm)
+// ────────────────────────────────────────────────────────────────────────
+function developmentLength(db, fc, fsy, cover, K=0) {
+  const k1 = 1.0;     // bottom bar with <300 mm fresh concrete cast above (footing reo)
+  const k2 = (132 - db) / 100;
+  const cd = Math.max(cover, db);                          // simplification — clear cover
+  let k3 = 1.0 - 0.15 * (cd - db) / db;
+  k3 = Math.max(0.7, Math.min(1.0, k3));
+  const Lsy_tb = 0.5 * k1 * k3 * fsy * db / (k2 * Math.sqrt(fc));
+  const k4 = 1.0 - K * 0.04;                               // K=0 typical, no transverse confinement
+  const k5 = 0.99;                                         // assume small bearing pressure ρp ≈ 0.3 MPa
+  let Lsy_t = k4 * k5 * Lsy_tb;
+  Lsy_t = Math.max(Lsy_t, 29 * db, 300);                   // Cl 13.1.2.1 minimum
+  return { Lsy_tb, Lsy_t, k1, k2, k3, k4, k5 };
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// LOAD COMBINATIONS — AS/NZS 1170.0
+// Strength: 1.35G, 1.2G+1.5Q, 1.2G+1.5ψlQ, 1.2G+Wu+ψcQ, 0.9G+Wu, G+Eu+ψcQ
+// Service:  G, G+Q, G+ψlQ (used for bearing pressure check)
+// ────────────────────────────────────────────────────────────────────────
+function buildCombos(loads) {
+  const { NG, NQ, NW, NE, MGx, MGy, MQx, MQy, MWx, MWy, psiC, psiL } = loads;
+  function combo(name, kind, fG, fQ, fW=0, fE=0) {
+    return {
+      name, kind,
+      N:  fG*NG  + fQ*NQ  + fW*NW + fE*NE,
+      Mx: fG*MGx + fQ*MQx + fW*MWx,
+      My: fG*MGy + fQ*MQy + fW*MWy,
+    };
+  }
+  return [
+    combo('G + Q',           'sls', 1.0,  1.0),
+    combo('G + ψlQ',         'sls', 1.0,  psiL),
+    combo('1.35G',           'uls', 1.35, 0),
+    combo('1.2G + 1.5Q',     'uls', 1.2,  1.5),
+    combo('1.2G + 1.5ψlQ',   'uls', 1.2,  1.5*psiL),
+    combo('1.2G + Wu + ψcQ', 'uls', 1.2,  psiC, 1, 0),
+    combo('0.9G + Wu',       'uls', 0.9,  0,    1, 0),
+    combo('G + Eu + ψcQ',    'uls', 1.0,  psiC, 0, 1),
+  ];
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// MAIN COMPUTE
+// ════════════════════════════════════════════════════════════════════════
+
+function compute() {
+  try {
+    // ─── Read inputs ───
+    const colShape = S.colShape;
+    const ftgShape = S.ftgShape;
+    const sizing   = S.sizing;
+    const cx = +document.getElementById('inCx').value;
+    const cy = colShape === 'square' ? cx : +document.getElementById('inCy').value;
+    let L = +document.getElementById('inL').value;
+    let W = ftgShape === 'square' ? L : +document.getElementById('inW').value;
+    const D = +document.getElementById('inD').value;
+    const fc = S.fc;
+    const cover = +document.getElementById('inCover').value;
+    const barSize = S.barSize;
+    const spaceX = +document.getElementById('inSpaceX').value;
+    const spaceY = +document.getElementById('inSpaceY').value;
+    const layout = document.getElementById('inLayout').value;
+    const qa = +document.getElementById('inQa').value;
+    const NG = +document.getElementById('inNG').value;
+    const NQ = +document.getElementById('inNQ').value;
+    const NW = +document.getElementById('inNW').value;
+    const NE = +document.getElementById('inNE').value;
+    const MGx = +document.getElementById('inMGx').value;
+    const MGy = +document.getElementById('inMGy').value;
+    const MQx = +document.getElementById('inMQx').value;
+    const MQy = +document.getElementById('inMQy').value;
+    const MWx = +document.getElementById('inMWx').value;
+    const MWy = +document.getElementById('inMWy').value;
+    const psiC = +document.getElementById('inPsiC').value;
+    const psiL = +document.getElementById('inPsiL').value;
+
+    // ─── Self weight (uniform pressure under footing) ───
+    const sw_kPa = D / 1000 * GAMMA_C;
+    const qaNet = qa - sw_kPa;
+
+    // ─── Auto-size footing if requested (square only for simplicity) ───
+    if (sizing === 'auto' && ftgShape === 'square') {
+      const Nser = NG + NQ;
+      const Areqd = Nser / qaNet;                          // m²
+      L = Math.ceil(Math.sqrt(Areqd) * 10) * 100;          // round up to 100 mm
+      L = Math.max(L, cx + 600);                            // min 300 mm projection each side
+      W = L;
+      document.getElementById('inL').value = L;
+      document.getElementById('inW').value = W;
+    } else if (sizing === 'auto' && ftgShape === 'rect') {
+      // Keep aspect ratio of L:W same as cx:cy
+      const aspect = cx / cy;
+      const Nser = NG + NQ;
+      const Areqd = Nser / qaNet;
+      W = Math.ceil(Math.sqrt(Areqd / aspect) * 10) * 100;
+      L = Math.ceil(W * aspect / 10) * 10;
+      W = Math.max(W, cy + 600);
+      L = Math.max(L, cx + 600);
+      document.getElementById('inL').value = L;
+      document.getElementById('inW').value = W;
+    }
+
+    const L_m = L / 1000, W_m = W / 1000;
+
+    // ─── Effective depths ───
+    // d for each direction: bottom layer for that direction
+    // Convention: x-bars run parallel to L axis (resist M about y-axis, span across W)
+    //   - Lower layer (placed first): typically the longer span, d_lower = D − cover − db/2
+    //   - Upper layer: d_upper = D − cover − db − db/2 = D − cover − 1.5·db
+    // For a square footing we make the bottom layer in the direction of larger moment.
+    const dLower = D - cover - barSize/2;
+    const dUpper = D - cover - 1.5 * barSize;
+    const dMean  = (dLower + dUpper) / 2;                 // d_om for punching
+
+    // For symmetric design, assign lower layer to X direction (bars parallel to L)
+    // and upper to Y direction, unless layout = 'match'.
+    const dx = dLower;     // depth to x-bars (resist M about y-axis)
+    const dy = dUpper;
+    const dom = dMean;
+
+    // ─── Build loads + combos ───
+    const loads = { NG, NQ, NW, NE, MGx, MGy, MQx, MQy, MWx, MWy, psiC, psiL };
+    const combos = buildCombos(loads);
+
+    // ─── Bearing check (service combos) ───
+    // Pressure includes self-weight: total bearing = column N/(L·W) + sw
+    // We compare q_total ≤ qa (gross), or equivalently q_col ≤ qa,net.
+    const slsCombos = combos.filter(c => c.kind === 'sls');
+    let worstSLS = null;
+    slsCombos.forEach(c => {
+      const bp = bearingPressure(c.N, c.Mx, c.My, L_m, W_m);
+      c.bearing = bp;
+      c.qTotal = bp.qmax + sw_kPa;
+      c.bearingUtil = c.qTotal / qa;
+      if (!worstSLS || c.bearingUtil > worstSLS.bearingUtil) worstSLS = c;
+    });
+
+    // ─── Strength checks (ULS combos) ───
+    const ulsCombos = combos.filter(c => c.kind === 'uls');
+    let worstULS = null;
+    ulsCombos.forEach(c => {
+      const bp = bearingPressure(c.N, c.Mx, c.My, L_m, W_m);
+      c.bearing = bp;
+      // For design forces use q*_net (column pressure only, exclude self-weight upward reaction
+      // since slab self-weight is balanced by gross uplift; only the column-induced pressure
+      // produces structural action effects on the slab). RCB uses q* = N* / area for concentric loads.
+      // For eccentric loads, use the average pressure under the cantilever to be designed.
+      c.qStarMax = bp.qmax;
+      c.qStarMin = bp.qmin;
+      c.qStarAvg = c.N / (L_m * W_m);           // for concentric / mild eccentricity
+    });
+
+    // For the bending and shear calcs, conservatively use the GOVERNING strength combo's
+    // *peak* (not average) pressure on the cantilever face. This handles eccentric loads
+    // by integrating the trapezoidal pressure on the cantilever projection.
+    function cantileverActions(qNear, qFar, projLength, sideLength) {
+      // qNear is at column face, qFar is at edge of footing — both kPa
+      // projLength = cantilever projection (m), sideLength = perpendicular footing dim (m)
+      // Returns moment at column face (kNm) and shear at distance dv (kN)
+      // Linear pressure: q(x) = qNear − (qNear − qFar) · x / projLength, x measured from face
+      // Total force on cantilever per metre width: Q = (qNear + qFar)/2 · projLength
+      // Moment at face per metre width:
+      //    M = ∫₀^proj q(x)·x dx = qFar·proj²/2 + (qNear − qFar)·proj²/3
+      //      = proj²·(2·qNear + qFar)/6
+      // Per total width: multiply by sideLength
+      const Q = 0.5 * (qNear + qFar) * projLength * sideLength;     // total kN
+      const M = projLength * projLength * (2*qNear + qFar) / 6 * sideLength;  // kNm
+      return { Q, M };
+    }
+
+    // For each strength combo, compute design moments + shears in each direction.
+    // X-direction bending: cantilever extends from column in the L direction
+    //    projLength = (L − cx)/2 − 0.7·(cx/2)·0  ← but moment is taken AT 0.7·a_sup from CL,
+    //    i.e. at distance 0.7·(cx/2) from centre = (0.7·cx/2) — so projection from that section to free end:
+    //    proj_M = L/2 − 0.7·cx/2
+    // Shear is taken at distance dv from column FACE:
+    //    proj_V = (L − cx)/2 − dv
+    // Pressure at the relevant section is interpolated from peak/min.
+    //
+    // For the simplified concentric case (Mx = 0, My = 0), q_peak ≈ q_avg, so we use a uniform pressure.
+
+    function cantileverDesign(combo, axis) {
+      // axis: 'x' for moment about y-axis (bending of bars in x-direction)
+      // axis: 'y' for moment about x-axis
+      const isX = axis === 'x';
+      const dim_proj   = isX ? L_m : W_m;     // dimension along which cantilever projects
+      const dim_perp   = isX ? W_m : L_m;
+      const c_proj     = isX ? cx/1000 : cy/1000;    // column dim in projection direction
+      const c_perp     = isX ? cy/1000 : cx/1000;
+      const d_for_axis = isX ? dx : dy;
+      const dv         = Math.max(0.9 * d_for_axis, 0.72 * D);   // effective shear depth (mm) — keep mm here
+      const dv_m       = dv / 1000;
+      const a_sup      = c_proj / 2;          // half column dim
+      const proj_M_m   = dim_proj/2 - 0.7 * a_sup;
+      const proj_V_m   = (dim_proj - c_proj)/2 - dv_m;
+
+      // Pressure at cantilever section — use peak pressure for design (RCB approach for concentric:
+      // q*_net = N* / area; for eccentric, take pressure at cantilever face)
+      const bp = combo.bearing;
+      let qNear, qFar;
+      if (bp.case === 'full' || bp.case === 'partial-x' || bp.case === 'partial-y') {
+        // Use linear pressure variation along the projection axis
+        // qNear = pressure at column face (positive side of cantilever)
+        // qFar  = pressure at extreme edge
+        if (bp.case === 'full') {
+          // qmax/qmin are at L/2 / -L/2 in the relevant axis
+          const dq = isX ? bp.dx : bp.dy;
+          // Pressure at column face on the qmax side: q_avg + dq·(c_proj/2)/(dim_proj/2)
+          const xFace = c_proj / 2;             // m from centre
+          const xEdge = dim_proj / 2;
+          qNear = bp.q_avg + dq * (xFace / xEdge);   // moving from centre to face on max side
+          qFar  = bp.q_avg + dq;                      // at edge
+        } else {
+          // Partial pressure (triangular). Use qmax at edge with the contact length.
+          qNear = bp.qmax * 0.5;     // approximate
+          qFar  = bp.qmax;
+        }
+      } else if (bp.case === 'meyerhof') {
+        qNear = bp.qmax;
+        qFar  = bp.qmax;
+      } else {
+        qNear = combo.qStarAvg;
+        qFar  = combo.qStarAvg;
+      }
+
+      // For most concentric/mildly-eccentric cases the simplified RCB approach is q*_net = N* / area
+      // applied uniformly. We honour that when combo has zero moment.
+      const isConcentric = Math.abs(combo.Mx) < 1e-6 && Math.abs(combo.My) < 1e-6;
+      if (isConcentric) { qNear = combo.qStarAvg; qFar = combo.qStarAvg; }
+
+      // Bending: moment at 0.7·a_sup from column centre
+      // proj_M is the cantilever length from that section to the free edge
+      const M_act = cantileverActions(
+        qNear * (1 - (c_proj/2 - 0.7*a_sup)/(dim_proj/2 - c_proj/2) * (qNear-qFar)/qNear || 0) || qNear, // pressure at the moment section (approx — for concentric just qNear)
+        qFar,
+        proj_M_m,
+        dim_perp
+      );
+
+      // Shear: V at distance dv from column face — pressure integrated from there to free edge
+      let qAtV;
+      if (isConcentric) qAtV = qNear;
+      else {
+        // linearly interpolate pressure between column face (qNear) and edge (qFar), at proj_V_m from edge:
+        // distance from face to V section = (dim_proj - c_proj)/2 - proj_V_m - 0 = (dim_proj − c_proj)/2 − proj_V_m
+        // simpler: qAtV linearly interpolated between qNear (at face) and qFar (at edge)
+        const tt = proj_V_m / ((dim_proj - c_proj)/2 || 1);   // fraction from face to edge
+        qAtV = qNear + (qFar - qNear) * (1 - tt);
+      }
+      const V_act = 0.5 * (qAtV + qFar) * proj_V_m * dim_perp;     // kN
+
+      // Capacities — provided steel:
+      const Abar = BAR_AREAS[barSize];
+      const space = isX ? spaceX : spaceY;
+      const AsPerM = Abar * 1000 / space;             // mm²/m
+      const fcap = flexuralCapacity(1000, d_for_axis, fc, FSY, AsPerM);
+      // M* per metre width:
+      const MStarPerM = M_act.M / dim_perp;
+      const utilM = fcap.phiMu > 0 ? MStarPerM / fcap.phiMu : Infinity;
+
+      // Required steel for M*
+      const AsReqPerM = requiredAs(MStarPerM, 1000, d_for_axis, fc, FSY);
+
+      // Shear capacity (full footing width)
+      const scap = oneWayShearCapacity(dim_perp * 1000, dv, fc, AsPerM, { D });
+      const utilV = scap.phiVuc > 0 ? V_act / scap.phiVuc : Infinity;
+
+      return {
+        axis, isX, dim_proj, dim_perp, c_proj, c_perp, d_for_axis,
+        proj_M_m, proj_V_m, dv,
+        qNear, qFar, qAtV,
+        MStarPerM, MStar: M_act.M,
+        VStar: V_act,
+        AsPerM, AsReqPerM, fcap, scap,
+        utilM, utilV,
+        a_sup,
+      };
+    }
+
+    // For each ULS combo, compute design X and Y actions
+    ulsCombos.forEach(c => {
+      c.x = cantileverDesign(c, 'x');
+      c.y = cantileverDesign(c, 'y');
+      // Punching shear at column
+      const qStar = c.qStarAvg;     // simplified — uses average pressure
+      const ApPunch = (L_m * W_m) - ((cx + dom)/1000) * ((cy + dom)/1000);
+      c.VStarPunch = qStar * ApPunch;
+      c.punchCap = punchingShearCapacity(cx, cy, dom, fc);
+      c.utilPunch = c.punchCap.phiVuo > 0 ? c.VStarPunch / c.punchCap.phiVuo : Infinity;
+      c.util = Math.max(c.x.utilM, c.x.utilV, c.y.utilM, c.y.utilV, c.utilPunch);
+      if (!worstULS || c.util > worstULS.util) worstULS = c;
+    });
+
+    // ─── Reinforcement checks ───
+    const Abar = BAR_AREAS[barSize];
+    const AsXprov = Abar * 1000 / spaceX;
+    const AsYprov = Abar * 1000 / spaceY;
+    const rhoX = AsXprov / (1000 * dx);
+    const rhoY = AsYprov / (1000 * dy);
+    const rhoMin = rhoMinPad(D, dMean, fc);
+    const rhoShrink = RHO_SHRINKAGE * D / dMean;   // approx for slab
+    const rhoMinGov = Math.max(rhoMin, RHO_SHRINKAGE * D / dMean);
+    const rhoOK = (rhoX >= rhoMinGov) && (rhoY >= rhoMinGov);
+
+    // ─── Anchorage check ───
+    const anchor = developmentLength(barSize, fc, FSY, cover);
+    // Available anchorage in X direction: L/2 − 0.7·a_sup_x − end cover (mm)
+    const a_sup_x = cx/2;
+    const a_sup_y = cy/2;
+    const availX = L/2 - 0.7*a_sup_x - cover;
+    const availY = W/2 - 0.7*a_sup_y - cover;
+    const anchorOK = anchor.Lsy_t <= Math.min(availX, availY) || true;  // cogs available as fallback
+    const anchorUtil = anchor.Lsy_t / Math.min(availX, availY);
+
+    // ─── Cover check ───
+    const coverReq = getCoverRequired();
+    const coverOK = cover >= coverReq;
+
+    // ─── Eccentricity check ───
+    let eccUtil = 0, eccCase = 'concentric';
+    slsCombos.concat(ulsCombos).forEach(c => {
+      if (c.bearing) {
+        const eRatioX = (c.bearing.ex || 0) / (L_m/6);
+        const eRatioY = (c.bearing.ey || 0) / (W_m/6);
+        const r = Math.max(eRatioX, eRatioY);
+        if (r > eccUtil) {
+          eccUtil = r;
+          eccCase = c.bearing.case;
+        }
+      }
+    });
+
+    return {
+      L, W, D, cx, cy, fc, cover, barSize, spaceX, spaceY, dx, dy, dom,
+      qa, qaNet, sw_kPa, AsXprov, AsYprov, rhoX, rhoY, rhoMin, rhoShrink, rhoMinGov, rhoOK,
+      anchor, availX, availY, anchorOK, anchorUtil,
+      coverReq, coverOK,
+      combos, slsCombos, ulsCombos,
+      worstSLS, worstULS,
+      eccUtil, eccCase,
+    };
+  } catch (e) {
+    console.error('Compute error:', e);
+    showError('Compute Error', e.message);
+    return null;
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// STATE + UI WIRING
+// ════════════════════════════════════════════════════════════════════════
+
+const S = {
+  colShape: 'square',
+  ftgShape: 'square',
+  sizing: 'auto',
+  fc: 25,
+  barSize: 16,
+  geomTab: '3d',
+  chartTab: 'pressure',
+  result: null,
+};
+
+const COVER_BY_EXPOSURE = { A1: 20, A2: 25, B1: 30, B2: 40, C1: 50, C2: 65, U: 75 };
+
+function getCoverRequired() {
+  const expo = document.getElementById('inExposure').value;
+  // Footings cast against ground need 75 mm minimum (durability)
+  return Math.max(COVER_BY_EXPOSURE[expo] || 30, 75);
+}
+
+// ── Chip group handlers ──
+function bindChips(containerId, key, onChange) {
+  const c = document.getElementById(containerId);
+  if (!c) return;
+  c.querySelectorAll('.chip').forEach(b => {
+    b.addEventListener('click', () => {
+      c.querySelectorAll('.chip').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      const v = b.dataset[key] || b.dataset[Object.keys(b.dataset)[0]];
+      onChange(v);
+    });
+  });
+}
+
+bindChips('colShapeChips', 'shape', v => {
+  S.colShape = v;
+  document.getElementById('cyWrap').style.display = v === 'rect' ? '' : 'none';
+  recompute();
+});
+bindChips('ftgShapeChips', 'shape', v => {
+  S.ftgShape = v;
+  document.getElementById('WWrap').style.display = v === 'rect' ? '' : 'none';
+  recompute();
+});
+bindChips('sizingChips', 'sizing', v => {
+  S.sizing = v;
+  recompute();
+});
+bindChips('fcChips', 'fc', v => { S.fc = +v; recompute(); });
+bindChips('barChips', 'bar', v => { S.barSize = +v; recompute(); });
+
+// Soil dropdown sync to qa
+document.getElementById('inSoil').addEventListener('change', e => {
+  const v = e.target.value;
+  if (v === 'custom') return;
+  let qa;
+  if (v === '200_sand') qa = 200;
+  else qa = +v;
+  document.getElementById('inQa').value = qa;
+  recompute();
+});
+
+// All number inputs trigger recompute
+document.querySelectorAll('input[type="number"], select').forEach(el => {
+  el.addEventListener('input', recompute);
+  el.addEventListener('change', recompute);
+});
+
+// Visual tabs
+function bindTabs(containerId, key, onChange) {
+  document.querySelectorAll(`#${containerId} .tab`).forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll(`#${containerId} .tab`).forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      onChange(t.dataset[key]);
+    });
+  });
+}
+bindTabs('geomTabs', 'view', v => {
+  S.geomTab = v;
+  document.getElementById('canvas3d').style.display      = v === '3d' ? '' : 'none';
+  document.getElementById('canvasPlan').style.display    = v === 'plan' ? '' : 'none';
+  document.getElementById('canvasSection').style.display = v === 'section' ? '' : 'none';
+  if (S.result) renderGeometry(S.result);
+});
+bindTabs('chartTabs', 'chart', v => {
+  S.chartTab = v;
+  if (S.result) renderChart(S.result);
+});
+
+// Check tile expand toggle
+document.querySelectorAll('.check-tile').forEach(t => {
+  t.addEventListener('click', () => t.classList.toggle('expanded'));
+});
+
+// ────────── Helpers ──────────
+function fmt(v, dp=0, unit='') {
+  if (v == null || !isFinite(v)) return '—';
+  return v.toFixed(dp) + (unit ? ' ' + unit : '');
+}
+function classifyUtil(u) {
+  if (!isFinite(u)) return 'fail';
+  if (u > 1.0) return 'fail';
+  if (u >= 0.95) return 'warn';
+  return 'pass';
+}
+function getCSS(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function colourFromClass(c) {
+  return c === 'pass' ? getCSS('--green') : c === 'warn' ? getCSS('--orange') : getCSS('--rust');
+}
+
+// ────────── Hero render ──────────
+function renderHero(r) {
+  const govULS = r.worstULS;
+  const govSLS = r.worstSLS;
+  const u = Math.max(govULS ? govULS.util : 0, govSLS ? govSLS.bearingUtil : 0, r.eccUtil, r.anchorUtil);
+  const cls = classifyUtil(u);
+  document.getElementById('utilNum').textContent = isFinite(u) ? u.toFixed(2) : '∞';
+  const ring = document.getElementById('utilRingFg');
+  const C = 263.9;
+  const filled = Math.min(1, isFinite(u) ? u : 1);
+  ring.style.strokeDashoffset = C * (1 - filled);
+  ring.style.stroke = colourFromClass(cls);
+  const status = document.getElementById('heroStatus');
+  status.className = 'hero-status ' + cls;
+  status.textContent = cls === 'pass' ? 'PASS' : cls === 'warn' ? 'CHECK' : 'FAIL';
+  document.getElementById('heroHeadline').innerHTML =
+    cls === 'pass' ? `Footing <strong>adequate</strong> for governing combination` :
+    cls === 'warn' ? `Footing <strong>marginal</strong> — review design` :
+                     `Footing <strong>insufficient</strong> — increase size or reinforcement`;
+  document.getElementById('heroMeta').innerHTML =
+    `<span><strong>Combo:</strong> ${govULS ? govULS.name : '—'}</span>`+
+    `<span><strong>q*:</strong> ${fmt(govULS ? govULS.qStarMax : 0, 0, 'kPa')}</span>`+
+    `<span><strong>M*:</strong> ${fmt(govULS ? govULS.x.MStarPerM : 0, 0, 'kNm/m')}</span>`+
+    `<span><strong>V*p:</strong> ${fmt(govULS ? govULS.VStarPunch : 0, 0, 'kN')}</span>`+
+    `<span><strong>Plan:</strong> ${r.L} × ${r.W} × ${r.D}</span>`;
+}
+
+// ────────── Combo table ──────────
+function renderComboTable(r) {
+  const tbody = document.querySelector('#comboTable tbody');
+  const all = r.combos.map(c => {
+    const q = c.bearing ? (c.bearing.qmax || 0) : 0;
+    const qTotal = c.qTotal != null ? c.qTotal : (q + r.sw_kPa);
+    const u = c.kind === 'sls'
+      ? (c.bearingUtil || 0)
+      : (c.util || 0);
+    const isGov = (c.kind === 'sls' && c === r.worstSLS) || (c.kind === 'uls' && c === r.worstULS);
+    return `<tr class="${c.kind === 'sls' ? 'service' : ''} ${isGov ? 'governing' : ''}">
+      <td>${c.name}</td>
+      <td>${fmt(c.N, 0)}</td>
+      <td>${fmt(c.Mx, 0)}</td>
+      <td>${fmt(c.My, 0)}</td>
+      <td>${fmt(qTotal, 0)}</td>
+      <td>${fmt(u, 2)}</td>
+    </tr>`;
+  }).join('');
+  tbody.innerHTML = all;
+}
+
+// ────────── Helpers panel ──────────
+function renderHelpers(r) {
+  document.getElementById('ftgSW').textContent     = (r.sw_kPa).toFixed(0);
+  document.getElementById('ftgQaNet').textContent  = r.qaNet.toFixed(0);
+  document.getElementById('reqCover').textContent  = r.coverReq.toFixed(0);
+  document.getElementById('astX').textContent      = Math.round(r.AsXprov);
+  document.getElementById('astY').textContent      = Math.round(r.AsYprov);
+  document.getElementById('rhoX').textContent      = (r.rhoX * 100).toFixed(2);
+}
+
+// ────────── Set check tile ──────────
+function setTile(name, value, detail, util, classOverride) {
+  const tile = document.querySelector(`[data-check="${name}"]`);
+  if (!tile) return;
+  tile.querySelector('.check-value').textContent = value;
+  tile.querySelector('.check-detail').textContent = detail;
+  const cls = classOverride || classifyUtil(util);
+  tile.className = 'check-tile ' + cls + (tile.classList.contains('expanded') ? ' expanded' : '');
+  const dot = tile.querySelector('.check-status-dot');
+  dot.className = 'check-status-dot ' + (cls === 'pass' ? '' : cls);
+  const fillPct = Math.min(100, Math.max(0, util * 100));
+  const fill = tile.querySelector('.check-bar-fill');
+  fill.style.width = fillPct + '%';
+}
+
+// ────────── Render checks ──────────
+function renderChecks(r) {
+  const govULS = r.worstULS, govSLS = r.worstSLS;
+
+  // Bearing
+  const bearU = govSLS ? govSLS.bearingUtil : 0;
+  setTile('bearing',
+    fmt(govSLS ? govSLS.qTotal : 0, 0, 'kPa'),
+    `q ≤ ${r.qa} kPa  (${(bearU*100).toFixed(0)}%)`,
+    bearU);
+
+  // Eccentricity
+  const eccTag = r.eccUtil <= 1.0 ? 'middle 1/3' : (r.eccUtil <= 2 ? 'partial pressure' : 'overturn');
+  setTile('ecc',
+    r.eccUtil.toFixed(2),
+    `${eccTag} · case: ${r.eccCase}`,
+    r.eccUtil > 1 ? 1.05 : r.eccUtil,
+    r.eccUtil > 1 ? 'warn' : 'pass');
+
+  // Bending X (per metre)
+  if (govULS) {
+    setTile('bend-x',
+      fmt(govULS.x.utilM, 2),
+      `${fmt(govULS.x.MStarPerM,0)} / ${fmt(govULS.x.fcap.phiMu,0)} kNm/m`,
+      govULS.x.utilM);
+    setTile('bend-y',
+      fmt(govULS.y.utilM, 2),
+      `${fmt(govULS.y.MStarPerM,0)} / ${fmt(govULS.y.fcap.phiMu,0)} kNm/m`,
+      govULS.y.utilM);
+    setTile('shear-x',
+      fmt(Math.max(govULS.x.utilV, govULS.y.utilV), 2),
+      `${fmt(Math.max(govULS.x.VStar, govULS.y.VStar),0)} / ${fmt(Math.min(govULS.x.scap.phiVuc, govULS.y.scap.phiVuc),0)} kN`,
+      Math.max(govULS.x.utilV, govULS.y.utilV));
+    setTile('punch',
+      fmt(govULS.utilPunch, 2),
+      `${fmt(govULS.VStarPunch,0)} / ${fmt(govULS.punchCap.phiVuo,0)} kN`,
+      govULS.utilPunch);
+  }
+
+  // Min steel
+  const rhoUtil = r.rhoMinGov / Math.min(r.rhoX, r.rhoY);
+  setTile('reo',
+    `${(Math.min(r.rhoX, r.rhoY) * 100).toFixed(2)}%`,
+    `min ${(r.rhoMinGov*100).toFixed(2)}%`,
+    rhoUtil,
+    r.rhoOK ? 'pass' : 'fail');
+
+  // Anchorage
+  setTile('anchor',
+    fmt(r.anchor.Lsy_t, 0, 'mm'),
+    `avail ${fmt(Math.min(r.availX, r.availY), 0, 'mm')} (use cogs if &lt;)`,
+    r.anchorUtil,
+    r.anchorUtil <= 1 ? 'pass' : 'warn');
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// 3D / Plan / Section RENDERING
+// ════════════════════════════════════════════════════════════════════════
+
+let three = null;
+function init3D() {
+  if (typeof THREE === 'undefined') { console.warn('THREE not loaded'); return; }
+  const container = document.getElementById('canvas3d');
+  if (!container) return;
+  const w = Math.max(100, container.clientWidth || 600);
+  const h = Math.max(100, container.clientHeight || 400);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xfaf9f5);
+  const camera = new THREE.PerspectiveCamera(35, w/h, 1, 50000);
+  camera.position.set(2200, 1800, 2400);
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(window.devicePixelRatio || 1);
+  container.appendChild(renderer.domElement);
+  let controls = null;
+  if (typeof THREE.OrbitControls === 'function') {
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 100, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+  } else {
+    camera.lookAt(0, 100, 0);
+  }
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+  dir.position.set(2000, 4000, 2000); scene.add(dir);
+  const dir2 = new THREE.DirectionalLight(0xfff3e0, 0.4);
+  dir2.position.set(-2000, 3000, -1000); scene.add(dir2);
+  const ftgGroup = new THREE.Group();
+  scene.add(ftgGroup);
+  three = { scene, camera, renderer, controls, ftgGroup, container };
+  function animate() {
+    requestAnimationFrame(animate);
+    if (controls && controls.update) controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+  window.addEventListener('resize', () => {
+    const w = container.clientWidth, h = container.clientHeight;
+    if (w === 0 || h === 0) return;
+    camera.aspect = w/h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  });
+}
+
+function render3D(r) {
+  if (!three || typeof THREE === 'undefined') return;
+  const g = three.ftgGroup;
+  while (g.children.length) g.remove(g.children[0]);
+
+  const L = r.L, W = r.W, D = r.D;
+  const cx = r.cx, cy = r.cy;
+  const cover = r.cover;
+  const colHeight = 800;     // mm — visual stub above footing
+
+  // Soil block (around and below footing)
+  const soilDepth = 200;
+  const soilExtra = 600;
+  const soilGeom = new THREE.BoxGeometry(L + 2*soilExtra, soilDepth, W + 2*soilExtra);
+  const soilMat = new THREE.MeshLambertMaterial({ color: 0xb8a378, transparent: true, opacity: 0.25 });
+  const soil = new THREE.Mesh(soilGeom, soilMat);
+  soil.position.set(0, -D - soilDepth/2, 0);
+  g.add(soil);
+  const soilEdge = new THREE.LineSegments(
+    new THREE.EdgesGeometry(soilGeom),
+    new THREE.LineBasicMaterial({ color: 0x141413, transparent: true, opacity: 0.18 })
+  );
+  soilEdge.position.copy(soil.position);
+  g.add(soilEdge);
+
+  // Footing concrete
+  const ftgGeom = new THREE.BoxGeometry(L, D, W);
+  const ftgMat = new THREE.MeshLambertMaterial({ color: 0xe8e6dc, transparent: true, opacity: 0.5 });
+  const ftg = new THREE.Mesh(ftgGeom, ftgMat);
+  ftg.position.set(0, -D/2, 0);
+  g.add(ftg);
+  const ftgEdge = new THREE.LineSegments(
+    new THREE.EdgesGeometry(ftgGeom),
+    new THREE.LineBasicMaterial({ color: 0x141413, transparent: true, opacity: 0.5 })
+  );
+  ftgEdge.position.copy(ftg.position);
+  g.add(ftgEdge);
+
+  // Column stub
+  const colMat = new THREE.MeshLambertMaterial({ color: 0xd4cfc0, transparent: true, opacity: 0.7 });
+  const colGeom = new THREE.BoxGeometry(cx, colHeight, cy);
+  const col = new THREE.Mesh(colGeom, colMat);
+  col.position.set(0, colHeight/2, 0);
+  g.add(col);
+  const colEdge = new THREE.LineSegments(
+    new THREE.EdgesGeometry(colGeom),
+    new THREE.LineBasicMaterial({ color: 0x141413, transparent: true, opacity: 0.6 })
+  );
+  colEdge.position.copy(col.position);
+  g.add(colEdge);
+
+  // Reinforcement bars (bottom mat)
+  const barMat = new THREE.MeshLambertMaterial({ color: 0xd97757 });
+  const barRadius = r.barSize / 2;
+  const dxLevel = -D + cover + barRadius;          // bottom layer (X bars)
+  const dyLevel = -D + cover + r.barSize + barRadius;  // upper layer (Y bars)
+
+  // X-direction bars (run along L axis, spaced across W)
+  const nX = Math.max(2, Math.floor((W - 2*cover) / r.spaceX) + 1);
+  const stepX = (W - 2*cover - 2*barRadius) / Math.max(1, nX - 1);
+  for (let i = 0; i < nX; i++) {
+    const z = -W/2 + cover + barRadius + i * stepX;
+    const barGeom = new THREE.CylinderGeometry(barRadius, barRadius, L - 2*cover, 8);
+    const bar = new THREE.Mesh(barGeom, barMat);
+    bar.rotation.z = Math.PI/2;
+    bar.position.set(0, dxLevel, z);
+    g.add(bar);
+  }
+  // Y-direction bars (run along W axis, spaced across L)
+  const nY = Math.max(2, Math.floor((L - 2*cover) / r.spaceY) + 1);
+  const stepY = (L - 2*cover - 2*barRadius) / Math.max(1, nY - 1);
+  for (let i = 0; i < nY; i++) {
+    const x = -L/2 + cover + barRadius + i * stepY;
+    const barGeom = new THREE.CylinderGeometry(barRadius, barRadius, W - 2*cover, 8);
+    const bar = new THREE.Mesh(barGeom, barMat);
+    bar.rotation.x = Math.PI/2;
+    bar.position.set(x, dyLevel, 0);
+    g.add(bar);
+  }
+
+  // Frame center
+  if (three.controls && three.controls.target) three.controls.target.set(0, -D/2 + colHeight/4, 0);
+}
+
+function drawPlan(r) {
+  const cv = document.getElementById('canvasPlan');
+  if (!cv) return;
+  const ctx = cv.getContext('2d');
+  const W_canvas = cv.clientWidth, H_canvas = cv.clientHeight;
+  cv.width = W_canvas * devicePixelRatio; cv.height = H_canvas * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  ctx.clearRect(0,0,W_canvas,H_canvas);
+  ctx.fillStyle = getCSS('--cream'); ctx.fillRect(0,0,W_canvas,H_canvas);
+
+  // Determine scale
+  const margin = 60;
+  const pxL = W_canvas - 2*margin;
+  const pxW = H_canvas - 2*margin;
+  const scale = Math.min(pxL / r.L, pxW / r.W);
+  const cxPx = W_canvas/2;
+  const cyPx = H_canvas/2;
+  function P(x, y) { return [cxPx + x * scale, cyPx - y * scale]; }   // y flipped (up = +)
+
+  // Footing outline
+  ctx.fillStyle = getCSS('--surface-2');
+  ctx.strokeStyle = getCSS('--ink');
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.rect(...P(-r.L/2, r.W/2), r.L*scale, r.W*scale);
+  ctx.fill(); ctx.stroke();
+
+  // Reinforcement (X bars - horizontal lines)
+  ctx.strokeStyle = getCSS('--orange');
+  ctx.lineWidth = 1;
+  ctx.globalAlpha = 0.7;
+  const cover = r.cover;
+  for (let z = -r.W/2 + cover; z <= r.W/2 - cover; z += r.spaceX) {
+    ctx.beginPath();
+    ctx.moveTo(...P(-r.L/2 + cover, z));
+    ctx.lineTo(...P(r.L/2 - cover, z));
+    ctx.stroke();
+  }
+  ctx.strokeStyle = '#c5663b';
+  for (let x = -r.L/2 + cover; x <= r.L/2 - cover; x += r.spaceY) {
+    ctx.beginPath();
+    ctx.moveTo(...P(x, -r.W/2 + cover));
+    ctx.lineTo(...P(x, r.W/2 - cover));
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // Column overlay
+  ctx.fillStyle = getCSS('--ink-2');
+  ctx.globalAlpha = 0.85;
+  ctx.beginPath();
+  ctx.rect(...P(-r.cx/2, r.cy/2), r.cx*scale, r.cy*scale);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = getCSS('--ink');
+  ctx.stroke();
+
+  // Critical perimeter (punching shear)
+  ctx.strokeStyle = getCSS('--rust');
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 3]);
+  const cp_x = (r.cx + r.dom);
+  const cp_y = (r.cy + r.dom);
+  ctx.beginPath();
+  ctx.rect(...P(-cp_x/2, cp_y/2), cp_x*scale, cp_y*scale);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Dimensions
+  ctx.fillStyle = getCSS('--mute');
+  ctx.font = '10px Poppins, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`L = ${r.L} mm`, cxPx, cyPx + r.W*scale/2 + 25);
+  ctx.save();
+  ctx.translate(cxPx - r.L*scale/2 - 15, cyPx);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillText(`W = ${r.W} mm`, 0, 0);
+  ctx.restore();
+
+  // Legend
+  ctx.font = '9.5px Poppins, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = getCSS('--ink-2');
+  let ly = 18;
+  ctx.fillStyle = getCSS('--orange'); ctx.fillRect(margin/2, ly, 14, 2);
+  ctx.fillStyle = getCSS('--ink-2'); ctx.fillText(`X-bars  N${r.barSize} @ ${r.spaceX} cts`, margin/2 + 18, ly+3);
+  ly += 14;
+  ctx.fillStyle = '#c5663b'; ctx.fillRect(margin/2, ly, 14, 2);
+  ctx.fillStyle = getCSS('--ink-2'); ctx.fillText(`Y-bars  N${r.barSize} @ ${r.spaceY} cts`, margin/2 + 18, ly+3);
+  ly += 14;
+  ctx.strokeStyle = getCSS('--rust'); ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(margin/2, ly); ctx.lineTo(margin/2 + 14, ly); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = getCSS('--ink-2'); ctx.fillText(`Punching crit. perim. (d_om/2 from face)`, margin/2 + 18, ly+3);
+}
+
+function drawSection(r) {
+  const cv = document.getElementById('canvasSection');
+  if (!cv) return;
+  const ctx = cv.getContext('2d');
+  const W_canvas = cv.clientWidth, H_canvas = cv.clientHeight;
+  cv.width = W_canvas * devicePixelRatio; cv.height = H_canvas * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  ctx.clearRect(0,0,W_canvas,H_canvas);
+  ctx.fillStyle = getCSS('--cream'); ctx.fillRect(0,0,W_canvas,H_canvas);
+
+  const margin = 60;
+  const colH = 400;     // mm
+  const totalH = colH + r.D + 200;   // + soil depth
+  const totalW = r.L + 800;
+  const sx = (W_canvas - 2*margin) / totalW;
+  const sy = (H_canvas - 2*margin) / totalH;
+  const scale = Math.min(sx, sy);
+  const cxPx = W_canvas / 2;
+  const groundY = H_canvas - margin - 200 * scale;
+  function P(x, y) { return [cxPx + x * scale, groundY - y * scale]; }
+
+  // Soil region
+  ctx.fillStyle = getCSS('--soil-soft');
+  ctx.fillRect(margin, groundY, W_canvas - 2*margin, 200 * scale);
+  // Ground hatching
+  ctx.strokeStyle = getCSS('--soil');
+  ctx.lineWidth = 0.5;
+  for (let x = margin; x < W_canvas - margin; x += 8) {
+    ctx.beginPath();
+    ctx.moveTo(x, groundY);
+    ctx.lineTo(x + 6, groundY - 4);
+    ctx.stroke();
+  }
+
+  // Footing
+  ctx.fillStyle = getCSS('--surface-2');
+  ctx.strokeStyle = getCSS('--ink');
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.rect(...P(-r.L/2, 0), r.L * scale, r.D * scale);
+  ctx.fill(); ctx.stroke();
+
+  // Column
+  ctx.fillStyle = getCSS('--ink-2');
+  ctx.beginPath();
+  ctx.rect(...P(-r.cx/2, r.D + colH), r.cx * scale, colH * scale);
+  ctx.fill();
+  ctx.strokeStyle = getCSS('--ink');
+  ctx.stroke();
+
+  // Reinforcement bars (cross-section view — circles for Y bars across, X bars long)
+  // Lower layer (X-bars run perpendicular to page, shown as circles)
+  const bottomY = r.cover + r.barSize/2;
+  const upperY = r.cover + r.barSize + r.barSize/2;
+  ctx.fillStyle = getCSS('--orange');
+  for (let x = -r.L/2 + r.cover; x <= r.L/2 - r.cover; x += r.spaceY) {
+    const [px, py] = P(x, bottomY);
+    ctx.beginPath();
+    ctx.arc(px, py, Math.max(2, r.barSize/2 * scale), 0, 2*Math.PI);
+    ctx.fill();
+  }
+  // Upper layer Y-bars (in plane)
+  ctx.strokeStyle = '#c5663b';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(...P(-r.L/2 + r.cover, upperY));
+  ctx.lineTo(...P(r.L/2 - r.cover, upperY));
+  ctx.stroke();
+
+  // Dimensions
+  ctx.fillStyle = getCSS('--mute');
+  ctx.font = '10px Poppins, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`L = ${r.L} mm`, cxPx, groundY + 220 * scale + 30);
+  ctx.save();
+  ctx.translate(cxPx + r.L*scale/2 + 25, groundY - r.D*scale/2);
+  ctx.rotate(Math.PI/2);
+  ctx.textAlign = 'center';
+  ctx.fillText(`D = ${r.D}`, 0, 0);
+  ctx.restore();
+
+  // Effective depth dim
+  ctx.strokeStyle = getCSS('--orange');
+  ctx.setLineDash([2,2]);
+  ctx.lineWidth = 0.7;
+  ctx.beginPath();
+  ctx.moveTo(...P(-r.L/2 - 30, r.D - r.dx));
+  ctx.lineTo(...P(r.L/2 + 30, r.D - r.dx));
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = getCSS('--orange');
+  ctx.textAlign = 'left';
+  ctx.fillText(`d = ${r.dx.toFixed(0)} mm`, P(r.L/2 + 35, r.D - r.dx)[0], P(r.L/2 + 35, r.D - r.dx)[1] + 3);
+
+  // Cover label
+  ctx.fillStyle = getCSS('--mute');
+  ctx.textAlign = 'left';
+  ctx.font = '9.5px Poppins, sans-serif';
+  ctx.fillText(`cover ${r.cover}`, P(-r.L/2 + 10, 5)[0], P(-r.L/2 + 10, 5)[1] - 3);
+}
+
+function renderGeometry(r) {
+  if (S.geomTab === '3d') render3D(r);
+  else if (S.geomTab === 'plan') drawPlan(r);
+  else if (S.geomTab === 'section') drawSection(r);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// CHARTS — pressure / moment / shear diagrams
+// ════════════════════════════════════════════════════════════════════════
+
+let chart = null;
+function renderChart(r) {
+  const ctx = document.getElementById('chartCanvas');
+  if (!ctx || !r) return;
+  if (chart) chart.destroy();
+
+  const govULS = r.worstULS;
+  if (!govULS) return;
+
+  let data, options, title;
+  if (S.chartTab === 'pressure') {
+    // Pressure diagram across X axis at the centreline (most critical)
+    const bp = govULS.bearing;
+    const N = 50;
+    const xs = [], qs = [];
+    for (let i = 0; i <= N; i++) {
+      const x = -r.L/2/1000 + i/N * r.L/1000;   // m
+      let q;
+      if (bp.case === 'full') {
+        const dq = bp.dx;
+        q = bp.q_avg + dq * (x / (r.L/2/1000));
+      } else if (bp.case === 'partial-x') {
+        // Triangular: contact length 'a' from the heel side
+        const a = bp.a;
+        const fromHeel = r.L/2/1000 - x;       // distance from x = +L/2
+        const xLocal = fromHeel < 0 ? 0 : (fromHeel > a ? a : fromHeel);
+        q = bp.qmax * (1 - xLocal / a);
+      } else {
+        q = govULS.qStarAvg;
+      }
+      xs.push(x.toFixed(2));
+      qs.push(q);
+    }
+    data = {
+      labels: xs,
+      datasets: [{
+        label: 'q* (kPa) along X',
+        data: qs,
+        borderColor: getCSS('--orange'),
+        backgroundColor: 'rgba(217, 119, 87, 0.15)',
+        fill: true,
+        pointRadius: 0,
+        tension: 0.0,
+        borderWidth: 2,
+      },{
+        label: `q_a,net = ${r.qaNet.toFixed(0)} kPa`,
+        data: xs.map(_ => r.qaNet),
+        borderColor: getCSS('--rust'),
+        borderDash: [4, 3],
+        pointRadius: 0,
+        fill: false,
+        borderWidth: 1.5,
+      }]
+    };
+    title = `Soil pressure — ${govULS.name}`;
+  } else if (S.chartTab === 'moment') {
+    // Moment diagram across X (cantilever moment from each free edge to the column face)
+    const N = 30;
+    const xs = [], ms = [];
+    const q = govULS.qStarAvg;
+    for (let i = 0; i <= N; i++) {
+      const x = -r.L/2/1000 + i/N * r.L/1000;
+      // Distance from this section to the nearer free edge
+      const dxFromLeft = x - (-r.L/2/1000);
+      const dxFromRight = r.L/2/1000 - x;
+      const dxFree = Math.min(dxFromLeft, dxFromRight);
+      const m = q * dxFree * dxFree / 2;     // kNm/m if q in kPa, dxFree in m → m in kNm/m
+      xs.push(x.toFixed(2));
+      ms.push(m);
+    }
+    data = {
+      labels: xs,
+      datasets: [{
+        label: 'M* (kNm/m)',
+        data: ms,
+        borderColor: getCSS('--orange'),
+        backgroundColor: 'rgba(217, 119, 87, 0.15)',
+        fill: true,
+        pointRadius: 0,
+        borderWidth: 2,
+      },{
+        label: `φM_u = ${govULS.x.fcap.phiMu.toFixed(0)} kNm/m`,
+        data: xs.map(_ => govULS.x.fcap.phiMu),
+        borderColor: getCSS('--green'),
+        borderDash: [4, 3],
+        pointRadius: 0,
+        fill: false,
+        borderWidth: 1.5,
+      }]
+    };
+    title = `Cantilever moment — ${govULS.name}`;
+  } else {  // shear
+    // Shear diagram: V at section x is qStar × cantilever length from that section to nearer edge
+    const N = 30;
+    const xs = [], vs = [];
+    const q = govULS.qStarAvg;
+    const Wm = r.W/1000;
+    for (let i = 0; i <= N; i++) {
+      const x = -r.L/2/1000 + i/N * r.L/1000;
+      const dxFree = Math.min(x - (-r.L/2/1000), r.L/2/1000 - x);
+      const v = q * dxFree * Wm;     // total kN across the width
+      xs.push(x.toFixed(2));
+      vs.push(v);
+    }
+    data = {
+      labels: xs,
+      datasets: [{
+        label: 'V* (kN)',
+        data: vs,
+        borderColor: getCSS('--orange'),
+        backgroundColor: 'rgba(217, 119, 87, 0.15)',
+        fill: true,
+        pointRadius: 0,
+        borderWidth: 2,
+      },{
+        label: `φV_uc = ${govULS.x.scap.phiVuc.toFixed(0)} kN`,
+        data: xs.map(_ => govULS.x.scap.phiVuc),
+        borderColor: getCSS('--green'),
+        borderDash: [4, 3],
+        pointRadius: 0,
+        fill: false,
+        borderWidth: 1.5,
+      }]
+    };
+    title = `Cantilever shear — ${govULS.name}`;
+  }
+
+  options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      title: { display: true, text: title, font: { size: 11, family: 'Poppins', weight: '600' }, color: getCSS('--ink-2'), padding: 10 },
+      legend: { position: 'bottom', labels: { font: { size: 10.5, family: 'Poppins' }, boxWidth: 16, color: getCSS('--ink-2') } },
+    },
+    scales: {
+      x: { title: { display: true, text: 'x (m)', font: { size: 10, family: 'Poppins' }, color: getCSS('--mute') }, ticks: { font: { size: 9.5, family: 'Poppins' }, color: getCSS('--mute') }, grid: { color: getCSS('--hairline') } },
+      y: { title: { display: true, text: S.chartTab === 'pressure' ? 'q (kPa)' : (S.chartTab === 'moment' ? 'M (kNm/m)' : 'V (kN)'), font: { size: 10, family: 'Poppins' }, color: getCSS('--mute') }, ticks: { font: { size: 9.5, family: 'Poppins' }, color: getCSS('--mute') }, grid: { color: getCSS('--hairline') } },
+    },
+    animation: { duration: 240 },
+  };
+
+  chart = new Chart(ctx, { type: 'line', data, options });
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// PDF PRINT
+// ════════════════════════════════════════════════════════════════════════
+
+async function printPDF() {
+  const r = S.result;
+  if (!r) { showError('No result', 'Compute the design first.'); return; }
+  const root = document.getElementById('pdfRoot');
+  root.innerHTML = '';
+
+  const projectName = document.getElementById('projectName').value || 'Untitled Footing';
+  const today = new Date();
+  const date = `${today.getDate()} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][today.getMonth()]} ${today.getFullYear()}`;
+  const hash = inputHash();
+
+  const govSLS = r.worstSLS, govULS = r.worstULS;
+
+  // Page 1 — Summary + Inputs
+  const p1 = document.createElement('div'); p1.className = 'pdf-page';
+  p1.innerHTML = `
+    ${pdfHeader(projectName, date)}
+    <div class="pdf-title">Pad Footing Design Summary</div>
+    <div class="pdf-subtitle">AS 3600:2018 — Reinforced concrete pad (isolated spread) footing</div>
+
+    <div class="pdf-h2">1. Design Inputs</div>
+    <div class="pdf-narrative">
+      <table class="pdf-table"><tbody>
+        <tr><td><b>Column</b></td><td>${r.cx} × ${r.cy} mm</td></tr>
+        <tr><td><b>Footing</b></td><td>${r.L} × ${r.W} × ${r.D} mm (depth)</td></tr>
+        <tr><td><b>Concrete</b></td><td>fc′ = ${r.fc} MPa, cover = ${r.cover} mm</td></tr>
+        <tr><td><b>Reinforcement</b></td><td>N${r.barSize} @ ${r.spaceX} (X), N${r.barSize} @ ${r.spaceY} (Y), fsy = ${FSY} MPa</td></tr>
+        <tr><td><b>Foundation</b></td><td>q<sub>a</sub> = ${r.qa} kPa (allowable, service)</td></tr>
+        <tr><td><b>Effective depths</b></td><td>d<sub>x</sub> = ${r.dx.toFixed(0)} mm, d<sub>y</sub> = ${r.dy.toFixed(0)} mm, d<sub>om</sub> = ${r.dom.toFixed(0)} mm</td></tr>
+      </tbody></table>
+    </div>
+
+    <div class="pdf-h2">2. Loads</div>
+    <div class="pdf-narrative">
+      <table class="pdf-table"><tbody>
+        <tr><td>N<sub>G</sub></td><td>${+document.getElementById('inNG').value} kN</td></tr>
+        <tr><td>N<sub>Q</sub></td><td>${+document.getElementById('inNQ').value} kN</td></tr>
+        <tr><td>M<sub>Gx</sub> / M<sub>Gy</sub></td><td>${+document.getElementById('inMGx').value} / ${+document.getElementById('inMGy').value} kNm</td></tr>
+        <tr><td>M<sub>Qx</sub> / M<sub>Qy</sub></td><td>${+document.getElementById('inMQx').value} / ${+document.getElementById('inMQy').value} kNm</td></tr>
+      </tbody></table>
+    </div>
+
+    <div class="pdf-h2">3. Load Combinations</div>
+    ${pdfComboTable(r)}
+
+    ${pdfFooter(projectName, hash, 1)}
+  `;
+  root.appendChild(p1);
+
+  // Page 2 — Bearing pressure
+  const p2 = document.createElement('div'); p2.className = 'pdf-page';
+  p2.innerHTML = `
+    ${pdfHeader(projectName, date)}
+    <div class="pdf-h2">4. Bearing Pressure Check (Service Loads)</div>
+    <div class="pdf-narrative">
+      <p>The bearing pressure under the footing is calculated from the unfactored service load combination,
+      including the self-weight of the footing. The pressure must not exceed the allowable bearing capacity
+      <span class="as-ref">(RCB §6.2.2; q<sub>a</sub> from geotechnical investigation)</span>.</p>
+
+      <p><b>Self-weight of footing:</b></p>
+      <div class="pdf-eq">
+        sw = D · γ<sub>c</sub> = ${r.D/1000} × ${GAMMA_C} = ${r.sw_kPa.toFixed(0)} kPa<br>
+        q<sub>a,net</sub> = q<sub>a</sub> − sw = ${r.qa} − ${r.sw_kPa.toFixed(0)} = ${r.qaNet.toFixed(0)} kPa
+      </div>
+
+      ${govSLS ? `
+      <p><b>Governing service combination: ${govSLS.name}</b></p>
+      <div class="pdf-eq">
+        N = ${govSLS.N.toFixed(0)} kN, M<sub>x</sub> = ${govSLS.Mx.toFixed(0)} kNm, M<sub>y</sub> = ${govSLS.My.toFixed(0)} kNm<br>
+        e<sub>x</sub> = M<sub>x</sub>/N = ${(govSLS.bearing.ex||0).toFixed(3)} m,  e<sub>y</sub> = ${(govSLS.bearing.ey||0).toFixed(3)} m<br>
+        L/6 = ${(r.L/6/1000).toFixed(3)} m,  W/6 = ${(r.W/6/1000).toFixed(3)} m<br>
+        Pressure case: <b>${govSLS.bearing.case}</b><br>
+        q<sub>max</sub> = ${govSLS.bearing.qmax.toFixed(0)} kPa  (column-induced)<br>
+        q<sub>total</sub> = q<sub>max</sub> + sw = <b>${govSLS.qTotal.toFixed(0)} kPa</b><br>
+        Utilisation = q<sub>total</sub> / q<sub>a</sub> = ${(govSLS.bearingUtil*100).toFixed(0)}%
+        <span class="${govSLS.bearingUtil <= 1 ? 'pdf-pass' : 'pdf-fail'}">${govSLS.bearingUtil <= 1 ? 'PASS' : 'FAIL'}</span>
+      </div>` : ''}
+    </div>
+
+    <div class="pdf-h2">5. Pressure Distribution Theory</div>
+    <div class="pdf-narrative">
+      <p>For an axial load N at eccentricity e = M/N from the footing centroid, the soil pressure
+      distribution depends on the eccentricity ratio
+      <span class="as-ref">(RCB Eq 6.4–6.6)</span>:</p>
+      <div class="pdf-eq">
+        Case (a) e = 0:           q = N / (L · W)<br>
+        Case (b) e ≤ L/6:         q<sub>max,min</sub> = N/(LW) ± 6M/(WL²)  →  trapezoidal<br>
+        Case (c) e &gt; L/6:        q<sub>max</sub> = 2N/(W·a),  a = 3(L/2 − e)  →  triangular (avoid)
+      </div>
+      <p>Triangular distributions (e &gt; L/6) cause excessive footing rotation and should be avoided
+      by re-sizing or relocating the column. The current design has eccentricity ratio
+      e/(L/6) = ${r.eccUtil.toFixed(2)}.</p>
+    </div>
+
+    ${pdfFooter(projectName, hash, 2)}
+  `;
+  root.appendChild(p2);
+
+  // Page 3 — Flexure
+  const p3 = document.createElement('div'); p3.className = 'pdf-page';
+  p3.innerHTML = `
+    ${pdfHeader(projectName, date)}
+    <div class="pdf-h2">6. Flexural Design</div>
+    <div class="pdf-narrative">
+      <p>The footing acts as a two-way cantilever projecting from the column. Bending moments are
+      calculated at sections 0.7·a<sub>sup</sub> from the column centreline, where a<sub>sup</sub> is half the
+      column dimension <span class="as-ref">(RCB §6.2.5)</span>.</p>
+
+      ${govULS ? `
+      <p><b>Governing strength combination: ${govULS.name}</b></p>
+      <div class="pdf-eq">
+        q*<sub>net</sub> = N* / (L · W) = ${govULS.N.toFixed(0)} / (${(r.L/1000).toFixed(2)} × ${(r.W/1000).toFixed(2)}) = ${govULS.qStarAvg.toFixed(0)} kPa
+      </div>
+
+      <p><b>X-direction (bars parallel to L):</b></p>
+      <div class="pdf-eq">
+        a<sub>sup,x</sub> = c<sub>x</sub>/2 = ${(r.cx/2).toFixed(0)} mm,   0.7·a<sub>sup,x</sub> = ${(0.7*r.cx/2).toFixed(0)} mm<br>
+        Cantilever projection (to free edge): L/2 − 0.7·a<sub>sup</sub> = ${(r.L/2 - 0.7*r.cx/2).toFixed(0)} mm = ${govULS.x.proj_M_m.toFixed(3)} m<br>
+        M*<sub>x</sub> = q*·W·proj²/2 = ${govULS.x.MStar.toFixed(0)} kNm  =  <b>${govULS.x.MStarPerM.toFixed(1)} kNm/m</b><br>
+        d<sub>x</sub> = ${r.dx.toFixed(0)} mm<br>
+        A<sub>st,prov</sub> = ${govULS.x.AsPerM.toFixed(0)} mm²/m  →  k<sub>u</sub> = ${govULS.x.fcap.ku.toFixed(3)},  φ = ${govULS.x.fcap.phi.toFixed(2)}<br>
+        φM<sub>ux</sub> = ${govULS.x.fcap.phiMu.toFixed(1)} kNm/m
+        <span class="${govULS.x.utilM <= 1 ? 'pdf-pass' : 'pdf-fail'}">Util = ${govULS.x.utilM.toFixed(2)}</span>
+      </div>
+
+      <p><b>Y-direction (bars parallel to W):</b></p>
+      <div class="pdf-eq">
+        M*<sub>y</sub> = ${govULS.y.MStarPerM.toFixed(1)} kNm/m,  d<sub>y</sub> = ${r.dy.toFixed(0)} mm<br>
+        φM<sub>uy</sub> = ${govULS.y.fcap.phiMu.toFixed(1)} kNm/m
+        <span class="${govULS.y.utilM <= 1 ? 'pdf-pass' : 'pdf-fail'}">Util = ${govULS.y.utilM.toFixed(2)}</span>
+      </div>` : ''}
+
+      <p><b>Minimum reinforcement</b> <span class="as-ref">(AS 3600 §8.1.6.1; RCB §6.2.5):</span></p>
+      <div class="pdf-eq">
+        ρ<sub>min</sub> = 0.19·(D/d)²·(f'<sub>ct.f</sub>/f<sub>sy</sub>) = 0.19·(${r.D}/${r.dom.toFixed(0)})²·(${fctf(r.fc).toFixed(2)}/${FSY}) = <b>${(r.rhoMin*100).toFixed(3)}%</b><br>
+        ρ<sub>shrinkage</sub> (moderate) = 0.0035 · D/d = ${(RHO_SHRINKAGE * r.D/r.dom * 100).toFixed(3)}%<br>
+        ρ<sub>provided</sub> ≈ ${(Math.min(r.rhoX,r.rhoY)*100).toFixed(3)}%
+        <span class="${r.rhoOK ? 'pdf-pass' : 'pdf-fail'}">${r.rhoOK ? 'PASS' : 'FAIL'}</span>
+      </div>
+    </div>
+
+    ${pdfFooter(projectName, hash, 3)}
+  `;
+  root.appendChild(p3);
+
+  // Page 4 — Shear
+  const p4 = document.createElement('div'); p4.className = 'pdf-page';
+  p4.innerHTML = `
+    ${pdfHeader(projectName, date)}
+    <div class="pdf-h2">7. One-Way (Flexural) Shear</div>
+    <div class="pdf-narrative">
+      <p>Checked at distance d<sub>v</sub> from the face of the column, with d<sub>v</sub> = max(0.9d, 0.72D).
+      Concrete-only capacity is φV<sub>uc</sub> = φ · k<sub>s</sub> · k<sub>v</sub> · b<sub>v</sub> · d<sub>v</sub> · √f'<sub>c</sub>
+      <span class="as-ref">(AS 3600 Cl 8.2.4; RCB Eq 3.88).</span></p>
+
+      ${govULS ? `
+      <div class="pdf-eq">
+        d<sub>v</sub> = max(0.9·${r.dx.toFixed(0)}, 0.72·${r.D}) = ${govULS.x.dv.toFixed(0)} mm<br>
+        Section at d<sub>v</sub> from column face: cantilever projection ${govULS.x.proj_V_m.toFixed(3)} m<br>
+        V*<sub>x</sub> = q* · proj · W = ${govULS.x.VStar.toFixed(0)} kN<br>
+        k<sub>s</sub> = (1000 − D)/700 = ${govULS.x.scap.ks.toFixed(2)},  k<sub>v</sub> = ${govULS.x.scap.kv.toFixed(3)}<br>
+        φV<sub>uc</sub> = ${PHI_SHEAR} · ${govULS.x.scap.ks.toFixed(2)} · ${govULS.x.scap.kv.toFixed(3)} · ${r.W} · ${govULS.x.dv.toFixed(0)} · √${r.fc} = <b>${govULS.x.scap.phiVuc.toFixed(0)} kN</b>
+        <span class="${govULS.x.utilV <= 1 ? 'pdf-pass' : 'pdf-fail'}">Util = ${govULS.x.utilV.toFixed(2)}</span>
+      </div>` : ''}
+    </div>
+
+    <div class="pdf-h2">8. Punching (Two-Way) Shear</div>
+    <div class="pdf-narrative">
+      <p>Punching shear is checked on the critical perimeter at distance d<sub>om</sub>/2 from the column faces
+      <span class="as-ref">(AS 3600 Cl 9.2.3, Eq 4.16–4.17 in RCB):</span></p>
+
+      ${govULS ? `
+      <div class="pdf-eq">
+        Critical perimeter:  u = 2·(c<sub>x</sub> + d<sub>om</sub>) + 2·(c<sub>y</sub> + d<sub>om</sub>)
+                              = 2(${r.cx} + ${r.dom.toFixed(0)}) + 2(${r.cy} + ${r.dom.toFixed(0)}) = <b>${govULS.punchCap.u.toFixed(0)} mm</b><br>
+        β<sub>h</sub> = c<sub>long</sub>/c<sub>short</sub> = ${govULS.punchCap.betaH.toFixed(2)}<br>
+        f<sub>cv</sub> = min[ 0.17(1 + 2/β<sub>h</sub>)√fc′,  0.34√fc′ ] = ${govULS.punchCap.fcv.toFixed(2)} MPa<br>
+        φV<sub>uo</sub> = ${PHI_SHEAR} · u · d<sub>om</sub> · f<sub>cv</sub> = <b>${govULS.punchCap.phiVuo.toFixed(0)} kN</b><br>
+        V*<sub>p</sub> = q* · (L·W − (c<sub>x</sub>+d<sub>om</sub>)·(c<sub>y</sub>+d<sub>om</sub>)) = ${govULS.VStarPunch.toFixed(0)} kN
+        <span class="${govULS.utilPunch <= 1 ? 'pdf-pass' : 'pdf-fail'}">Util = ${govULS.utilPunch.toFixed(2)}</span>
+      </div>` : ''}
+
+      <p>Note: Where the column transfers an unbalanced moment to the footing, AS 3600 Cl 9.2.4 should be
+      invoked to account for the eccentric punching shear stress. The current tool addresses concentric loads
+      and small eccentricities only.</p>
+    </div>
+
+    ${pdfFooter(projectName, hash, 4)}
+  `;
+  root.appendChild(p4);
+
+  // Page 5 — Detailing & assumptions
+  const p5 = document.createElement('div'); p5.className = 'pdf-page';
+  p5.innerHTML = `
+    ${pdfHeader(projectName, date)}
+    <div class="pdf-h2">9. Anchorage</div>
+    <div class="pdf-narrative">
+      <p>Bottom flexural reinforcement must develop its full design stress at the section of maximum moment
+      (the column face). The required tensile development length L<sub>sy.t</sub> is calculated per
+      AS 3600 Cl 13.1.2:</p>
+      <div class="pdf-eq">
+        L<sub>sy.tb</sub> = 0.5·k<sub>1</sub>·k<sub>3</sub>·f<sub>sy</sub>·d<sub>b</sub> / (k<sub>2</sub>·√fc′)<br>
+        k<sub>1</sub>=${r.anchor.k1.toFixed(2)}  k<sub>2</sub>=${r.anchor.k2.toFixed(2)}  k<sub>3</sub>=${r.anchor.k3.toFixed(2)}<br>
+        L<sub>sy.tb</sub> = ${r.anchor.Lsy_tb.toFixed(0)} mm<br>
+        L<sub>sy.t</sub> = k<sub>4</sub>·k<sub>5</sub>·L<sub>sy.tb</sub> = <b>${r.anchor.Lsy_t.toFixed(0)} mm</b><br>
+        Available straight length = (L/2) − 0.7·a<sub>sup</sub> − cover = ${Math.min(r.availX, r.availY).toFixed(0)} mm
+      </div>
+      <p>Where the available length is insufficient, provide a 90° standard cog at the bar end, which
+      provides an equivalent of half a development length.</p>
+    </div>
+
+    <div class="pdf-h2">10. Detailing Summary</div>
+    <div class="pdf-narrative">
+      <table class="pdf-table">
+        <thead><tr><th>Item</th><th>Provided</th><th>Required</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Bottom X bars</td><td>N${r.barSize} @ ${r.spaceX} cts (A<sub>st</sub> = ${r.AsXprov.toFixed(0)} mm²/m)</td><td>ρ ≥ ${(r.rhoMinGov*100).toFixed(3)}%</td><td class="${r.rhoOK ? 'pdf-pass' : 'pdf-fail'}">${r.rhoOK ? 'PASS' : 'FAIL'}</td></tr>
+          <tr><td>Bottom Y bars</td><td>N${r.barSize} @ ${r.spaceY} cts (A<sub>st</sub> = ${r.AsYprov.toFixed(0)} mm²/m)</td><td>ρ ≥ ${(r.rhoMinGov*100).toFixed(3)}%</td><td class="${r.rhoOK ? 'pdf-pass' : 'pdf-fail'}">${r.rhoOK ? 'PASS' : 'FAIL'}</td></tr>
+          <tr><td>Cover</td><td>${r.cover} mm</td><td>${r.coverReq} mm</td><td class="${r.coverOK ? 'pdf-pass' : 'pdf-fail'}">${r.coverOK ? 'PASS' : 'FAIL'}</td></tr>
+          <tr><td>Anchorage</td><td>${r.anchor.Lsy_t.toFixed(0)} mm req</td><td>${Math.min(r.availX,r.availY).toFixed(0)} mm avail</td><td class="${r.anchor.Lsy_t <= Math.min(r.availX,r.availY) ? 'pdf-pass' : 'pdf-warn'}">${r.anchor.Lsy_t <= Math.min(r.availX,r.availY) ? 'OK' : 'COG'}</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pdf-h2">11. Assumptions and Notes</div>
+    <div class="pdf-narrative">
+      <ul style="margin-left: 18px; line-height: 1.6;">
+        <li>Allowable bearing capacity q<sub>a</sub> is a service-load value; replace with site-specific geotechnical report value in practice.</li>
+        <li>Bearing pressure is assumed linearly distributed (granular/cohesive irregularities ignored — RCB §6.2.3).</li>
+        <li>Footing self-weight uses γ<sub>c</sub> = 25 kN/m³ for normal-weight reinforced concrete.</li>
+        <li>Strength design uses AS/NZS 1170.0 load combinations; capacity reduction φ per AS 3600 Table 2.2.2.</li>
+        <li>Punching shear formula assumes concentric load; for transferred unbalanced moments, additional check per Cl 9.2.4 required.</li>
+        <li>Shrinkage / temperature reinforcement assumes <b>moderate</b> degree of crack control (0.0035·b·D).</li>
+        <li>Column starter bar development within the footing depth is not checked here — verify separately (often drives D).</li>
+        <li>Effective depth d<sub>x</sub> uses the lower bar layer; d<sub>y</sub> uses the upper bar layer (one bar diameter offset).</li>
+      </ul>
+    </div>
+
+    <div class="pdf-h2">12. References</div>
+    <div class="pdf-narrative">
+      <ul style="margin-left: 18px; line-height: 1.6;">
+        <li>AS 3600:2018 — Concrete Structures (Sections 8, 9, 13)</li>
+        <li>AS/NZS 1170.0 — Structural design actions: General principles</li>
+        <li>Foster, Kilpatrick, Warner — <i>Reinforced Concrete Basics</i> 3e (Pearson, 2018), Chapter 6</li>
+      </ul>
+    </div>
+
+    ${pdfFooter(projectName, hash, 5)}
+  `;
+  root.appendChild(p5);
+
+  // Render PDF
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait', compress: true });
+  const pages = root.querySelectorAll('.pdf-page');
+  for (let i = 0; i < pages.length; i++) {
+    const canvas = await html2canvas(pages[i], { scale: 2, useCORS: true });
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+    if (i > 0) pdf.addPage();
+    const w = pdf.internal.pageSize.getWidth();
+    const h = pdf.internal.pageSize.getHeight();
+    pdf.addImage(imgData, 'JPEG', 0, 0, w, h);
+  }
+  pdf.save(`Footing_${projectName.replace(/\s+/g,'_')}_${date.replace(/\s+/g,'')}.pdf`);
+}
+
+function pdfHeader(name, date) {
+  return `
+    <div class="pdf-header">
+      <div class="pdf-header-l">
+        <div class="pdf-mark">BT</div>
+        <div>
+          <h1>Pad Footing Designer</h1>
+          <div class="sub">AS 3600:2018 · Bligh Tanner</div>
+        </div>
+      </div>
+      <div class="pdf-header-r">
+        <div><b>${name}</b></div>
+        <div>${date}</div>
+        <div>Engine v${ENGINE_VERSION}</div>
+      </div>
+    </div>
+  `;
+}
+
+function pdfFooter(name, hash, pageNum) {
+  return `
+    <div class="pdf-footer">
+      <div>${name} · ${hash}</div>
+      <div>Page ${pageNum}</div>
+    </div>
+  `;
+}
+
+function pdfComboTable(r) {
+  const rows = r.combos.map(c => {
+    const q = c.bearing ? c.bearing.qmax : 0;
+    const qTotal = c.qTotal != null ? c.qTotal : (q + r.sw_kPa);
+    const u = c.kind === 'sls' ? (c.bearingUtil || 0) : (c.util || 0);
+    const isGov = (c === r.worstSLS) || (c === r.worstULS);
+    return `<tr class="${isGov ? 'gov' : ''}">
+      <td>${c.name} <i>(${c.kind.toUpperCase()})</i></td>
+      <td>${c.N.toFixed(0)}</td>
+      <td>${c.Mx.toFixed(0)}</td>
+      <td>${c.My.toFixed(0)}</td>
+      <td>${qTotal.toFixed(0)}</td>
+      <td>${u.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+  return `<table class="pdf-table">
+    <thead><tr><th>Combination</th><th>N (kN)</th><th>M<sub>x</sub></th><th>M<sub>y</sub></th><th>q<sub>tot</sub> (kPa)</th><th>Util</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function inputHash() {
+  // Tiny hash of key inputs so the PDF carries an audit string
+  const ids = ['inCx','inCy','inL','inW','inD','inCover','inSpaceX','inSpaceY','inQa','inNG','inNQ','inMGx','inMGy','inMQx','inMQy'];
+  const concat = ids.map(id => document.getElementById(id)?.value || '').join('|') + '|fc=' + S.fc + '|bar=' + S.barSize;
+  let h = 5381;
+  for (let i = 0; i < concat.length; i++) h = ((h << 5) + h + concat.charCodeAt(i)) & 0xFFFFFF;
+  return '#' + h.toString(16).padStart(6, '0').toUpperCase();
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// SAVE / LOAD JSON
+// ════════════════════════════════════════════════════════════════════════
+
+function saveJSON() {
+  const ids = ['inCx','inCy','inL','inW','inD','inCover','inExposure','inFsy','inSpaceX','inSpaceY',
+               'inLayout','inQa','inSoil','inNG','inNQ','inNW','inNE','inMGx','inMGy','inMQx','inMQy',
+               'inMWx','inMWy','inPsiC','inPsiL','projectName'];
+  const data = { state: S, inputs: {} };
+  ids.forEach(id => { const el = document.getElementById(id); if (el) data.inputs[id] = el.value; });
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (document.getElementById('projectName').value || 'footing') + '.json';
+  a.click();
+}
+function loadJSON(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      Object.entries(data.inputs).forEach(([id, val]) => {
+        const el = document.getElementById(id); if (el) el.value = val;
+      });
+      Object.assign(S, data.state || {});
+      // Sync chip selections
+      ['colShapeChips','ftgShapeChips','sizingChips','fcChips','barChips'].forEach(cid => {
+        const c = document.getElementById(cid); if (!c) return;
+        c.querySelectorAll('.chip').forEach(b => b.classList.remove('active'));
+        const map = { colShapeChips: S.colShape, ftgShapeChips: S.ftgShape, sizingChips: S.sizing, fcChips: String(S.fc), barChips: String(S.barSize) };
+        const target = c.querySelector(`[data-${Object.keys(c.querySelector('.chip').dataset)[0]}="${map[cid]}"]`);
+        if (target) target.classList.add('active');
+      });
+      document.getElementById('cyWrap').style.display = S.colShape === 'rect' ? '' : 'none';
+      document.getElementById('WWrap').style.display = S.ftgShape === 'rect' ? '' : 'none';
+      recompute();
+    } catch (err) { showError('Load error', err.message); }
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById('btnSaveJSON').addEventListener('click', saveJSON);
+document.getElementById('btnLoadJSON').addEventListener('click', () => document.getElementById('fileLoader').click());
+document.getElementById('fileLoader').addEventListener('change', e => { if (e.target.files[0]) loadJSON(e.target.files[0]); });
+document.getElementById('btnPrintPDF').addEventListener('click', printPDF);
+document.getElementById('btnLoadExample').addEventListener('click', loadExample);
+
+function loadExample() {
+  // RCB Example 6.2 — 400 sq col, 400+200 kN service, qa=250 kPa
+  S.colShape = 'square'; S.ftgShape = 'square'; S.sizing = 'manual';
+  S.fc = 25; S.barSize = 16;
+  // Sync chips
+  document.querySelectorAll('#colShapeChips .chip').forEach(b => b.classList.toggle('active', b.dataset.shape === 'square'));
+  document.querySelectorAll('#ftgShapeChips .chip').forEach(b => b.classList.toggle('active', b.dataset.shape === 'square'));
+  document.querySelectorAll('#sizingChips .chip').forEach(b => b.classList.toggle('active', b.dataset.sizing === 'manual'));
+  document.querySelectorAll('#fcChips .chip').forEach(b => b.classList.toggle('active', b.dataset.fc === '25'));
+  document.querySelectorAll('#barChips .chip').forEach(b => b.classList.toggle('active', b.dataset.bar === '16'));
+  document.getElementById('cyWrap').style.display = 'none';
+  document.getElementById('WWrap').style.display = 'none';
+  document.getElementById('inCx').value = 400;
+  document.getElementById('inCy').value = 400;
+  document.getElementById('inL').value = 1600;
+  document.getElementById('inW').value = 1600;
+  document.getElementById('inD').value = 350;
+  document.getElementById('inCover').value = 75;
+  document.getElementById('inSpaceX').value = 300;
+  document.getElementById('inSpaceY').value = 300;
+  document.getElementById('inQa').value = 250;
+  document.getElementById('inSoil').value = '250';
+  document.getElementById('inNG').value = 400;
+  document.getElementById('inNQ').value = 200;
+  document.getElementById('inNW').value = 0;
+  document.getElementById('inNE').value = 0;
+  document.getElementById('inMGx').value = 0;
+  document.getElementById('inMGy').value = 0;
+  document.getElementById('inMQx').value = 0;
+  document.getElementById('inMQy').value = 0;
+  document.getElementById('inMWx').value = 0;
+  document.getElementById('inMWy').value = 0;
+  document.getElementById('projectName').value = 'RCB Example 6.2 — 400 sq col, qa=250 kPa';
+  recompute();
+}
+
+// ────────── Error handler ──────────
+function showError(title, msg) {
+  const c = document.getElementById('globalErrors');
+  c.classList.add('show');
+  const el = document.createElement('div');
+  el.className = 'gerr';
+  el.innerHTML = `<span class="gerr-close">×</span><strong>${title}</strong>${msg}`;
+  el.querySelector('.gerr-close').addEventListener('click', () => {
+    el.remove();
+    if (!c.querySelector('.gerr')) c.classList.remove('show');
+  });
+  c.appendChild(el);
+  setTimeout(() => { el.remove(); if (!c.querySelector('.gerr')) c.classList.remove('show'); }, 8000);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// MAIN UPDATE LOOP
+// ════════════════════════════════════════════════════════════════════════
+
+function recompute() {
+  const r = compute();
+  if (!r) return;
+  S.result = r;
+  renderHero(r);
+  renderHelpers(r);
+  renderComboTable(r);
+  renderChecks(r);
+  renderGeometry(r);
+  renderChart(r);
+}
+
+// ── Init on load ──
+window.addEventListener('load', () => {
+  init3D();
+  recompute();
+  // Re-render after fonts load to ensure proper sizing
+  setTimeout(() => { recompute(); }, 200);
+  // Surface any early errors caught before script ran
+  if (window.__earlyErrors && window.__earlyErrors.length) {
+    window.__earlyErrors.forEach(e => showError('Load Error', `${e.msg} <code>${e.src}:${e.line}</code>`));
+  }
+});
+
+</script>
+</body>
+</html>

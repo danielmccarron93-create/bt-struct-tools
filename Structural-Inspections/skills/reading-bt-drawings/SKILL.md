@@ -4,7 +4,12 @@
 
 **When Cowork uses this.** Always, on any BT-authored project. Step 4.2 through Step 4.4 of `../../CLAUDE.md`.
 
-**Proven on.** 52 Second Av (66 sheets, residential, hybrid concrete + CLT) and Emmanuel College (104 sheets, commercial school + sub-builds). Both gave 100% clean extraction with this skill.
+**Proven on.**
+- 52 Second Av (66 sheets, residential, hybrid concrete + CLT) — older BT A1 template
+- Emmanuel College (104 sheets, commercial school + sub-builds) — older BT A1 template
+- MBC Creativity & Arts Centre (62 sheets, school arts centre, PT slabs, multi-tier steel roof) — **newer BT A1 template variant** (see Section 10)
+
+All gave 100% clean extraction once the correct cell dictionary was applied.
 
 **Doesn't apply to.** BT A3 sketch sets (different geometry — `/Rotate=0`, title block bottom-right). Client-issued sets (entirely different templates). Scanned PDFs with no text layer (need vision fallback).
 
@@ -274,6 +279,9 @@ A growing list — add to it whenever you discover a new failure mode.
 6. **Cover-table column order varies** — don't hardcode the element list; discover it from x positions. Emmanuel has `SUSPENDED SLAB - PT` (9 cols), 52SA has `BALCONY SLAB` and `DRYING ROOM PRECAST SLAB` (8 cols).
 7. **Revisions on individual sheets** — most sheets are at the project's master revision (e.g. `C1`) but individual sheets can be ahead (e.g. Emmanuel's `S023` was at `C2`). Capture per-page; don't assume project-level.
 8. **`/Rotate` value is per-page, not per-document.** It happens to be 90 on every page of every BT A1 set we've seen, but verify per page.
+9. **There are TWO BT A1 template variants — older (52SA/Emmanuel) and newer (MBC).** They have different cell positions. The recogniser must determine which template applies before picking a cell dictionary. See Section 10. (Discovered on MBC, April 2026.)
+10. **Long drawing titles wrap across two lines** in the MBC template (e.g. "FOOTING PLAN NOTES, LEGENDS," + "& SCHEDULES"). Try both title cells and concatenate when both have content. Cover sheet titles like "COVER SHEET" only use the second line.
+11. **Cover-sheet drawing list is always more reliable than per-page title cells for descriptions.** When the per-page title cell is hit-and-miss (as in MBC), use the cover-sheet `STRUCTURAL DRAWING LIST` extraction as the authoritative sheet→description map. Pattern: each name span sits directly above its sheet number in the rotated layout (same x, smaller y).
 
 ---
 
@@ -282,10 +290,77 @@ A growing list — add to it whenever you discover a new failure mode.
 Working implementations of this skill:
 
 - 52 Second Av extractor: `Structural Drawings/2023.0092 52 Second Avenue/.btinspect_scratch/extract_titleblock.py` (if not deleted).
-- Emmanuel extractor (same script, different PDF path): `Structural Drawings/Emmanuel/.btinspect_scratch/extract_titleblock.py`.
+- Emmanuel extractor (same approach, different PDF path): `Structural Drawings/Emmanuel/.btinspect_scratch/extract_titleblock.py`.
+- MBC extractor (NEWER template — different cell positions): `Structural Drawings/MBC/.btinspect_scratch/extract_titleblock.py`.
+- MBC drawing-list extractor (cover-sheet S### → name mapping): `Structural Drawings/MBC/.btinspect_scratch/extract_drawing_list.py`.
 
-Both are about 90 lines; both produce 100% extraction on their respective sets.
+All produce ~100% extraction on their respective sets.
 
 ---
 
-*Last revised: 2026-04-26.*
+## 10 · BT A1 Template Variants
+
+Two BT A1 template variants encountered to date. Cowork must detect which one applies and use the matching cell dictionary.
+
+### Older variant (52SA + Emmanuel, 2023–2024)
+
+Title block runs down the right edge in a tall, single-column stack. Issue stamp ("CONSTRUCTION ISSUE") at right-edge bottom (y≈812).
+
+Cell dictionary in Section 3 above (`CELLS`). Use this for projects up to ~mid-2024.
+
+### Newer variant (MBC, 2024.0230 onwards)
+
+Restructured title block — most cells moved to lower y values (above the printing-requirements area). Issue stamp moved to **upper-left of page** (around x≈810, y≈100-160), well away from the title block. Site address split across **two lines** (line 1 at y≈63, line 2 at y≈189). Drawing title can wrap across **two lines** (line A at y≈220 always present for short titles, line B at y≈66 for the start of long titles). Engineer initials moved to y≈201 (was y≈629).
+
+Cell dictionary for the newer variant:
+
+```python
+CELLS_MBC = {
+    "sheetNumber":      (1580, 1620,   95, 130,  20, 30),   # was y 115-150
+    "revision":         (1580, 1620,   55,  75,  20, 30),   # similar to old
+    "jobNumber":        (1580, 1620,  195, 225,  20, 30),   # was y 245-280
+    "drawingTitleA":    (1520, 1580,  215, 230,  14, 18),   # primary slot (always used)
+    "drawingTitleB":    (1520, 1580,   58,  80,  14, 18),   # wrap line 1 (long titles only)
+    "projectName":      (1430, 1455,  110, 130,  15, 19),   # smaller font, lower position
+    "siteAddressLine1": (1455, 1475,   58,  80,  13, 16),   # SPLIT — line 1
+    "siteAddressLine2": (1475, 1495,  180, 200,  13, 16),   # SPLIT — line 2
+    "issueLine1":       (795, 875,   140, 165,  25, 30),    # "TENDER" or "CONSTRUCTION" — UPPER LEFT
+    "issueLine2":       (845, 880,    95, 115,  16, 20),    # "NOT FOR CONSTRUCTION" or "ISSUE"
+    "drawnBy":          (1340, 1360,  195, 210,  11, 13),   # initials cluster at y≈201
+    "designBy":         (1368, 1385,  195, 210,  11, 13),
+    "checkedBy":        (1395, 1410,  195, 210,  11, 13),
+}
+```
+
+**No client cell** in the newer variant title-block area we've seen. Site address is the school name + street (e.g. "MORETON BAY COLLEGE, 450 WONDALL ROAD, MANLY WEST, QLD 4179") so the school doubles as both client and site.
+
+### How to detect the variant
+
+Quick heuristic — check whether the older-variant `sheetNumber` cell (y=115-150) has a hit on page 5+:
+
+```python
+older_variant_hit = any(
+    1580 <= bbox[0] <= 1625 and 115 <= bbox[1] <= 150 and 20 <= sz <= 30
+    for bbox, sz, _, _ in extract_spans(doc[4])
+)
+template = "older" if older_variant_hit else "newer"
+```
+
+Then load the matching cell dictionary.
+
+### When per-page title extraction is unreliable: use the cover-sheet drawing list
+
+In the MBC variant, only ~20% of pages had clean drawing-title extraction (titles vary in position, sometimes split, sometimes not present in the expected cell). The cover-sheet `STRUCTURAL DRAWING LIST` is a much more reliable source — it always contains every sheet number paired with its full name.
+
+Extraction approach (from `extract_drawing_list.py`):
+
+1. Find every span on page 1 matching `S\d{3}` at sz≈10 with x < 1700 (drawing-list region, not title block).
+2. Find every other sz≈10 text span in the same x range.
+3. For each sheet number, find the closest name span at the **same x** (within ±2.5 pt) but **smaller y** (the name sits "above" the sheet number in the rotated layout).
+4. If a second name span exists just above the first (within 25 pt), it's a wrapped 2-line name — concatenate.
+
+This gave 62/62 sheet→name mappings on MBC. Always run it as a cross-check; for newer-template projects, treat it as authoritative.
+
+---
+
+*Last revised: 2026-04-28. Added MBC template variant.*

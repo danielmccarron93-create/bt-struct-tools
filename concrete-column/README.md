@@ -12,22 +12,40 @@ A single-file HTML application for designing reinforced concrete columns to AS 3
 
 ## Validation summary
 
-The engine has been validated against five worked examples in RCB 3e Chapter 5:
+The engine has been validated against five worked examples in RCB 3e Chapter 5,
+plus three end-to-end orchestration tests covering the fixes from the April 2026
+technical review:
 
-| Example | Topic | Status |
+| Test | Topic | Status |
 |---|---|---|
 | 5.2 | Section capacity line — five key points (squash, decompression, balanced, pure bending, pure tension) | PASS |
 | 5.4 | Biaxial bending check (Cl 10.6.4) | PASS |
 | 5.5 | Slender unbraced column — moment magnifier (δb, δs) | PASS |
 | 5.6 | HSC core confinement — high axial (Cl 10.7.3) | PASS |
 | 5.7 | HSC core confinement — moderate axial, high moment | PASS |
+| E2E B1 | Squash-load 500 MPa cap binds at fsy=600 (Cl 10.6.2.2) | PASS |
+| E2E B3 | Per-axis radius of gyration for rectangular columns (Cl 10.5.2) | PASS |
+| E2E B2 | Storey magnifier δs computed per combo, not averaged | PASS |
 
-Two minor numerical inconsistencies were identified between the textbook and AS 3600:2018; in both cases the engine follows the standard:
+### Standard-vs-textbook reconciliations
 
-1. **Cl 10.4.4 (buckling load Nc)** — RCB Example 5.5 used φ = 0.6 (slender k_φ reduction) where AS 3600 hard-wires φ = 0.65. The engine uses 0.65, giving Nc values approximately 8% higher than the book.
-2. **Cl 10.6.4 (biaxial αn)** — RCB Eq 5.21 includes an extra 0.65 factor in the αn formula that AS 3600 does not include. The engine follows AS 3600, which is more conservative (smaller αn, larger utilisation).
+1. **Cl 10.6.2.2 (squash steel stress)** — at squash, max steel strain = 0.0025 → max stress = 500 MPa even for 600 MPa bars. RCB Eq 5.6 uses `Ag` (not `Ag − As`) which the engine does not. Engine Nuo is ~0.9 % below RCB for typical ρ = 1 %.
+2. **Cl 10.4.4 (buckling load Nc)** — RCB Example 5.5 used φ = 0.6 (slender k_φ reduction) where AS 3600 hard-wires φ = 0.65. The engine uses 0.65.
+3. **Cl 10.6.4 (biaxial αn)** — RCB Eq 5.21 includes an extra 0.65 factor in the αn formula that AS 3600 does not include. The engine follows AS 3600 (more conservative).
 
-Both are documented in the print-PDF assumptions section.
+All three are documented in the print-PDF assumptions section.
+
+### Fixes applied April 2026 (post technical review)
+
+- **B1** — squash steel stress capped at 0.0025·Es per Cl 10.6.2.2 (fixes ~2.6 % over-prediction with 600 MPa bars).
+- **B2** — δs computed per combination, not averaged across all six combos.
+- **B3** — separate r_x, r_y, Nc_x, Nc_y for non-square rectangular columns; weak-axis governance now captured.
+- **B4** — wind moment top and bottom entered separately (was a single value applied to both ends, which forced same-sign = single-curvature behaviour incorrectly).
+- **B5** — φo selection uses the proper Cl 10.3.1 short-column criterion across all combos (was a fixed `Le/r ≤ 25` proxy).
+- **B7** — durability cover is now a 2-D lookup of exposure × fc′ per AS 3600:2018 Table 4.10.3.2.
+- **C7** — δs > 1.5 (Cl 10.4.3 stiffening trigger) flagged in the slenderness tile.
+- **C8** — Cl 10.7.3.1 special-confinement-region trigger checked before applying HSC spacing limits.
+- **C10** — automatic check that fitment-bar diameter meets Table 10.7.4.3 minimum.
 
 ## Scope
 
@@ -52,7 +70,9 @@ Both are documented in the print-PDF assumptions section.
 ## Known limitations
 
 - Moment magnifier δs is computed for the column treated as a single-column storey. For multi-column storey magnification, use a hand calculation with ΣN\*/ΣNc.
-- Buckling load Nc is computed using the radius of gyration in the x-axis direction; for rectangular columns where the y-axis governs slenderness, this can be conservative on the x-axis but should be verified for sensitive cases.
+- Effective length factor `k` and unsupported length `Lu` are entered once and applied to both axes. For frames where x-axis and y-axis k or Lu differ, evaluate each axis manually.
+- Cover lookup for fire (Cl 5.5) assumes a "compression member with ≥ 3 sides exposed and load level μfi ≤ 0.7" — for other geometries refer to AS 3600 Table 5.5.2 directly.
+- Cc uses the gross stress-block area (does not subtract concrete displaced by compression bars). Common simplification per the rectangular stress block method; over-predicts capacity by ~0.5–1 % at ρ ≈ 1 % (proportional to ρ).
 
 ## Usage tips
 

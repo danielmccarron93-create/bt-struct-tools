@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Read the HTML file
-const htmlPath = '/sessions/optimistic-focused-ride/mnt/Structural Calculations (1)/Concrete Column Design/concrete_column_designer.html';
+const htmlPath = path.join(__dirname, 'index.html');
 const html = fs.readFileSync(htmlPath, 'utf8');
 
 // Extract the engine section: from BAR_AREAS to "// ════════════════════════════════════════════════════════════════════════\n// STATE + UI WIRING"
@@ -41,7 +41,9 @@ check('α1', alpha1(40), 0.85);
 check('α2', alpha2(40), 0.79);
 check('γ',  gammaCo(40), 0.87);
 check('Plastic centroid', sec52.plasticCentroid(), 300);
-check('Nuo (squash)', sec52.nuo() / 1000, 9360);
+// AS 3600 Cl 10.6.2.2: net concrete area (Ag - As) and steel stress capped at
+// 0.0025*Es = 500 MPa. Engine returns 9278 kN; RCB book quotes 9360 (uses Ag).
+check('Nuo (squash, AS 3600)', sec52.nuo() / 1000, 9278);
 const decomp52 = sec52.decompressionPoint();
 check('B: Nu @ ku=1', decomp52[0]/1000, 6385);
 check('B: Mu @ ku=1', decomp52[1]/1e6, 547);

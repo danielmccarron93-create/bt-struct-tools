@@ -1,0 +1,3675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concrete Column Designer PRO · AS 3600:2018</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style id="errOverlayCSS">
+#globalErrors { position: fixed; bottom: 12px; right: 12px; max-width: 480px; z-index: 9999; display: none; }
+#globalErrors.show { display: block; }
+.gerr { background: #c15a3e; color: #faf9f5; padding: 10px 14px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-top: 6px; font-family: 'Poppins', Arial, sans-serif; font-size: 12px; line-height: 1.4; }
+.gerr strong { display: block; font-weight: 700; font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; opacity: 0.9; margin-bottom: 4px; }
+.gerr code { font-family: 'JetBrains Mono', monospace; font-size: 11px; background: rgba(0,0,0,0.25); padding: 1px 5px; border-radius: 3px; }
+.gerr-close { float: right; cursor: pointer; opacity: 0.7; padding: 0 6px; }
+.gerr-close:hover { opacity: 1; }
+</style>
+<script>
+// Capture early errors before main script
+window.__earlyErrors = [];
+window.addEventListener('error', function(e){
+  window.__earlyErrors.push({ msg: e.message, src: e.filename, line: e.lineno, col: e.colno });
+});
+</script>
+<style>
+:root {
+  --cream:        #faf9f5;
+  --surface:      #ffffff;
+  --surface-2:    #f3f1e8;
+  --hairline:     rgba(20,20,19,0.06);
+  --hairline-2:   rgba(20,20,19,0.10);
+  --ink:          #141413;
+  --ink-2:        #4a4a47;
+  --mute:         #b0aea5;
+  --light-gray:   #e8e6dc;
+  --orange:       #d97757;
+  --orange-soft:  rgba(217,119,87,0.10);
+  --orange-mid:   rgba(217,119,87,0.20);
+  --green:        #788c5d;
+  --green-soft:   rgba(120,140,93,0.12);
+  --blue:         #6a9bcc;
+  --blue-soft:    rgba(106,155,204,0.10);
+  --rust:         #c15a3e;
+  --rust-soft:    rgba(193,90,62,0.10);
+  --shadow-sm:    0 1px 2px rgba(20,20,19,0.04);
+  --shadow:       0 1px 2px rgba(20,20,19,0.04), 0 4px 12px rgba(20,20,19,0.04);
+  --shadow-lg:    0 1px 3px rgba(20,20,19,0.06), 0 12px 28px rgba(20,20,19,0.06);
+  --radius:       10px;
+  --radius-sm:    6px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height: 100%; }
+body {
+  font-family: 'Poppins', Arial, sans-serif;
+  background: var(--cream);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+button { font-family: inherit; cursor: pointer; }
+input, select { font-family: inherit; }
+
+/* ── TOP BAR ── */
+.topbar {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--hairline);
+}
+.brand-block { display: flex; align-items: center; gap: 14px; }
+.brand-mark {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--orange) 0%, #c5663b 100%);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--cream); font-weight: 700; font-size: 14px; letter-spacing: -0.5px;
+  box-shadow: var(--shadow-sm);
+}
+.brand-meta { display: flex; flex-direction: column; line-height: 1.1; }
+.brand-name { font-size: 13px; font-weight: 600; letter-spacing: -0.1px; }
+.brand-tag  { font-size: 10.5px; color: var(--mute); font-weight: 500; }
+
+.project-name {
+  flex: 1;
+  max-width: 380px;
+  margin: 0 24px;
+  padding: 8px 14px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  text-align: center;
+  font-family: 'Lora', Georgia, serif;
+  font-style: italic;
+}
+.project-name:hover, .project-name:focus {
+  background: var(--surface-2);
+  outline: none;
+  border-color: var(--hairline);
+  font-style: normal;
+}
+.project-name::placeholder { color: var(--mute); }
+
+.actions { display: flex; gap: 8px; }
+.btn {
+  padding: 8px 14px;
+  border: 1px solid var(--hairline-2);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+}
+.btn:hover { background: var(--surface-2); border-color: var(--mute); }
+.btn.primary {
+  background: var(--orange);
+  color: var(--cream);
+  border-color: var(--orange);
+}
+.btn.primary:hover { background: #c5663b; border-color: #c5663b; }
+.btn svg { width: 14px; height: 14px; }
+
+/* ── LAYOUT ── */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(360px, 36%) 1fr;
+  height: calc(100vh - 56px);
+  gap: 0;
+}
+.inputs-pane {
+  background: var(--cream);
+  border-right: 1px solid var(--hairline);
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.outputs-pane {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: 16px;
+  gap: 12px;
+  min-height: 0;
+}
+
+/* ── INPUT CARDS ── */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+}
+.card-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--mute);
+  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.card-title::before {
+  content: '';
+  width: 4px; height: 4px;
+  background: var(--orange);
+  border-radius: 50%;
+}
+.row { display: flex; gap: 8px; align-items: flex-end; }
+.row + .row { margin-top: 10px; }
+
+.field {
+  flex: 1;
+  display: flex; flex-direction: column;
+}
+.field label {
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--mute);
+  margin-bottom: 4px;
+}
+.field input[type="number"], .field select {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--hairline-2);
+  background: var(--cream);
+  color: var(--ink);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  transition: all 0.12s;
+}
+.field input[type="number"]:focus, .field select:focus {
+  border-color: var(--orange);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px var(--orange-soft);
+}
+.field input[type="number"]:hover, .field select:hover {
+  border-color: var(--mute);
+}
+
+/* ── CHIP GROUPS ── */
+.chips {
+  display: flex; flex-wrap: wrap; gap: 4px;
+}
+.chip {
+  padding: 6px 11px;
+  border: 1px solid var(--hairline-2);
+  background: var(--cream);
+  color: var(--ink-2);
+  font-size: 11.5px;
+  font-weight: 500;
+  border-radius: 999px;
+  transition: all 0.12s;
+  font-variant-numeric: tabular-nums;
+}
+.chip:hover { border-color: var(--mute); background: var(--surface); }
+.chip.active {
+  background: var(--ink);
+  color: var(--cream);
+  border-color: var(--ink);
+}
+.chip.shape { padding: 7px 13px; font-size: 11px; }
+
+/* ── HERO STRIP ── */
+.hero-strip {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow);
+  padding: 16px 20px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 22px;
+  align-items: center;
+  min-height: 110px;
+}
+.util-ring-wrap {
+  position: relative;
+  width: 84px; height: 84px;
+}
+.util-ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.util-ring-bg { fill: none; stroke: var(--light-gray); stroke-width: 8; }
+.util-ring-fg { fill: none; stroke: var(--orange); stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 0.6s cubic-bezier(.2,.7,.3,1), stroke 0.3s; }
+.util-ring-text {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  line-height: 1;
+}
+.util-num {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.4px;
+}
+.util-pct { font-size: 9px; color: var(--mute); font-weight: 600; letter-spacing: 1px; margin-top: 2px; }
+
+.hero-info { display: flex; flex-direction: column; gap: 4px; }
+.hero-status {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  width: fit-content;
+}
+.hero-status.pass { background: var(--green-soft); color: var(--green); }
+.hero-status.fail { background: var(--rust-soft); color: var(--rust); }
+.hero-status.warn { background: var(--orange-soft); color: var(--orange); }
+.hero-status::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+}
+.hero-headline {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1.3;
+}
+.hero-headline strong { font-weight: 600; color: var(--orange); }
+.hero-meta {
+  font-size: 11.5px;
+  color: var(--mute);
+  font-variant-numeric: tabular-nums;
+  display: flex; gap: 14px;
+  flex-wrap: wrap;
+}
+.hero-meta span strong { color: var(--ink-2); font-weight: 600; }
+
+/* ── VISUALS BAND ── */
+.visuals {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  min-height: 0;
+}
+.visual {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+.visual-head {
+  padding: 10px 14px 8px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--hairline);
+}
+.visual-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.tabs { display: flex; gap: 2px; }
+.tab {
+  padding: 4px 9px;
+  font-size: 10.5px;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  color: var(--mute);
+  border-radius: var(--radius-sm);
+  transition: all 0.12s;
+  letter-spacing: 0.2px;
+}
+.tab:hover { color: var(--ink); background: var(--surface-2); }
+.tab.active { color: var(--ink); background: var(--surface-2); }
+.visual-body { flex: 1; min-height: 0; position: relative; }
+.visual-canvas { position: absolute; inset: 0; }
+
+/* ── CHECK GRID ── */
+.checks {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.check-tile {
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-sm);
+  padding: 10px 12px;
+  display: flex; flex-direction: column;
+  gap: 4px;
+  transition: all 0.15s;
+  cursor: pointer;
+}
+.check-tile:hover { border-color: var(--hairline-2); box-shadow: var(--shadow); }
+.check-tile-head {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.check-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.check-status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 3px var(--green-soft);
+}
+.check-status-dot.fail { background: var(--rust); box-shadow: 0 0 0 3px var(--rust-soft); }
+.check-status-dot.warn { background: var(--orange); box-shadow: 0 0 0 3px var(--orange-soft); }
+.check-status-dot.na   { background: var(--mute); box-shadow: 0 0 0 3px rgba(176,174,165,0.18); }
+.check-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.3px;
+}
+.check-detail {
+  font-size: 10.5px;
+  color: var(--mute);
+  font-variant-numeric: tabular-nums;
+}
+.check-bar {
+  height: 3px;
+  background: var(--light-gray);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+.check-bar-fill {
+  height: 100%;
+  background: var(--green);
+  border-radius: 2px;
+  transition: width 0.4s ease-out, background 0.3s;
+}
+.check-tile.fail .check-bar-fill { background: var(--rust); }
+.check-tile.warn .check-bar-fill { background: var(--orange); }
+
+/* ── COMBO TABLE ── */
+.combo-table-wrap {
+  margin-top: 6px;
+  overflow-x: auto;
+}
+.combo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.combo-table th, .combo-table td {
+  text-align: right;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--hairline);
+}
+.combo-table th {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--mute);
+  background: transparent;
+}
+.combo-table td:first-child, .combo-table th:first-child {
+  text-align: left;
+  font-weight: 500;
+}
+.combo-table tr.governing td {
+  background: var(--orange-soft);
+  font-weight: 600;
+}
+.combo-table tr.governing td:first-child::before {
+  content: '◆ ';
+  color: var(--orange);
+}
+
+/* ── INPUT GRID HELPERS ── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; }
+
+.help {
+  font-size: 10.5px;
+  color: var(--mute);
+  font-style: italic;
+  margin-top: 4px;
+  font-family: 'Lora', Georgia, serif;
+}
+.assumption-pill {
+  display: inline-block;
+  padding: 1px 7px;
+  background: var(--blue-soft);
+  color: var(--blue);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 500;
+  margin-left: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* scrollbars */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--hairline-2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--mute); }
+
+/* PDF print container (hidden) */
+#pdfRoot {
+  position: fixed; left: -10000px; top: 0;
+  width: 794px;
+  background: white;
+  color: #141413;
+  font-family: 'Lora', Georgia, serif;
+}
+.pdf-page {
+  width: 794px;
+  min-height: 1123px;
+  padding: 60px 60px 80px 60px;
+  background: white;
+  page-break-after: always;
+  position: relative;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.pdf-header {
+  border-bottom: 2px solid #141413;
+  padding-bottom: 12px;
+  margin-bottom: 18px;
+  display: flex; justify-content: space-between; align-items: flex-start;
+}
+.pdf-header-l { display: flex; align-items: center; gap: 12px; }
+.pdf-mark {
+  width: 36px; height: 36px;
+  background: #d97757; color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Poppins'; font-weight: 800; border-radius: 8px;
+}
+.pdf-header h1 { font-family: 'Poppins'; font-size: 17px; font-weight: 700; margin-bottom: 2px; }
+.pdf-header .sub { font-size: 10px; color: #777; font-family: 'Poppins'; }
+.pdf-header-r { font-size: 10px; color: #444; text-align: right; line-height: 1.4; font-family: 'Poppins'; }
+.pdf-title { font-family: 'Poppins'; font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.pdf-subtitle { font-family: 'Lora'; font-style: italic; color: #555; margin-bottom: 18px; }
+.pdf-h2 { font-family: 'Poppins'; font-size: 14px; font-weight: 600; color: #141413; margin: 18px 0 8px; padding-bottom: 4px; border-bottom: 1px solid #d97757; }
+.pdf-h3 { font-family: 'Poppins'; font-size: 12px; font-weight: 600; color: #141413; margin: 12px 0 4px; }
+.pdf-narrative { font-family: 'Lora'; font-size: 11.5px; line-height: 1.55; }
+.pdf-narrative p { margin-bottom: 8px; }
+.pdf-narrative .as-ref { color: #d97757; font-style: italic; font-size: 10.5px; }
+.pdf-eq {
+  background: #faf9f5;
+  border-left: 3px solid #d97757;
+  padding: 8px 12px;
+  margin: 8px 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.pdf-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-family: 'Poppins'; font-size: 10.5px; }
+.pdf-table th { background: #141413; color: white; font-weight: 600; text-align: left; padding: 6px 8px; }
+.pdf-table td { padding: 5px 8px; border-bottom: 1px solid #e8e6dc; font-variant-numeric: tabular-nums; }
+.pdf-table tr.gov td { background: #fef0e9; font-weight: 600; }
+.pdf-pass { color: #788c5d; font-weight: 600; }
+.pdf-fail { color: #c15a3e; font-weight: 600; }
+.pdf-warn { color: #d97757; font-weight: 600; }
+.pdf-footer {
+  position: absolute; bottom: 30px; left: 60px; right: 60px;
+  border-top: 1px solid #e8e6dc;
+  padding-top: 8px;
+  font-family: 'Poppins'; font-size: 9px; color: #999;
+  display: flex; justify-content: space-between;
+}
+
+/* tooltip / detail expand for check tiles */
+.check-detail-panel {
+  display: none;
+  margin-top: 6px;
+  padding: 8px 10px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  font-size: 10.5px;
+  font-family: 'Lora', Georgia, serif;
+  color: var(--ink-2);
+  line-height: 1.45;
+}
+.check-tile.expanded .check-detail-panel { display: block; }
+
+/* notification banner */
+.banner {
+  background: var(--blue-soft);
+  border: 1px solid var(--blue);
+  color: var(--blue);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 11.5px;
+  margin-bottom: 8px;
+  font-family: 'Lora', Georgia, serif;
+  display: none;
+}
+
+/* small inline value tag */
+.tag {
+  display: inline-block;
+  padding: 2px 6px;
+  background: var(--surface-2);
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+  margin-left: 4px;
+}
+
+/* responsiveness — for narrower screens */
+@media (max-width: 1280px) {
+  .layout { grid-template-columns: 380px 1fr; }
+  .visuals { grid-template-columns: 1fr; }
+  .checks { grid-template-columns: repeat(4, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- ─────────────────────────  TOP BAR  ───────────────────────── -->
+<header class="topbar">
+  <div class="brand-block">
+    <div class="brand-mark">BT</div>
+    <div class="brand-meta">
+      <div class="brand-name">Concrete Column Designer <span style="display:inline-block;background:linear-gradient(135deg,#d97757,#c5663b);color:#faf9f5;font-size:9px;font-weight:700;letter-spacing:0.8px;padding:2px 6px;border-radius:3px;margin-left:4px;vertical-align:middle;">PRO</span></div>
+      <div class="brand-tag">AS 3600:2018 · Bligh Tanner · comprehensive RCB Ch.5 coverage</div>
+    </div>
+  </div>
+  <input class="project-name" id="projectName" placeholder="Untitled column · click to name…" value="">
+  <div class="actions">
+    <button class="btn" id="btnLoadExample">Example</button>
+    <button class="btn" id="btnAutoDesign" title="Find smallest reinforcement that brings governing util into 0.85–0.95">⚙ Auto-design</button>
+    <button class="btn" id="btnSaveJSON">Save</button>
+    <button class="btn" id="btnLoadJSON">Load</button>
+    <button class="btn primary" id="btnPrintPDF">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"/><rect x="6" y="14" width="12" height="8"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/></svg>
+      Print Calculations
+    </button>
+    <input type="file" id="fileLoader" accept=".json" style="display:none">
+  </div>
+</header>
+
+<!-- ─────────────────────────  MAIN LAYOUT  ───────────────────────── -->
+<div class="layout">
+
+  <!-- INPUTS PANE -->
+  <aside class="inputs-pane" id="inputsPane">
+
+    <!-- SECTION CARD -->
+    <div class="card">
+      <div class="card-title">Section</div>
+      <div class="row">
+        <div class="field" style="flex: 0 0 auto;">
+          <label>Shape</label>
+          <div class="chips" id="shapeChips">
+            <button class="chip shape active" data-shape="rect">Rectangular</button>
+            <button class="chip shape" data-shape="square">Square</button>
+            <button class="chip shape" data-shape="circ">Circular</button>
+          </div>
+        </div>
+      </div>
+      <div class="row" id="rectDims">
+        <div class="field"><label>Width b (mm)</label><input type="number" id="inB" value="400" step="10"></div>
+        <div class="field"><label>Depth D (mm)</label><input type="number" id="inD" value="600" step="10"></div>
+        <div class="field"><label>Length Lu (mm)</label><input type="number" id="inLu" value="3000" step="50"></div>
+      </div>
+      <div class="row" id="circDims" style="display:none;">
+        <div class="field"><label>Diameter Ø (mm)</label><input type="number" id="inDia" value="500" step="10"></div>
+        <div class="field"><label>Length Lu (mm)</label><input type="number" id="inLu2" value="3000" step="50"></div>
+      </div>
+    </div>
+
+    <!-- MATERIALS CARD -->
+    <div class="card">
+      <div class="card-title">Materials</div>
+      <div class="row">
+        <div class="field"><label>fc′ (MPa)</label>
+          <div class="chips" id="fcChips">
+            <button class="chip" data-fc="25">25</button>
+            <button class="chip" data-fc="32">32</button>
+            <button class="chip active" data-fc="40">40</button>
+            <button class="chip" data-fc="50">50</button>
+            <button class="chip" data-fc="65">65</button>
+            <button class="chip" data-fc="80">80</button>
+            <button class="chip" data-fc="100">100</button>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field"><label>fsy long. (MPa)</label>
+          <select id="inFsy"><option value="500">500 (N grade)</option><option value="600">600</option></select>
+        </div>
+        <div class="field"><label>fsy.f fitments (MPa)</label>
+          <select id="inFsyF"><option value="500">500 (N grade)</option><option value="250">250 (R grade)</option></select>
+        </div>
+        <div class="field"><label>Cover (mm)</label><input type="number" id="inCover" value="40" step="5"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Exposure</label>
+          <select id="inExposure">
+            <option value="A1">A1 (interior)</option>
+            <option value="A2">A2 (interior, mild)</option>
+            <option value="B1" selected>B1 (above ground, exterior, dry)</option>
+            <option value="B2">B2 (coastal &gt;1km)</option>
+            <option value="C1">C1 (saline near coast)</option>
+            <option value="C2">C2 (saltwater splash)</option>
+            <option value="U">U (special)</option>
+          </select>
+        </div>
+        <div class="field"><label>Fire FRL</label>
+          <select id="inFRL">
+            <option value="0">none</option>
+            <option value="60" selected>60/60/60</option>
+            <option value="90">90/90/90</option>
+            <option value="120">120/120/120</option>
+            <option value="180">180/180/180</option>
+            <option value="240">240/240/240</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- LONGITUDINAL CARD -->
+    <div class="card">
+      <div class="card-title">Longitudinal Reinforcement</div>
+      <div class="row">
+        <div class="field"><label>Bar size</label>
+          <div class="chips" id="barSizeChips">
+            <button class="chip" data-bar="16">N16</button>
+            <button class="chip" data-bar="20">N20</button>
+            <button class="chip" data-bar="24">N24</button>
+            <button class="chip active" data-bar="28">N28</button>
+            <button class="chip" data-bar="32">N32</button>
+            <button class="chip" data-bar="36">N36</button>
+            <button class="chip" data-bar="40">N40</button>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Mode</label>
+          <div class="chips" id="rebarModeChips">
+            <button class="chip active" data-rebarmode="sym">Symmetric (nx, ny)</button>
+            <button class="chip" data-rebarmode="layer">Per-layer (free-form)</button>
+          </div>
+        </div>
+      </div>
+      <div class="row" id="rebarSymRow">
+        <div class="field"><label id="barsXLabel">Bars on each X face</label><input type="number" id="inBarsX" value="3" min="2" step="1"></div>
+        <div class="field"><label id="barsYLabel">Bars on each Y face</label><input type="number" id="inBarsY" value="3" min="2" step="1"></div>
+        <div class="field" id="barsCircWrap" style="display:none;"><label>Bars total</label><input type="number" id="inBarsCirc" value="8" min="6" step="1"></div>
+      </div>
+      <div id="rebarLayerWrap" style="display:none;">
+        <div class="help" style="font-size:11px;color:var(--ink-2);margin-bottom:6px;">
+          Per-layer: depth d (mm from x-axis comp face) and total area mm². Allows asymmetric layouts (more steel on tension face etc.). Min 2 layers.
+        </div>
+        <div id="layersList"></div>
+        <div class="row" style="margin-top:6px;">
+          <button class="btn" id="btnAddLayer" style="height:28px;">+ Add layer</button>
+        </div>
+      </div>
+      <div class="help" id="reinfHelp">As ≈ <span id="totalAs">2467</span> mm² · ρ = <span id="rho">1.03</span>%</div>
+    </div>
+
+    <!-- FITMENTS CARD -->
+    <div class="card">
+      <div class="card-title">Fitments / Helices</div>
+      <div class="row">
+        <div class="field"><label>Fitment bar</label>
+          <select id="inFitBar"><option value="6">R6</option><option value="10" selected>N10</option><option value="12">N12</option><option value="16">N16</option></select>
+        </div>
+        <div class="field"><label>Spacing (mm)</label><input type="number" id="inFitSpacing" value="200" step="10"></div>
+        <div class="field"><label>Arrangement</label>
+          <select id="inFitArr"><option value="perim">Single perimeter</option><option value="cross">Perimeter + cross-ties</option><option value="helix">Helical (circular)</option></select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Fitment θ (°)</label><input type="number" id="inFitTheta" value="90" step="5" min="30" max="90"></div>
+        <div class="field"><label>Restraint pattern</label>
+          <select id="inRestraintPattern">
+            <option value="every-bar">Every bar</option>
+            <option value="alternate-bar">Every alternate bar</option>
+            <option value="corners-only">Corners only</option>
+          </select>
+        </div>
+        <div class="field" style="flex:2;"><label>&nbsp;</label><div style="font-size:10px;color:var(--mute);padding-top:8px;">θ = fitment leg angle to confinement plane (RCB Fig 5.29). Cl 10.7.4.1 requires every bar if s > 150 mm or N* &gt; 0.3·fc′·Ag.</div></div>
+      </div>
+    </div>
+
+    <!-- FLOOR-JOINT CARD (Cl 10.8) -->
+    <div class="card">
+      <div class="card-title">Floor-joint Transmission (Cl 10.8)</div>
+      <div class="help" style="font-size:11px;color:var(--ink-2);margin-bottom:8px;">
+        When slab fc′ &lt; 0.75 × column fc′, the joint must be checked because the floor concrete can't develop the column's compressive load directly.
+      </div>
+      <div class="row">
+        <div class="field"><label>Slab fc′ (MPa)</label><input type="number" id="inSlabFc" value="32" step="1" min="20" max="100"></div>
+        <div class="field"><label>Joint restraint</label>
+          <select id="inJointRestraint">
+            <option value="4-sides">Restrained 4 sides (interior)</option>
+            <option value="2-opposite">Restrained 2 opposite sides (edge)</option>
+            <option value="2-adjacent">Restrained 2 adjacent / corner</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- VOIDS / HOLES CARD (RCB §5.4.1, Example 5.1) -->
+    <div class="card">
+      <div class="card-title">Internal Voids / Ducts</div>
+      <div class="help" style="margin-bottom:8px;font-size:11px;color:var(--ink-2);">
+        Optional. PT ducts, services and conduits passing through the column. Voids reduce Ag, shift the plastic centroid (RCB Eq 5.8) and reduce Cc when within the stress block. Enter depth from the X-axis compressive face (top).
+      </div>
+      <div id="voidsList"></div>
+      <div class="row" style="margin-top:6px;">
+        <button class="btn" id="btnAddVoid" style="height:28px;">+ Add void</button>
+        <span style="font-size:10px;color:var(--mute);align-self:center;">For x-axis bending — voids are mirrored about y-axis automatically for y-axis check.</span>
+      </div>
+    </div>
+
+    <!-- ANALYSIS METHOD CARD (Cl 6.2 / 10.2.1) -->
+    <div class="card">
+      <div class="card-title">Method of Structural Analysis</div>
+      <div class="row">
+        <div class="field"><label>Method (Cl 6.2)</label>
+          <div class="chips" id="analysisMethodChips">
+            <button class="chip active" data-amethod="1">Method 1 — Linear elastic</button>
+            <button class="chip" data-amethod="2">Method 2 — Non-linear elastic (geometric)</button>
+            <button class="chip" data-amethod="3">Method 3 — Rigorous non-linear</button>
+          </div>
+        </div>
+      </div>
+      <div class="help" id="analysisMethodHelp" style="font-size:11px;line-height:1.45;">
+        <strong>Method 1</strong> — column moments are end moments from a linear elastic analysis on undeformed geometry. Calculator applies moment magnifiers δb (Cl 10.4.2) and δs (Cl 10.4.3) to obtain M*max.
+      </div>
+    </div>
+
+    <!-- EFFECTIVE LENGTH CARD -->
+    <div class="card">
+      <div class="card-title">Effective Length</div>
+      <div class="row">
+        <div class="field"><label>Bracing</label>
+          <div class="chips" id="braceChips">
+            <button class="chip active" data-brace="braced">Braced</button>
+            <button class="chip" data-brace="unbraced">Unbraced</button>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Per-axis Le?</label>
+          <div class="chips" id="perAxisChips">
+            <button class="chip active" data-axissep="0">Same for both</button>
+            <button class="chip" data-axissep="1">Per-axis</button>
+          </div>
+        </div>
+      </div>
+      <!-- Single Lu/k (default) -->
+      <div class="row" id="singleAxisRow">
+        <div class="field"><label>Method</label>
+          <select id="inKMethod"><option value="manual">Manual k</option><option value="gamma">From γ₁, γ₂</option></select>
+        </div>
+        <div class="field" id="kManualWrap"><label>k factor</label><input type="number" id="inK" value="0.85" step="0.05" min="0.5" max="5"></div>
+        <div class="field" id="kGammaWrap" style="display:none;"><label>γ₁ (top)</label><input type="number" id="inGamma1" value="1.0" step="0.5" min="1.0" max="50"></div>
+        <div class="field" id="kGammaWrap2" style="display:none;"><label>γ₂ (bot)</label><input type="number" id="inGamma2" value="1.0" step="0.5" min="1.0" max="50"></div>
+      </div>
+      <!-- Per-axis Lu/k (advanced) -->
+      <div class="row" id="perAxisRow1" style="display:none;">
+        <div class="field"><label>Lu_x (mm)</label><input type="number" id="inLuX" value="3000" step="50"></div>
+        <div class="field"><label>k_x</label><input type="number" id="inKx" value="0.85" step="0.05" min="0.5" max="5"></div>
+        <div class="field"><label>Lu_y (mm)</label><input type="number" id="inLuY" value="3000" step="50"></div>
+        <div class="field"><label>k_y</label><input type="number" id="inKy" value="0.85" step="0.05" min="0.5" max="5"></div>
+      </div>
+      <!-- γ helper widget -->
+      <details style="margin-top:8px;font-size:11px;" id="gammaHelper">
+        <summary style="cursor:pointer;color:var(--ink-2);font-weight:500;">γ calculator (Eq 5.30 + Table 5.3)</summary>
+        <div style="padding:10px;background:var(--surface-2);border-radius:6px;margin-top:6px;">
+          <p style="margin-bottom:8px;color:var(--ink-2);">γ = Σ(Iₑ/L)c / Σ(β·Iₑ/L)b. Use Iₑ = 0.8·Ig for columns, 0.4·Ig for beams.</p>
+          <div class="row" style="margin-bottom:6px;">
+            <div class="field"><label>End</label>
+              <select id="gammaEndPick"><option value="1">γ₁ (top)</option><option value="2">γ₂ (bot)</option></select>
+            </div>
+            <div class="field"><label>Σ(Iₑ/L)c × 10⁶ mm³</label><input type="number" id="gammaSumIc" value="1440" step="10"></div>
+            <div class="field"><label>Σ(β·Iₑ/L)b × 10⁶ mm³</label><input type="number" id="gammaSumIb" value="293" step="10"></div>
+            <button class="btn" id="gammaApply" style="height:28px;align-self:flex-end;">Apply</button>
+          </div>
+          <div style="font-size:10px;color:var(--mute);">β table: pinned = 1.5 (br) / 0.5 (unbr); rigid-to-col = 1.0 / 1.0; fixed = 2.0 / 0.67. Footing: γ = 10 (pinned) or 1.0 (designed-fixed).</div>
+        </div>
+      </details>
+      <div class="help">Le = <span id="effLen">2550</span> mm · Le/r = <span id="slendRatio">14.2</span> · <span id="slendVerdict" class="tag">SHORT</span></div>
+    </div>
+
+    <!-- LOADS CARD -->
+    <div class="card">
+      <div class="card-title">Loads (Action Effects on Column)</div>
+      <div class="row">
+        <div class="field"><label>NG (kN)</label><input type="number" id="inNG" value="800" step="10"></div>
+        <div class="field"><label>NQ (kN)</label><input type="number" id="inNQ" value="350" step="10"></div>
+        <div class="field"><label>NW (kN)</label><input type="number" id="inNW" value="0" step="10"></div>
+        <div class="field"><label>NE (kN)</label><input type="number" id="inNE" value="0" step="10"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>MG,x top (kNm)</label><input type="number" id="inMGxt" value="40" step="5"></div>
+        <div class="field"><label>MG,x bot (kNm)</label><input type="number" id="inMGxb" value="-30" step="5"></div>
+        <div class="field"><label>MQ,x top (kNm)</label><input type="number" id="inMQxt" value="20" step="5"></div>
+        <div class="field"><label>MQ,x bot (kNm)</label><input type="number" id="inMQxb" value="-15" step="5"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>MG,y top (kNm)</label><input type="number" id="inMGyt" value="0" step="5"></div>
+        <div class="field"><label>MG,y bot (kNm)</label><input type="number" id="inMGyb" value="0" step="5"></div>
+        <div class="field"><label>MQ,y top (kNm)</label><input type="number" id="inMQyt" value="0" step="5"></div>
+        <div class="field"><label>MQ,y bot (kNm)</label><input type="number" id="inMQyb" value="0" step="5"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>MW,x top (kNm)</label><input type="number" id="inMWxt" value="0" step="5"></div>
+        <div class="field"><label>MW,x bot (kNm)</label><input type="number" id="inMWxb" value="0" step="5"></div>
+        <div class="field"><label>MW,y top (kNm)</label><input type="number" id="inMWyt" value="0" step="5"></div>
+        <div class="field"><label>MW,y bot (kNm)</label><input type="number" id="inMWyb" value="0" step="5"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>ψc (combo)</label><input type="number" id="inPsiC" value="0.4" step="0.1" min="0" max="1"></div>
+        <div class="field"><label>ψl (long-term)</label><input type="number" id="inPsiL" value="0.4" step="0.1" min="0" max="1"></div>
+        <div class="field" style="flex:2;"><label>&nbsp;</label><div style="font-size:10px;color:var(--mute);padding-top:8px;">Wind moments are entered with their actual signs (typically opposite top/bot for sway columns — double curvature).</div></div>
+      </div>
+      <div class="combo-table-wrap">
+        <table class="combo-table" id="comboTable">
+          <thead><tr><th>Combo</th><th>N* (kN)</th><th>M*x (kNm)</th><th>M*y (kNm)</th><th>Util.</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SPLICES CARD (Cl 10.7.5) -->
+    <div class="card">
+      <div class="card-title">Splices · Top & Bottom (Cl 10.7.5)</div>
+      <div class="help" style="font-size:11px;color:var(--ink-2);margin-bottom:8px;">
+        Splices in compression members must resist a <strong>tensile force ≥ 0.25·fsy·As per face</strong> (Cl 10.7.5.1). End-bearing splices are permitted <strong>only</strong> if the column face is in net compression for all design combinations. Lap and mechanical splices satisfy the criterion if their development length / proof load is adequate.
+      </div>
+      <div class="row">
+        <div class="field"><label>Splice type — TOP</label>
+          <select id="inSpliceTop">
+            <option value="lap">Lap splice</option>
+            <option value="mech">Mechanical (proprietary)</option>
+            <option value="endb">End-bearing (sleeve)</option>
+            <option value="none">No splice</option>
+          </select>
+        </div>
+        <div class="field"><label>Lap ratio Ls/Lsy.t (top)</label><input type="number" id="inSpliceTopRatio" value="1.0" step="0.05" min="0" max="2"></div>
+        <div class="field"><label>Splice type — BOT</label>
+          <select id="inSpliceBot">
+            <option value="lap">Lap splice</option>
+            <option value="mech">Mechanical (proprietary)</option>
+            <option value="endb">End-bearing (sleeve)</option>
+            <option value="none">No splice</option>
+          </select>
+        </div>
+        <div class="field"><label>Lap ratio Ls/Lsy.t (bot)</label><input type="number" id="inSpliceBotRatio" value="1.0" step="0.05" min="0" max="2"></div>
+      </div>
+      <div class="help" style="font-size:10px;color:var(--mute);">
+        <strong>Lap ratio</strong> is the splice length you've provided divided by the basic tensile development length Lsy.t. A ratio ≥ 1.0 develops 100% of fsy·Ab; a 0.25·fsy minimum needs ratio ≥ 0.25 (Cl 13.2.4 with appropriate factors). Mechanical splices are taken at their rated proof capacity (assumed ≥ fsy here).
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- OUTPUTS PANE -->
+  <main class="outputs-pane">
+
+    <!-- HERO STRIP -->
+    <div class="hero-strip">
+      <div class="util-ring-wrap">
+        <svg viewBox="0 0 100 100">
+          <circle class="util-ring-bg" cx="50" cy="50" r="42"/>
+          <circle class="util-ring-fg" id="utilRingFg" cx="50" cy="50" r="42"
+                  stroke-dasharray="263.9" stroke-dashoffset="263.9"/>
+        </svg>
+        <div class="util-ring-text">
+          <div class="util-num" id="utilNum">—</div>
+          <div class="util-pct">UTIL</div>
+        </div>
+      </div>
+      <div class="hero-info">
+        <div class="hero-status pass" id="heroStatus">computing…</div>
+        <div class="hero-headline" id="heroHeadline">Section adequate for governing combination</div>
+        <div class="hero-meta" id="heroMeta">
+          <span><strong>Combo:</strong> 1.2G + 1.5Q</span>
+          <span><strong>N*:</strong> 1485 kN</span>
+          <span><strong>M*x:</strong> 78 kNm</span>
+          <span><strong>M*y:</strong> 0 kNm</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- VISUALS -->
+    <div class="visuals">
+
+      <!-- 3D / SECTION / ELEVATION -->
+      <div class="visual">
+        <div class="visual-head">
+          <div class="visual-title">Geometry</div>
+          <div class="tabs" id="geomTabs">
+            <button class="tab active" data-view="3d">3D</button>
+            <button class="tab" data-view="section">Section</button>
+            <button class="tab" data-view="elevation">Elevation</button>
+          </div>
+        </div>
+        <div class="visual-body">
+          <div class="visual-canvas" id="canvas3d"></div>
+          <canvas class="visual-canvas" id="canvasSection" style="display:none;"></canvas>
+          <canvas class="visual-canvas" id="canvasElevation" style="display:none;"></canvas>
+        </div>
+      </div>
+
+      <!-- INTERACTION DIAGRAM / BIAXIAL / STRAIN -->
+      <div class="visual">
+        <div class="visual-head">
+          <div class="visual-title">Capacity</div>
+          <div class="tabs" id="chartTabs">
+            <button class="tab active" data-chart="nm">N–M Interaction</button>
+            <button class="tab" data-chart="biax">Biaxial</button>
+            <button class="tab" data-chart="strain">Strain</button>
+          </div>
+        </div>
+        <div class="visual-body">
+          <div class="visual-canvas" style="padding: 10px;">
+            <canvas id="chartCanvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CHECKS GRID -->
+    <div class="checks" id="checksGrid">
+      <div class="check-tile" data-check="nm-x">
+        <div class="check-tile-head"><span class="check-label">N–M (X axis)</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">φMux at N* / M*x</div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="nm-y">
+        <div class="check-tile-head"><span class="check-label">N–M (Y axis)</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">φMuy at N* / M*y</div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="biax">
+        <div class="check-tile-head"><span class="check-label">Biaxial</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">Cl 10.6.4</div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="slender">
+        <div class="check-tile-head"><span class="check-label">Slenderness</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">Le/r vs limit</div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="long">
+        <div class="check-tile-head"><span class="check-label">Long. Steel %</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">1% ≤ ρ ≤ 4%</div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="fit">
+        <div class="check-tile-head"><span class="check-label">Fitment Spacing</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">≤ min(Dc, 15db)</div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="hsc">
+        <div class="check-tile-head"><span class="check-label">HSC Confinement</span><span class="check-status-dot na"></span></div>
+        <div class="check-value">N/A</div>
+        <div class="check-detail">fc′ ≤ 50 MPa</div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="restraint">
+        <div class="check-tile-head"><span class="check-label">Bar Restraint</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">Cl 10.7.4.1</div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="splice-top">
+        <div class="check-tile-head"><span class="check-label">Splice — TOP</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">Cl 10.7.5</div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="splice-bot">
+        <div class="check-tile-head"><span class="check-label">Splice — BOT</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">Cl 10.7.5</div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="joint">
+        <div class="check-tile-head"><span class="check-label">Floor Joint</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">Cl 10.8</div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="cover">
+        <div class="check-tile-head"><span class="check-label">Cover / Fire</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">durability + FRL</div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+    </div>
+
+  </main>
+
+</div>
+
+<!-- Hidden PDF root -->
+<div id="pdfRoot"></div>
+
+<!-- Error overlay -->
+<div id="globalErrors"></div>
+
+<script>
+'use strict';
+
+// ════════════════════════════════════════════════════════════════════════
+// AS 3600:2018 COLUMN ENGINE — JS PORT (validated against RCB 3e Examples)
+// ════════════════════════════════════════════════════════════════════════
+
+const ENGINE_VERSION = '1.0.0';
+
+const BAR_AREAS = {12:113.1, 16:201.1, 20:314.2, 24:452.4, 28:615.8, 32:804.2, 36:1017.9, 40:1256.6};
+
+function alpha1(fc) { return Math.max(0.72, Math.min(0.85, 1.0 - 0.003 * fc)); }
+function alpha2(fc) { return Math.max(0.67, 0.85 - 0.0015 * fc); }
+function gammaCo(fc) { return Math.max(0.67, 0.97 - 0.0025 * fc); }
+
+// ───── Section ─────
+class Section {
+  constructor(opts) {
+    this.shape = opts.shape;        // 'rect' | 'circ'
+    this.D = opts.D;
+    this.b = opts.b;
+    this.fc = opts.fc;
+    this.fsy = opts.fsy;
+    this.layers = opts.layers;      // [{d, area}]
+    this.Es = opts.Es || 200000;
+    // ── PRO ── Voids: list of circular voids defined by depth-to-centre `d`
+    // (from extreme compressive fibre, mm) and diameter `dia` (mm). Voids reduce
+    // Ag, dpc and Cc whenever the equivalent stress block overlaps them. RCB
+    // Example 5.1 — 600×800 column with a 150 mm dia void at d=400 → dpc=397 mm.
+    this.voids = opts.voids || [];
+  }
+  // Total void area (only includes voids fully or partially within the section).
+  voidArea() {
+    return this.voids.reduce((s, v) => s + Math.PI * v.dia * v.dia / 4, 0);
+  }
+  grossArea() {
+    const Ag_concrete = this.shape === 'circ' ? Math.PI * this.D * this.D / 4 : this.b * this.D;
+    return Ag_concrete - this.voidArea();
+  }
+  // Area of voids whose centre lies within depth range [y_lo, y_hi] from the
+  // compressive face. For the rectangular stress block we subtract the area of
+  // each void whose centre is within [0, γdn]. Approximation: treat voids as
+  // points (centroid only) since the typical conduit/PT-duct dia is small
+  // relative to the stress-block depth. For larger voids a clip would be more
+  // accurate but this matches RCB Example 5.1's bookkeeping.
+  voidAreaInRange(y_lo, y_hi) {
+    return this.voids
+      .filter(v => v.d >= y_lo && v.d <= y_hi)
+      .reduce((s, v) => s + Math.PI * v.dia * v.dia / 4, 0);
+  }
+  // First moment (Σ Ai · yi) of voids in range, taken about the compressive face.
+  voidMomentInRange(y_lo, y_hi) {
+    return this.voids
+      .filter(v => v.d >= y_lo && v.d <= y_hi)
+      .reduce((s, v) => s + Math.PI * v.dia * v.dia / 4 * v.d, 0);
+  }
+  totalSteel() { return this.layers.reduce((s,L)=>s+L.area, 0); }
+  nuo() {
+    // Cl 10.6.2.2: max compressive strain in longitudinal steel at squash = 0.0025,
+    // so contributing stress is capped at εs·Es = 0.0025·Es (= 500 MPa for Es=200 GPa).
+    // For 500 MPa Class N bars this is moot; for 600 MPa bars the cap binds.
+    // Concrete area is gross minus longitudinal steel minus any internal voids
+    // (PT ducts, conduits, etc.) — per RCB Eq 5.6 / Example 5.1.
+    const a1 = alpha1(this.fc);
+    const As = this.totalSteel();
+    const sigmaSquash = Math.min(this.fsy, 0.0025 * this.Es);
+    return a1 * this.fc * (this.grossArea() - As) + As * sigmaSquash;
+  }
+  nuot() { return this.totalSteel() * this.fsy; }
+  plasticCentroid() {
+    // RCB Eq 5.8: dpc·Nuo = Σ(force × distance from compressive face).
+    // Concrete contributes a1·fc′·(Ac_concrete) acting at the centroid of the
+    // net concrete area. For a section with voids, that centroid is shifted
+    // off geometric centre — we compute it as a first-moment integral.
+    // Steel contributes As·σs at the layer depth, σs capped per Cl 10.6.2.2.
+    const a1 = alpha1(this.fc);
+    const As = this.totalSteel();
+    const sigmaSquash = Math.min(this.fsy, 0.0025 * this.Es);
+    // Net concrete first moment about compressive face:
+    // (gross concrete × D/2) − (total voids × d_void_i) − (steel × layer d)
+    // since the "concrete" we're computing forces for excludes both voids and
+    // the area displaced by reinforcement.
+    const Ag_solid = this.shape === 'circ' ? Math.PI * this.D * this.D / 4 : this.b * this.D;
+    let Mc_concrete = a1 * this.fc * Ag_solid * (this.D / 2);
+    // Subtract void contributions
+    for (const v of this.voids) {
+      const Av = Math.PI * v.dia * v.dia / 4;
+      Mc_concrete -= a1 * this.fc * Av * v.d;
+    }
+    // Subtract steel-displaced concrete (this is implicit in (Ag-As) but here
+    // we keep it explicit so we can locate the displaced area at the layer's d)
+    for (const L of this.layers) {
+      Mc_concrete -= a1 * this.fc * L.area * L.d;
+    }
+    const Ms = this.layers.reduce((s, L) => s + L.area * sigmaSquash * L.d, 0);
+    return (Mc_concrete + Ms) / this.nuo();
+  }
+  widthAt(y) {
+    if (this.shape === 'circ') {
+      const R = this.D / 2;
+      const off = y - R;
+      if (Math.abs(off) >= R) return 0;
+      return 2 * Math.sqrt(R*R - off*off);
+    }
+    return this.b;
+  }
+  compressedConcrete(dn) {
+    let a2 = alpha2(this.fc);
+    const g = gammaCo(this.fc);
+    if (this.shape === 'circ') a2 = 0.95 * a2;
+    const blk = g * dn;
+    if (blk <= 0) return [0, 0];
+    let Cc, mom;
+    if (this.shape === 'rect') {
+      Cc  = a2 * this.fc * this.b * blk;
+      mom = Cc * (blk / 2);
+    } else {
+      const n = 40, dy = blk / n;
+      Cc = 0; mom = 0;
+      for (let i=0;i<n;i++) {
+        const y = (i + 0.5) * dy;
+        const w = this.widthAt(y);
+        const dF = a2 * this.fc * w * dy;
+        Cc += dF; mom += dF * y;
+      }
+    }
+    // ── PRO ── Subtract any voids whose centroid lies inside the stress block.
+    // Treat each void as a circular hole at depth v.d; subtract its full area
+    // when v.d ≤ blk (point approximation; see RCB Example 5.1).
+    for (const v of this.voids) {
+      if (v.d <= blk) {
+        const Av = Math.PI * v.dia * v.dia / 4;
+        const dF = a2 * this.fc * Av;
+        Cc  -= dF;
+        mom -= dF * v.d;
+      }
+    }
+    return Cc <= 0 ? [0,0] : [Cc, mom / Cc];
+  }
+  interactionPoint(dn) {
+    const [Cc, dC] = this.compressedConcrete(dn);
+    const dpc = this.plasticCentroid();
+    let Fs = 0, Ms = 0;
+    for (const L of this.layers) {
+      const eps = 0.003 * (dn - L.d) / dn;
+      const fy = this.fsy;
+      const stress = (eps >= 0)
+        ? Math.min(eps * this.Es, fy)
+        : Math.max(eps * this.Es, -fy);
+      const F = stress * L.area;
+      Fs += F;
+      Ms += F * (dpc - L.d);
+    }
+    const Nu = Cc + Fs;
+    const Mu = Cc * (dpc - dC) + Ms;
+    return [Nu, Mu];
+  }
+  balancedPoint() {
+    const eps_sy = this.fsy / this.Es;
+    const kub = 0.003 / (0.003 + eps_sy);
+    const dout = Math.max(...this.layers.map(L=>L.d));
+    const dnb = kub * dout;
+    const [Nu, Mu] = this.interactionPoint(dnb);
+    return { Nu, Mu, kub, dout };
+  }
+  decompressionPoint() {
+    const dout = Math.max(...this.layers.map(L=>L.d));
+    return this.interactionPoint(dout);
+  }
+  pureBending() {
+    const dout = Math.max(...this.layers.map(L=>L.d));
+    let lo = 1.0, hi = dout;
+    let [Nlo] = this.interactionPoint(lo);
+    let [Nhi] = this.interactionPoint(hi);
+    if (Nlo > 0) { const [N,M] = this.interactionPoint(lo); return { Nu:N, Mu:M, dn:lo }; }
+    if (Nhi < 0) { const [N,M] = this.interactionPoint(hi); return { Nu:N, Mu:M, dn:hi }; }
+    let mid = lo;
+    for (let i=0;i<200;i++) {
+      mid = 0.5 * (lo + hi);
+      const [N] = this.interactionPoint(mid);
+      if (Math.abs(N) < 1) break;
+      if (N < 0) lo = mid; else hi = mid;
+    }
+    const [Nu, Mu] = this.interactionPoint(mid);
+    return { Nu, Mu, dn: mid };
+  }
+  interactionDiagram(nPts = 80) {
+    const A = { N: this.nuo(), M: 0 };
+    const [Bn, Bm] = this.decompressionPoint();
+    const pb = this.pureBending();
+    const E = { N: -this.nuot(), M: 0 };
+    const pts = [];
+    // A->B linear
+    for (let i=0;i<6;i++) {
+      const t = i/5;
+      pts.push({ N: A.N*(1-t) + Bn*t, M: A.M*(1-t) + Bm*t, dn: null });
+    }
+    const dout = Math.max(...this.layers.map(L=>L.d));
+    const k = nPts - 12;
+    for (let i=1;i<k;i++) {
+      const t = i/k;
+      const dn = dout*(1-t) + pb.dn*t;
+      const [N,M] = this.interactionPoint(dn);
+      pts.push({ N, M, dn });
+    }
+    // D->E linear
+    for (let i=1;i<6;i++) {
+      const t = i/5;
+      pts.push({ N: pb.Nu*(1-t) + E.N*t, M: pb.Mu*(1-t) + E.M*t, dn: null });
+    }
+    return pts;
+  }
+}
+
+// ───── Capacity reduction ─────
+function phiBendingOnly(kuo) {
+  return Math.max(0.65, Math.min(0.85, 1.24 - 13 * kuo / 12));
+}
+function phiCompression(Nu, Nub, phio, phiPrime) {
+  if (Nu >= Nub) return phio;
+  const ratio = 1 - Nu / Nub;
+  return phio + (phiPrime - phio) * ratio;
+}
+// ── PRO ── Table 2.2.2 row (c) — axial tension + bending. Linearly interpolates
+// from φ′ at pure bending (Nu = 0) up to 0.85 at pure tension (Nu = -Nuot).
+// Nu is signed: negative = tension. Returns φ at the given Nu magnitude.
+function phiTension(Nu, Nuot, phiPrime) {
+  const t = Math.max(0, Math.min(1, Math.abs(Nu) / Nuot));
+  return phiPrime + (0.85 - phiPrime) * t;
+}
+
+// ───── Slenderness ─────
+function radiusGyration(shape, D) { return shape === 'circ' ? 0.25 * D : 0.3 * D; }
+function shortColumnLimit(braced, NStar, Nuo, m1m2, fc) {
+  if (braced) {
+    const ratio = NStar / Nuo;
+    let alphaC;
+    if (ratio >= 0.15) {
+      alphaC = Math.sqrt(2.25 - 2.5 * NStar / (0.65 * Nuo));
+    } else {
+      alphaC = NStar > 0 ? Math.sqrt(1 / (3.5 * NStar / (0.65 * Nuo))) : 10;
+    }
+    const limit2 = alphaC * (38 - fc / 15) * (1 + m1m2);
+    return Math.max(25, limit2);
+  }
+  return 22;
+}
+
+// ───── Effective length ─────
+function kBraced(g1, g2) {
+  const a = Math.min(g1, 50), b = Math.min(g2, 50);
+  const num = 1 + 0.145 * (a + b) - 0.265 * a * b;
+  const den = 2 - 0.364 * (a + b) - 0.247 * a * b;
+  const k = den > 0 ? num / den : 1;
+  return Math.max(0.5, Math.min(1.0, k));
+}
+function kUnbraced(g1, g2) {
+  const a = Math.min(g1, 50), b = Math.min(g2, 50);
+  const num = 1.6 * a * b + 4 * (a + b) + 7.5;
+  const den = a + b + 7.5;
+  const k = den > 0 ? Math.sqrt(num / den) : 5;
+  return Math.max(1, Math.min(5, k));
+}
+
+// ───── Moment magnifier ─────
+function bucklingNc(section, Le, betaD) {
+  const dout = Math.max(...section.layers.map(L=>L.d));
+  const bp = section.balancedPoint();
+  const phiMub = 0.65 * bp.Mu;
+  return (Math.PI*Math.PI / (Le*Le)) * (182 * dout * phiMub / (1 + betaD));
+}
+function deltaB(km, NStar, Nc) {
+  if (Nc <= 0) return 1;
+  const den = 1 - NStar / Nc;
+  if (den <= 0) return Infinity;
+  return Math.max(1, km / den);
+}
+function kmFactor(M1, M2, transverse=false) {
+  if (transverse) return 1;
+  if (Math.abs(M2) < 1e-6) return 1;
+  const r = M1 / M2;
+  return Math.max(0.4, 0.6 - 0.4 * r);
+}
+
+// ───── Biaxial (AS 3600 Cl 10.6.4) ─────
+function biaxialUtil(MxStar, MyStar, phiMux, phiMuy, NStar, Nuo) {
+  const an = Math.max(1, Math.min(2, 0.7 + 1.7 * NStar / Nuo));
+  if (phiMux <= 0 || phiMuy <= 0) return { util: Infinity, an };
+  const u = Math.pow(Math.abs(MxStar)/phiMux, an) + Math.pow(Math.abs(MyStar)/phiMuy, an);
+  return { util: u, an };
+}
+
+// ───── HSC confinement ─────
+function hscSimplified(inp) {
+  const theta = inp.thetaDeg * Math.PI / 180;
+  const K1 = inp.m * inp.AbFit * inp.fsyF * Math.sin(theta) / inp.ds;
+  const target = 0.01 * inp.fc;
+  let lhs;
+  if (inp.shape === 'circ') {
+    lhs = s => (K1 / s) * Math.pow(1 - s / (2 * inp.ds), 2) - target;
+  } else {
+    const Ac = inp.bc * inp.dc;
+    const kBase = 1 - inp.n * inp.w * inp.w / (6 * Ac);
+    lhs = s => kBase * (1 - s/(2*inp.bc)) * (1 - s/(2*inp.dc)) * (K1/s) - target;
+  }
+  let lo = 1, hi = (inp.shape === 'circ' ? 2*inp.ds : Math.min(inp.bc, inp.dc)) - 0.5;
+  if (lhs(lo) <= 0) return 0;
+  if (lhs(hi) > 0) return hi;
+  for (let i=0;i<100;i++) {
+    const mid = 0.5 * (lo + hi);
+    const v = lhs(mid);
+    if (Math.abs(v) < 1e-6) return mid;
+    if (v > 0) lo = mid; else hi = mid;
+  }
+  return 0.5 * (lo + hi);
+}
+function hscDeemed(inp) {
+  if (inp.shape === 'circ') return 100 * inp.AbFit * inp.fsyF / (inp.fc * inp.ds);
+  return 15 * inp.n * inp.AbFit * inp.fsyF / (inp.fc * inp.bc);
+}
+
+// ── PRO Phase 6b ── Auto-design solver. Walks bar size and count combinations,
+// picks the smallest configuration whose governing utilisation is in [0.85, 0.95].
+// Inputs: a function that, given (barSize, nx, ny), returns the governing util.
+// Returns: { barSize, nx, ny, util } or null if no config satisfies (in which
+// case the user must increase the section size or fc′).
+function autoDesign(getUtil, opts={}) {
+  const targetMin = opts.targetMin || 0.85;
+  const targetMax = opts.targetMax || 0.95;
+  const sizes = [16, 20, 24, 28, 32, 36, 40];
+  const nxRange = opts.nxRange || [2, 3, 4, 5, 6];
+  const nyRange = opts.nyRange || [2, 3, 4, 5, 6];
+  let best = null;   // smallest As that satisfies (util ≤ 1.0); for tie, prefer 0.85–0.95 band
+  for (const sz of sizes) {
+    for (const nx of nxRange) {
+      for (const ny of nyRange) {
+        const util = getUtil(sz, nx, ny);
+        if (!isFinite(util)) continue;
+        if (util > 1.0) continue;
+        const Abar = (typeof BAR_AREAS !== 'undefined') ? BAR_AREAS[sz] : (Math.PI*sz*sz/4);
+        const totalAs = Abar * (2*nx + 2*Math.max(0, ny-2));
+        if (!best || totalAs < best.totalAs) {
+          best = { barSize: sz, nx, ny, util, totalAs };
+        }
+        // Prefer designs that hit the [0.85, 0.95] band (RCB §5.6 step 5: "close to 1.0")
+        if (util >= targetMin && util <= targetMax && (!best || totalAs <= best.totalAs)) {
+          best = { barSize: sz, nx, ny, util, totalAs };
+        }
+      }
+    }
+  }
+  return best;
+}
+
+// ── PRO ── Generate a family of φMu interaction curves for a list of ρ values.
+// Used to overlay multiple capacity contours on the N–M chart so a designer
+// can read off the required reinforcement for a given (N*, M*) point — see
+// RCB Fig 5.19 / 5.22.
+function familyForRho(baseSection, rhoList) {
+  // Build sections with same shape, fc, fsy, and the same layer DEPTHS but
+  // scaled total areas to give the requested ρ. We preserve the existing
+  // distribution between layers (top vs bottom) by scaling proportionally.
+  const Ag = baseSection.grossArea() + baseSection.voidArea();   // gross concrete only
+  const layersTemplate = baseSection.layers.map(L => ({ d: L.d, fraction: 0 }));
+  const totalBase = baseSection.totalSteel();
+  for (let i = 0; i < layersTemplate.length; i++) {
+    layersTemplate[i].fraction = baseSection.layers[i].area / totalBase;
+  }
+  return rhoList.map(rho => {
+    const As_target = rho * Ag;
+    const layers = layersTemplate.map(L => ({ d: L.d, area: As_target * L.fraction }));
+    const sec = new Section({
+      shape: baseSection.shape, D: baseSection.D, b: baseSection.b,
+      fc: baseSection.fc, fsy: baseSection.fsy,
+      layers, voids: baseSection.voids,
+    });
+    return { rho, points: sec.interactionDiagram(60), Nuo: sec.nuo(), bp: sec.balancedPoint() };
+  });
+}
+
+// ── PRO ── Cl 10.8 — transmission of axial force through floor systems.
+// When the slab fc′ is less than 0.75× the column fc′, the joint must be
+// checked because the slab concrete can't develop the column's compressive
+// force directly. AS 3600 gives an effective concrete strength fce that
+// depends on column restraint at the joint:
+//   (i)  Cl 10.8.1 — column restrained on 4 sides:
+//          fce = 0.75·fc′_col + (h/2c)·(fc′_col − fc′_slab)
+//        bounded by fc′_col on the high side.
+//   (ii) Cl 10.8.2 — corner column / restrained on 2 adjacent sides:
+//          fce = 0.65·fc′_col   (deemed simpler form)
+//   (iii)Cl 10.8.3 — edge column / restrained on 2 opposite sides:
+//          fce = 0.85·fc′_col + (h/2c)·(fc′_col − fc′_slab) ≤ fc′_col
+// Where h = column dimension parallel to the joint, c = column smaller side.
+// If slab fc′ ≥ 0.75·column fc′, no check needed (returns null).
+function joinTransmissionCheck(fcCol, fcSlab, h, c, restraint) {
+  if (fcSlab >= 0.75 * fcCol) {
+    return { applies: false, fce: fcCol, ratio: 1.0,
+             note: `slab fc′=${fcSlab} ≥ 0.75·col fc′=${(0.75*fcCol).toFixed(0)} — no check required` };
+  }
+  let fce;
+  const dh = (c > 0) ? h / (2 * c) : 0;
+  if (restraint === '4-sides') {
+    fce = Math.min(fcCol, 0.75 * fcCol + dh * (fcCol - fcSlab));
+  } else if (restraint === '2-opposite') {
+    fce = Math.min(fcCol, 0.85 * fcCol + dh * (fcCol - fcSlab));
+  } else {
+    fce = 0.65 * fcCol;   // 2-adjacent / corner — most conservative
+  }
+  // Required: column compressive load must be supported by either the column
+  // bars passing through the joint, or by fce·Ag at the joint. The check is
+  // fce ≥ slab fc′ (since the slab provides at least its own fc′) AND the
+  // joint capacity ≥ N*. Simpler: report fce vs col fc′ ratio.
+  const ratio = fce / fcCol;
+  return { applies: true, fce, ratio,
+           note: `fce = ${fce.toFixed(1)} MPa (${(ratio*100).toFixed(0)}% of col fc′)` };
+}
+
+// ── PRO ── Cl 10.6.3 — when biaxial check (Cl 10.6.4 αn) can be skipped.
+// Returns true if independent uniaxial checks suffice. The concession applies
+// when the column section's aspect ratio b/D ≤ 3 AND the load resultant lies
+// within the central "diamond" defined by the eccentricities ex/D and ey/b.
+// Per AS 3600 Fig 10.6.3: |Mx*/Mux| + |My*/Muy| ≤ 1 with the strict diamond
+// ratio is sufficient — but a simpler interpretation: if My* is small relative
+// to Mx* (or vice versa), αn check isn't needed.
+// We implement: concession applies if max(b,D)/min(b,D) ≤ 3 AND one of My*/Muy,
+// Mx*/Mux is below ~0.06 (per Fig 10.6.3 corner). Conservative interpretation.
+function biaxialConcession(b, D, MxStarRatio, MyStarRatio) {
+  if (b <= 0 || D <= 0) return false;
+  const aspect = Math.max(b, D) / Math.min(b, D);
+  if (aspect > 3) return { applies: false, reason: `aspect ratio ${aspect.toFixed(2)} > 3` };
+  // The diamond limit per Fig 10.6.3 (simplified): if EITHER moment ratio is
+  // ≤ 0.06, we can ignore the perpendicular axis effect.
+  const minRatio = Math.min(MxStarRatio, MyStarRatio);
+  if (minRatio <= 0.06) return { applies: true, reason: `aspect ${aspect.toFixed(2)}; min M*/φMu = ${minRatio.toFixed(3)} ≤ 0.06` };
+  return { applies: false, reason: `aspect ${aspect.toFixed(2)} OK but both M*/φMu > 0.06` };
+}
+
+// ── PRO ── Cl 10.7.4.1 — lateral restraint pattern of longitudinal bars.
+// Returns the required restraint pattern given fitment spacing s, design axial
+// force N* and section data:
+//   - Every corner bar always restrained.
+//   - Every bar if s > 150 mm OR N* > 0.3·fc′·Ag (high stress).
+//   - Every alternate bar otherwise.
+function restraintPatternRequired(s, NStar, fc, Ag) {
+  if (s > 150) return 'every-bar';
+  if (NStar > 0.3 * fc * Ag) return 'every-bar';
+  return 'alternate-bar';
+}
+
+// ── PRO ── Cl 10.7.3.1 / Fig 5.31 — special confinement region length.
+// Inputs: SIGNED end moments M_high (the larger |·|) and M_other (the smaller),
+// column unsupported length L (mm), section depth D (mm) and the threshold
+// M_thresh = 0.6·φMu (kNm). Returns the distance from the high-end (where M =
+// M_high) to where |M(x)| = M_thresh on the linearly-varying BMD. Lower-bounded
+// by 1.2·D per RCB Fig 5.31. Verified against RCB Example 5.7 (Mt=+225,
+// Mb=-190 → 586 mm from top, matches book within rounding).
+function specialRegionLength(M_high, M_other, L, D, M_thresh) {
+  const Mhi_abs = Math.abs(M_high);
+  if (Mhi_abs <= M_thresh) return Math.max(1.2 * D, 0);
+  const slope = (M_other - M_high) / L;   // signed BMD slope (M = M_high + slope·x)
+  if (Math.abs(slope) < 1e-9) return Math.max(L, 1.2 * D);   // uniform M
+  const target = Math.sign(M_high) * M_thresh;
+  const x = (target - M_high) / slope;
+  if (x < 0) return Math.max(1.2 * D, 0);
+  return Math.max(x, 1.2 * D);
+}
+
+// ── PRO ── Cl 10.7.5 splice provisions for compression members.
+// Inputs:
+//   spliceType : 'lap' | 'mech' | 'endb' | 'none'
+//   lapRatio   : provided lap length / basic tensile development length Lsy.t.
+//                Ratio ≥ 1 develops 100% of fsy·Ab; required ratio for the
+//                25% tensile rule is 0.25.
+//   sectionAtSplice : the cross-section's compressive force on each face under
+//                     the worst combo at the splice elevation (top or bot).
+//                     Used to determine whether the face is in net tension —
+//                     end-bearing splices are forbidden where any combination
+//                     puts the face in tension at ULS.
+// Returns: { ok, capacityRatio, mode, note }
+function checkSplice(spliceType, lapRatio, faceInTensionEver, devClass='full') {
+  const required = 0.25;            // fraction of fsy·As that must be developable
+  if (spliceType === 'none') {
+    // No splice at this end → trivially OK; no check.
+    return { ok: true, capacityRatio: Infinity, mode: 'none', note: 'no splice' };
+  }
+  if (spliceType === 'mech') {
+    // Mechanical proprietary couplers — assume rated ≥ fsy. Always satisfies the
+    // 25% tensile minimum.
+    return { ok: true, capacityRatio: 1.0, mode: 'mechanical', note: 'rated ≥ fsy' };
+  }
+  if (spliceType === 'endb') {
+    // End-bearing splice — Cl 10.7.5.4: permitted ONLY where the column is in
+    // pure compression at ULS (no face goes into tension under any combination).
+    if (faceInTensionEver) {
+      return { ok: false, capacityRatio: 0, mode: 'end-bearing',
+               note: 'face goes into tension under at least one combo — not permitted (Cl 10.7.5.4)' };
+    }
+    return { ok: true, capacityRatio: 0, mode: 'end-bearing',
+             note: 'permitted: face in compression for all combos' };
+  }
+  // Lap splice — capacity ∝ provided length / required length. The 0.25·fsy
+  // criterion (Cl 10.7.5.1) requires ratio ≥ 0.25.
+  const ok = lapRatio >= required;
+  return { ok, capacityRatio: lapRatio, mode: 'lap',
+           note: ok ? `develops ${(lapRatio*100).toFixed(0)}% of fsy (≥ 25% required)`
+                    : `develops only ${(lapRatio*100).toFixed(0)}% — needs ≥ 25%` };
+}
+
+// ───── Find capacity at given N* ─────
+function capacityAtN(section, NStar) {
+  const dout = Math.max(...section.layers.map(L=>L.d));
+  const bp = section.balancedPoint();
+  const Nuo = section.nuo();
+  const Nuot = section.nuot();
+  const pb = section.pureBending();
+  if (NStar >= Nuo) return { Mu: 0, dn: 0, kuo: pb.dn / dout, region: 'beyond-squash' };
+  // ── PRO ── Pure tension: capacity at Nu = -Nuot is M = 0.
+  if (NStar <= -Nuot) return { Mu: 0, dn: 0, kuo: pb.dn / dout, region: 'beyond-tension' };
+  let lo, hi;
+  if (NStar >= bp.Nu) {
+    // Compression-controlled (segment B–C)
+    const dnb = bp.kub * dout;
+    lo = dnb; hi = dout;
+  } else if (NStar >= 0) {
+    // ── PRO ── At exactly N*=0 (or very close), short-circuit to pure
+    // bending — the bisection below is fragile near the segment boundary
+    // because (Nlo − NStar) ≈ 0.
+    if (NStar < 1) return { Mu: pb.Mu, dn: pb.dn, kuo: pb.dn / dout, region: 'pure-bending' };
+    // Tension-controlled compression (segment C–D)
+    lo = pb.dn; hi = bp.kub * dout;
+  } else {
+    // ── PRO ── Net tension (segment D–E in N–M diagram). Linearly interpolate
+    // between pure bending (N=0, M=Muo) and pure tension (N=-Nuot, M=0). This
+    // is what AS 3600 Cl 10.6.2.4 permits below D for the section capacity line.
+    const t = (-NStar) / Nuot;             // 0 at D, 1 at E
+    const Mu = pb.Mu * (1 - t);
+    return { Mu, dn: pb.dn, kuo: pb.dn / dout, region: 'tension' };
+  }
+  let mid = 0.5*(lo+hi);
+  for (let i=0;i<80;i++) {
+    mid = 0.5 * (lo + hi);
+    const [N] = section.interactionPoint(mid);
+    if (Math.abs(N - NStar) < 1) break;
+    const [Nlo] = section.interactionPoint(lo);
+    if ((N - NStar) * (Nlo - NStar) < 0) hi = mid;
+    else lo = mid;
+  }
+  const [Nu, Mu] = section.interactionPoint(mid);
+  return { Mu, dn: mid, kuo: pb.dn / dout, region: NStar >= bp.Nu ? 'compression' : 'transition' };
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// STATE + UI WIRING
+// ════════════════════════════════════════════════════════════════════════
+
+const S = {
+  shape: 'rect',
+  fc: 40,
+  barSize: 28,
+  brace: 'braced',
+  geomTab: '3d',
+  chartTab: 'nm',
+  result: null,
+  // ── PRO additions ──
+  analysisMethod: 1,   // 1 = linear elastic (apply δ); 2 = non-linear elastic (skip δ); 3 = rigorous (skip δ + skip section check)
+  perAxis: false,      // false = single Lu/k for both axes; true = separate per axis
+  rebarMode: 'sym',    // 'sym' = symmetric nx/ny; 'layer' = per-layer free-form
+};
+
+// ── B7 ── Cover lookup, AS 3600:2018 Table 4.10.3.2 (durability, normal class concrete).
+// Cover is a function of BOTH exposure class AND fc′. Values below are the
+// minimum cover (mm) for "standard formwork & compaction"; '-' means the fc′ is
+// not allowed for that exposure (treat as Infinity in the lookup so the user
+// sees a clear FAIL).
+const COVER_DURABILITY = {
+  // [fc=20, fc=25, fc=32, fc=40, fc=50, fc=65+]
+  A1: [20, 20, 20, 20, 20, 20],
+  A2: [50, 30, 25, 20, 20, 20],
+  B1: [Infinity, 50, 40, 30, 25, 25],
+  B2: [Infinity, Infinity, 60, 45, 35, 35],
+  C1: [Infinity, Infinity, Infinity, 65, 50, 45],
+  C2: [Infinity, Infinity, Infinity, Infinity, 70, 65],
+  U:  [60, 60, 60, 60, 60, 60],   // user-defined / special — generic placeholder
+};
+function fcTier(fc) {
+  if (fc < 22.5) return 0;        // 20 MPa
+  if (fc < 28.5) return 1;        // 25 MPa
+  if (fc < 36)   return 2;        // 32 MPa
+  if (fc < 45)   return 3;        // 40 MPa
+  if (fc < 57.5) return 4;        // 50 MPa
+  return 5;                       // 65+ MPa
+}
+// Fire cover (AS 3600 Section 5.5, simplified — for 'compression member with
+// ≥ 3 sides exposed and load level μfi ≤ 0.7'). For other geometry/load levels
+// the user should refer to AS 3600 Table 5.5.2 directly.
+const COVER_BY_FRL = { 0: 0, 60: 25, 90: 30, 120: 35, 180: 40, 240: 45 };
+
+function getCoverRequired() {
+  const expo = document.getElementById('inExposure').value;
+  const frl = parseInt(document.getElementById('inFRL').value, 10);
+  const fc = S.fc;
+  const row = COVER_DURABILITY[expo] || COVER_DURABILITY.B1;
+  const dur = row[fcTier(fc)];
+  return Math.max(isFinite(dur) ? dur : 999, COVER_BY_FRL[frl] || 0);
+}
+
+// ── PRO ── Read per-layer rebar rows into [{d, area}] sorted by depth.
+function readLayers() {
+  const rows = document.querySelectorAll('#layersList .layer-row');
+  const layers = [];
+  rows.forEach(row => {
+    const d    = parseFloat(row.querySelector('.layer-d').value);
+    const area = parseFloat(row.querySelector('.layer-area').value);
+    if (isFinite(d) && isFinite(area) && area > 0) layers.push({ d, area });
+  });
+  layers.sort((a, b) => a.d - b.d);
+  return layers;
+}
+
+// ── PRO ── Voids: small helper to read the per-row inputs into [{d, dia}].
+function readVoids() {
+  const rows = document.querySelectorAll('#voidsList .void-row');
+  const voids = [];
+  rows.forEach(row => {
+    const d   = parseFloat(row.querySelector('.void-d').value);
+    const dia = parseFloat(row.querySelector('.void-dia').value);
+    if (isFinite(d) && isFinite(dia) && dia > 0) voids.push({ d, dia });
+  });
+  return voids;
+}
+
+// Build section from current inputs
+function buildSection() {
+  const fc = S.fc;
+  const fsy = parseFloat(document.getElementById('inFsy').value);
+  const cover = parseFloat(document.getElementById('inCover').value);
+  const fitDia = parseFloat(document.getElementById('inFitBar').value);
+  const barSize = S.barSize;
+  const Abar = BAR_AREAS[barSize];
+
+  const voids = readVoids();   // ── PRO ── shared across rect & circ
+
+  if (S.shape === 'circ') {
+    const D = parseFloat(document.getElementById('inDia').value);
+    const N = parseInt(document.getElementById('inBarsCirc').value, 10);
+    const r = D/2 - cover - fitDia - barSize/2;
+    // Distribute N bars around perimeter — discretise into layers by depth
+    const layers = [];
+    for (let i=0;i<N;i++) {
+      const ang = 2*Math.PI * i / N - Math.PI/2;  // first bar at top
+      const y = D/2 + r * Math.sin(-ang); // depth from compressive face (top)
+      layers.push({ d: y, area: Abar });
+    }
+    // Group bars at same depth into single layer for efficiency
+    const grouped = {};
+    layers.forEach(L => {
+      const k = L.d.toFixed(2);
+      if (!grouped[k]) grouped[k] = { d: L.d, area: 0 };
+      grouped[k].area += L.area;
+    });
+    return new Section({ shape:'circ', D, b:0, fc, fsy, layers: Object.values(grouped), voids });
+  }
+
+  let b, D;
+  if (S.shape === 'square') {
+    b = parseFloat(document.getElementById('inB').value);
+    D = b;
+  } else {
+    b = parseFloat(document.getElementById('inB').value);
+    D = parseFloat(document.getElementById('inD').value);
+  }
+  let layers;
+  if (S.rebarMode === 'layer') {
+    // ── PRO ── Per-layer free-form input. Allows asymmetric layouts (e.g.
+    // 4N32 on tension face, 2N20 on compression face) per RCB §5.4.3.
+    layers = readLayers();
+    if (layers.length < 2) {
+      // Fall back to symmetric default if the user hasn't entered enough rows
+      const dCover = cover + fitDia + barSize/2;
+      layers = [{ d: dCover, area: 2*Abar }, { d: D - dCover, area: 2*Abar }];
+    }
+  } else {
+    const nx = parseInt(document.getElementById('inBarsX').value, 10);
+    const ny = parseInt(document.getElementById('inBarsY').value, 10);
+    const dCover = cover + fitDia + barSize/2;
+    layers = [{ d: dCover, area: nx * Abar }, { d: D - dCover, area: nx * Abar }];
+    if (ny > 2) {
+      const middle = ny - 2;
+      for (let i=1;i<=middle;i++) {
+        const d = dCover + (D - 2*dCover) * i / (middle + 1);
+        layers.push({ d, area: 2 * Abar });
+      }
+    }
+  }
+  return new Section({ shape: 'rect', D, b, fc, fsy, layers, voids });
+}
+
+// Compute load combinations (AS/NZS 1170.0)
+function loadCombos() {
+  const NG = +document.getElementById('inNG').value;
+  const NQ = +document.getElementById('inNQ').value;
+  const NW = +document.getElementById('inNW').value;
+  const NE = +document.getElementById('inNE').value;
+  const MGxt = +document.getElementById('inMGxt').value;
+  const MGxb = +document.getElementById('inMGxb').value;
+  const MQxt = +document.getElementById('inMQxt').value;
+  const MQxb = +document.getElementById('inMQxb').value;
+  const MGyt = +document.getElementById('inMGyt').value;
+  const MGyb = +document.getElementById('inMGyb').value;
+  const MQyt = +document.getElementById('inMQyt').value;
+  const MQyb = +document.getElementById('inMQyb').value;
+  // ── B4 ── Wind moments at top and bottom are now entered separately so that
+  // double-curvature (typical for sway columns) is captured correctly.
+  const MWxt = +document.getElementById('inMWxt').value;
+  const MWxb = +document.getElementById('inMWxb').value;
+  const MWyt = +document.getElementById('inMWyt').value;
+  const MWyb = +document.getElementById('inMWyb').value;
+  const psiC = +document.getElementById('inPsiC').value;
+  const psiL = +document.getElementById('inPsiL').value;
+
+  function combo(name, fG, fQ, fW=0, fE=0) {
+    return {
+      name,
+      N: fG*NG + fQ*NQ + fW*NW + fE*NE,
+      Mxt: fG*MGxt + fQ*MQxt + fW*MWxt,
+      Mxb: fG*MGxb + fQ*MQxb + fW*MWxb,
+      Myt: fG*MGyt + fQ*MQyt + fW*MWyt,
+      Myb: fG*MGyb + fQ*MQyb + fW*MWyb,
+    };
+  }
+  return [
+    combo('1.35G',          1.35, 0),
+    combo('1.2G + 1.5Q',    1.2,  1.5),
+    combo('1.2G + 1.5ψlQ',  1.2,  1.5*psiL),
+    combo('1.2G + Wu + ψcQ',1.2,  psiC, 1, 0),
+    combo('0.9G + Wu',      0.9,  0,    1, 0),
+    combo('G + Eu + ψcQ',   1.0,  psiC, 0, 1),
+  ];
+}
+
+// Compute final M*max with magnifier and minimum eccentricity.
+// Per-axis Nc and δs are passed in (B2, B3). PRO: applyMagnifier=false skips
+// δb and δs entirely (Method 2 or 3 — geometric P-Δ already captured in input).
+function combineMomentEnvelope(combo, section, Le, ncX, ncY, dsX, dsY, braced, applyMagnifier=true) {
+  function axisMoments(Mt, Mb, axisDim, Nc_axis, dS_axis) {
+    const M2 = (Math.abs(Mt) >= Math.abs(Mb)) ? Mt : Mb;            // signed, larger |·|
+    const M1 = (Math.abs(Mt) >= Math.abs(Mb)) ? Mb : Mt;            // signed, smaller |·|
+    const m1m2 = M2 !== 0 ? M1 / M2 : -1;                           // -1 = single curvature (conservative)
+    const km = kmFactor(M1, M2);
+    let dB = 1.0, delta = 1.0;
+    if (applyMagnifier) {
+      dB = deltaB(km, combo.N*1000, Nc_axis);                       // per-axis δb
+      delta = braced ? dB : Math.max(dB, dS_axis);                  // per-axis δs already per-combo
+    }
+    let Mmax = Math.abs(M2) * delta;
+    const Mmin = combo.N * 0.05 * axisDim / 1000;                   // kNm — Cl 10.1.2 floor
+    Mmax = Math.max(Mmax, Mmin);
+    return { Mmax, M1, M2, km, delta, m1m2 };
+  }
+  const Dx = section.shape === 'circ' ? section.D : section.D;
+  const Dy = section.shape === 'circ' ? section.D : section.b;
+  const xRes = axisMoments(combo.Mxt, combo.Mxb, Dx, ncX, dsX);
+  const yRes = axisMoments(combo.Myt, combo.Myb, Dy, ncY, dsY);
+  return { x: xRes, y: yRes };
+}
+
+// MAIN COMPUTE
+function compute() {
+  try {
+    const section = buildSection();
+
+    // ── PRO ── Per-axis Lu and k (Cl 10.5). For symmetric framing they're equal.
+    let Lu_x, Lu_y, k_x, k_y;
+    if (S.perAxis) {
+      Lu_x = parseFloat(document.getElementById('inLuX').value);
+      Lu_y = parseFloat(document.getElementById('inLuY').value);
+      k_x  = parseFloat(document.getElementById('inKx').value);
+      k_y  = parseFloat(document.getElementById('inKy').value);
+    } else {
+      const Lu = parseFloat(document.getElementById(S.shape === 'circ' ? 'inLu2' : 'inLu').value);
+      Lu_x = Lu_y = Lu;
+      const kMethod = document.getElementById('inKMethod').value;
+      if (kMethod === 'manual') k_x = k_y = parseFloat(document.getElementById('inK').value);
+      else {
+        const g1 = parseFloat(document.getElementById('inGamma1').value);
+        const g2 = parseFloat(document.getElementById('inGamma2').value);
+        k_x = k_y = S.brace === 'braced' ? kBraced(g1, g2) : kUnbraced(g1, g2);
+      }
+    }
+    const Le_x = k_x * Lu_x;
+    const Le_y = k_y * Lu_y;
+    const Lu = Math.max(Lu_x, Lu_y);   // legacy
+    const k  = Math.max(k_x, k_y);     // legacy
+    const Le = Math.max(Le_x, Le_y);   // legacy / fallback
+
+    // ── B3 ── Per-axis radius of gyration & slenderness ratio.
+    // r = 0.3D (rect, D = dim ⊥ to bending axis) / 0.25D (circ).
+    const Dx_dim = section.shape === 'circ' ? section.D : section.D;     // for x-axis bending
+    const Dy_dim = section.shape === 'circ' ? section.D : section.b;     // for y-axis bending
+    const r_x = radiusGyration(section.shape, Dx_dim);
+    const r_y = radiusGyration(section.shape, Dy_dim);
+    const slendRatio_x = Le_x / r_x;
+    const slendRatio_y = Le_y / r_y;
+    const slendRatio = Math.max(slendRatio_x, slendRatio_y);  // governing
+    const r = Math.min(r_x, r_y);                             // for backward-compat output
+
+    // Build sectionY (rotated 90°) for y-axis interaction & Nc_y.
+    let sectionY = section;
+    if (section.shape === 'rect' || S.shape === 'square') {
+      const D_y = section.b, b_y = section.D;
+      const cover = parseFloat(document.getElementById('inCover').value);
+      const fitDia = parseFloat(document.getElementById('inFitBar').value);
+      const dCover = cover + fitDia + S.barSize/2;
+      const Abar = BAR_AREAS[S.barSize];
+      const ny = parseInt(document.getElementById('inBarsY').value, 10);
+      const nx = parseInt(document.getElementById('inBarsX').value, 10);
+      const layersY = [{ d: dCover, area: ny * Abar }, { d: D_y - dCover, area: ny * Abar }];
+      if (nx > 2) {
+        const middle = nx - 2;
+        for (let i=1;i<=middle;i++) {
+          const d = dCover + (D_y - 2*dCover) * i / (middle + 1);
+          layersY.push({ d, area: 2 * Abar });
+        }
+      }
+      // ── PRO ── Voids: for x-axis section, void.d is depth from x-axis comp
+      // face. For y-axis we *cannot* infer the y-position from x-axis depth
+      // alone — voids in this v1 are assumed centred on the y-axis (most PT
+      // ducts and services are central). Treat voids as also centred for the
+      // y-axis section (depth = b_y/2 → no shift in dpc_y).
+      const voidsY = section.voids.map(v => ({ d: D_y / 2, dia: v.dia }));
+      sectionY = new Section({
+        shape:'rect', D: D_y, b: b_y, fc: section.fc, fsy: section.fsy,
+        layers: layersY, voids: voidsY,
+      });
+    }
+
+    // ── B3 ── Per-axis buckling load (Cl 10.4.4). Each axis uses its own Mub,
+    // do (depth to outermost tensile bar from that axis's compressive face),
+    // AND its own Le (per-axis Lu/k via PRO).
+    const NG = +document.getElementById('inNG').value;
+    const NQ = +document.getElementById('inNQ').value;
+    const betaD = (NG + NQ) > 0 ? NG / (NG + NQ) : 0.5;
+    const Nc_x = bucklingNc(section, Le_x, betaD);
+    const Nc_y = bucklingNc(sectionY, Le_y, betaD);
+    const Nc = Math.min(Nc_x, Nc_y);   // governing for output/backward-compat
+
+    // Pure-bending φ' per axis (kuo can differ between axes for non-square rect).
+    const pb = section.pureBending();
+    const pb_y = sectionY.pureBending();
+    const dout_x = Math.max(...section.layers.map(L=>L.d));
+    const dout_y = Math.max(...sectionY.layers.map(L=>L.d));
+    const kuo_x = pb.dn / dout_x;
+    const kuo_y = pb_y.dn / dout_y;
+    const phiPrime_x = phiBendingOnly(kuo_x);
+    const phiPrime_y = phiBendingOnly(kuo_y);
+    const kuo = kuo_x;                              // legacy single-value output
+    const phiPrime = phiPrime_x;
+
+    const Nuo = section.nuo();
+    const bp = section.balancedPoint();
+    const bpY = sectionY.balancedPoint();
+    const Q_over_G = NG > 0 ? NQ / NG : 1;
+    const combos = loadCombos();
+
+    // Helper: per-axis (M1, M2) signed pair.
+    function axisM1M2(Mt, Mb) {
+      if (Math.abs(Mt) < 1e-9 && Math.abs(Mb) < 1e-9) return { M1: 0, M2: 0, ratio: -1 };
+      const M2 = (Math.abs(Mt) >= Math.abs(Mb)) ? Mt : Mb;
+      const M1 = (Math.abs(Mt) >= Math.abs(Mb)) ? Mb : Mt;
+      const ratio = M2 !== 0 ? M1 / M2 : -1;
+      return { M1, M2, ratio };
+    }
+
+    // ── B5 ── Determine isShort using the proper Cl 10.3.1 criterion across all
+    // combos and both axes. Worst case (smallest limit) drives φo selection.
+    let worstLimit = Infinity;
+    let isShort_x = true, isShort_y = true;
+    for (const c of combos) {
+      const NStar_c = Math.max(0, c.N * 1000);
+      const mx = axisM1M2(c.Mxt, c.Mxb).ratio;
+      const my = axisM1M2(c.Myt, c.Myb).ratio;
+      const lim_x = shortColumnLimit(S.brace==='braced', NStar_c, Nuo, mx, section.fc);
+      const lim_y = shortColumnLimit(S.brace==='braced', NStar_c, Nuo, my, section.fc);
+      if (slendRatio_x > lim_x) isShort_x = false;
+      if (slendRatio_y > lim_y) isShort_y = false;
+      if (Math.min(lim_x, lim_y) < worstLimit) worstLimit = Math.min(lim_x, lim_y);
+    }
+    const isShort = isShort_x && isShort_y;
+    const slendLimit = worstLimit;
+
+    // ── B5 ── φo per Table 2.2.2 footnote: 0.65 only if column is short
+    // (Cl 10.3.1 sense — not just Le/r ≤ 25) AND Q/G ≥ 0.25.
+    const phio = (isShort && Q_over_G >= 0.25) ? 0.65 : 0.60;
+
+    const ptsX = section.interactionDiagram(80);
+    const ptsY = sectionY.interactionDiagram(80);
+
+    // ── PRO ── Method-of-analysis flag: 1 → apply magnifiers; 2 or 3 → skip
+    // (P-Δ already captured by the user's frame analysis on deformed geometry).
+    const applyMagnifier = (S.analysisMethod === 1);
+
+    // Per-combo evaluation with per-combo, per-axis δs (B2, B3).
+    let dS_max = 1.0, dS_warn = false;
+    const comboResults = combos.map(c => {
+      const NStar = c.N * 1000;
+      // ── B2 ── Per-combo δs using each axis's Nc.
+      let dsX = 1.0, dsY = 1.0;
+      if (applyMagnifier && S.brace === 'unbraced' && NStar > 0) {
+        const denX = 1 - NStar / Nc_x;
+        const denY = 1 - NStar / Nc_y;
+        dsX = denX > 0 ? Math.max(1, 1/denX) : Infinity;
+        dsY = denY > 0 ? Math.max(1, 1/denY) : Infinity;
+      }
+      const dsThis = Math.max(dsX, dsY);
+      if (isFinite(dsThis) && dsThis > dS_max) dS_max = dsThis;
+      if (isFinite(dsThis) && dsThis > 1.5) dS_warn = true;   // ── C7 ── Cl 10.4.3 cap
+
+      const env = combineMomentEnvelope(c, section, Le, Nc_x, Nc_y, dsX, dsY,
+                                         S.brace === 'braced', applyMagnifier);
+      const capX = capacityAtN(section, NStar);
+      const capY = capacityAtN(sectionY, NStar);
+      // ── PRO ── For combos in net tension (N* < 0), use the tension+bending
+      // φ formula (Table 2.2.2 row (c)) which interpolates from φ′ at pure
+      // bending up to 0.85 at pure tension. Otherwise use the compression form.
+      const phiX = (NStar < 0)
+        ? phiTension(NStar, section.nuot(),  phiPrime_x)
+        : phiCompression(NStar, bp.Nu, phio, phiPrime_x);
+      const phiY = (NStar < 0)
+        ? phiTension(NStar, sectionY.nuot(), phiPrime_y)
+        : phiCompression(NStar, bpY.Nu, phio, phiPrime_y);
+      const phiMux = phiX * capX.Mu / 1e6;
+      const phiMuy = phiY * capY.Mu / 1e6;
+      const utilX = phiMux > 0 ? env.x.Mmax / phiMux : Infinity;
+      const utilY = phiMuy > 0 ? env.y.Mmax / phiMuy : Infinity;
+      // ── PRO Phase 5a ── Aspect-ratio concession Cl 10.6.3 — when applicable,
+      // skip the αn biaxial check; per-axis checks suffice.
+      const concession = (section.shape !== 'circ')
+        ? biaxialConcession(section.b, section.D, utilX, utilY)
+        : { applies: false, reason: 'circular' };
+      const biax = biaxialUtil(env.x.Mmax, env.y.Mmax, phiMux, phiMuy, NStar, Nuo);
+      const util = concession.applies
+        ? Math.max(utilX, utilY)
+        : Math.max(utilX, utilY, biax.util);
+      return {
+        name: c.name, N: c.N, MxStar: env.x.Mmax, MyStar: env.y.Mmax,
+        env, phiMux, phiMuy, utilX, utilY, biax, util, concession,
+        delta_x: env.x.delta, delta_y: env.y.delta,
+        km_x: env.x.km, km_y: env.y.km,
+        dS_x: dsX, dS_y: dsY,
+      };
+    });
+    // Find governing
+    let governing = comboResults[0];
+    for (const r of comboResults) if (r.util > governing.util) governing = r;
+
+    // Steel ratio
+    const rho = section.totalSteel() / section.grossArea();
+
+    // Fitment spacing check
+    const Dc = section.shape === 'circ' ? section.D : Math.min(section.D, section.b);
+    const fitSpec = parseFloat(document.getElementById('inFitSpacing').value);
+    const fitMaxAS = Math.min(Dc, 15 * S.barSize);
+
+    // HSC confinement (only required if fc > 50)
+    let hsc = null;
+    if (section.fc > 50) {
+      const cover = parseFloat(document.getElementById('inCover').value);
+      const fitDia = parseFloat(document.getElementById('inFitBar').value);
+      const fsyF = parseFloat(document.getElementById('inFsyF').value);
+      // ── PRO Phase 4d ── Read fitment θ and arrangement to set m correctly.
+      const fitTheta = parseFloat(document.getElementById('inFitTheta').value);
+      const fitArr = document.getElementById('inFitArr').value;  // perim | cross | helix
+      if (section.shape === 'circ') {
+        const ds = section.D - 2*cover - fitDia;
+        hsc = {
+          shape: 'circ',
+          simplified: hscSimplified({ shape:'circ', AbFit: BAR_AREAS[fitDia], fsyF,
+                                       fc: section.fc, m: 1, ds, thetaDeg: fitTheta }),
+          deemed: hscDeemed({ shape:'circ', AbFit: BAR_AREAS[fitDia], fsyF,
+                              fc: section.fc, ds }),
+        };
+      } else {
+        const bc = section.b - 2*cover - fitDia;
+        const dc = section.D - 2*cover - fitDia;
+        const nx = parseInt(document.getElementById('inBarsX').value, 10);
+        const ny = parseInt(document.getElementById('inBarsY').value, 10);
+        const n = 2*nx + 2*(ny-2);  // perimeter bars
+        const w = (bc - n/2 * S.barSize) / Math.max(1, n/4); // approximate
+        // m = number of fitment legs crossing the confinement plane (RCB Fig 5.29):
+        //   perim: 2 legs (top + bot) cross b, OR 2 legs cross d → take min plane
+        //   cross: 4 legs (perim + 1 cross-tie each direction)
+        //   helix: not applicable for rect
+        const m = (fitArr === 'cross') ? 4 : 2;
+        hsc = {
+          shape: 'rect',
+          simplified: hscSimplified({ shape:'rect', AbFit: BAR_AREAS[fitDia], fsyF,
+                                       fc: section.fc, m, n, w, bc, dc, ds: bc, thetaDeg: fitTheta }),
+          deemed: hscDeemed({ shape:'rect', AbFit: BAR_AREAS[fitDia], fsyF,
+                              fc: section.fc, n, bc }),
+        };
+      }
+      // ── C8 ── Cl 10.7.3.1: special confinement region trigger.
+      // Check governing combo against (a) N* ≥ 0.75 Nuo, OR
+      // (b) N* ≥ 0.3·fc′·Ag AND M* ≥ 0.6·Mu at that N*.
+      const NStar_g = governing.N * 1000;
+      const triggerA = NStar_g >= 0.75 * Nuo;
+      const Ag = section.grossArea();
+      const capAtG = capacityAtN(section, NStar_g);
+      const Mu_g = capAtG.Mu / 1e6; // kNm
+      const Mstar_g = Math.max(governing.MxStar, governing.MyStar);
+      const triggerB = (NStar_g >= 0.3 * section.fc * Ag) && (Mstar_g >= 0.6 * Mu_g);
+      hsc.specialRegion = triggerA || triggerB;
+      hsc.triggerA = triggerA;
+      hsc.triggerB = triggerB;
+      // ── PRO Phase 4b ── Compute the EXTENT of special-confinement region per
+      // RCB Fig 5.31 / Example 5.7. If trigger A (N* ≥ 0.75·Nuo) the entire
+      // column is special-region. Otherwise, length from each end is the BMD
+      // distance where |M| ≥ 0.6·φMu, but at least 1.2·D.
+      const phi_at_g = governing.phiMux > 0 ? (governing.phiMux / Mu_g) : 0.65;
+      const M_thresh = 0.6 * phi_at_g * Mu_g;       // kNm
+      let zoneTop, zoneBot;
+      if (triggerA) {
+        zoneTop = zoneBot = Lu;
+      } else if (triggerB) {
+        // Use governing combo's signed end moments per worst axis
+        const cRaw = combos.find(c => c.name === governing.name);
+        const useX = Math.abs(governing.MxStar) >= Math.abs(governing.MyStar);
+        const Mt = useX ? cRaw.Mxt : cRaw.Myt;
+        const Mb = useX ? cRaw.Mxb : cRaw.Myb;
+        const Dnow = useX ? section.D : section.b;
+        const M2 = Math.abs(Mt) >= Math.abs(Mb) ? Mt : Mb;
+        const M1 = Math.abs(Mt) >= Math.abs(Mb) ? Mb : Mt;
+        const fromTop = Math.abs(Mt) >= Math.abs(Mb)
+          ? specialRegionLength(M2, M1, Lu, Dnow, M_thresh)
+          : Math.max(1.2*Dnow, 0);
+        const fromBot = Math.abs(Mb) >= Math.abs(Mt)
+          ? specialRegionLength(M2, M1, Lu, Dnow, M_thresh)
+          : Math.max(1.2*Dnow, 0);
+        zoneTop = Math.min(fromTop, Lu);
+        zoneBot = Math.min(fromBot, Lu);
+      } else {
+        zoneTop = zoneBot = 0;
+      }
+      hsc.zoneTop = zoneTop;
+      hsc.zoneBot = zoneBot;
+      hsc.zoneMid = Math.max(0, Lu - zoneTop - zoneBot);
+      // Spacing limits (Cl 10.7.3 / 10.7.4.3):
+      //   Inside special region: ≤ min(0.6·D, 300, 15·db) AND simplified/deemed
+      //   Outside: ≤ min(0.8·D, 300, 15·db) (also subject to general fitment limits)
+      const Dc_axis = section.shape === 'circ' ? section.D : Math.min(section.D, section.b);
+      hsc.sIn  = Math.min(0.6*Dc_axis, 300, 15*S.barSize, hsc.simplified || Infinity, hsc.deemed || Infinity);
+      hsc.sOut = Math.min(0.8*Dc_axis, 300, 15*S.barSize);
+    }
+
+    // ── C10 ── Fitment-bar diameter minimum (Table 10.7.4.3).
+    const fitDiaUsed = parseFloat(document.getElementById('inFitBar').value);
+    const fitMinDia = (S.barSize <= 20) ? 6 : (S.barSize <= 28) ? 10 : (S.barSize <= 36) ? 12 : 16;
+    const fitDiaOK = fitDiaUsed >= fitMinDia;
+
+    // ── PRO Phase 4c ── Cl 10.7.4.1 restraint pattern check.
+    // Required pattern is determined from the worst combo's N* and the actual
+    // fitment spacing. User selects the provided pattern in the Fitments card.
+    const restraintProvided = document.getElementById('inRestraintPattern').value;
+    const NStar_for_restraint = Math.max(...comboResults.map(c => c.N * 1000));
+    const Ag_for_restraint = section.grossArea();
+    const restraintRequired = restraintPatternRequired(
+      fitSpec, NStar_for_restraint, section.fc, Ag_for_restraint);
+    // Provided is "more restrictive" (every-bar) than required (alternate)? Pass.
+    // Provided "less restrictive" (alternate) than required (every-bar)? Fail.
+    const restraintRank = { 'corners-only': 0, 'alternate-bar': 1, 'every-bar': 2 };
+    const restraintOK = restraintRank[restraintProvided] >= restraintRank[restraintRequired];
+
+    // ── PRO Phase 4a ── Splice provisions (Cl 10.7.5).
+    // Determine, for each combo, the moment AT the top and AT the bottom of
+    // the column — these are the splice locations. With the moment magnifier,
+    // M*max can occur mid-height for slender columns, but the splice is
+    // typically ABOVE/BELOW the floor (i.e. at the column ends). The splice
+    // experiences the END moment (M2 or M1), NOT the magnified M*max.
+    //
+    // For each end, ask: does any combo put the outermost-tensile-face layer
+    // into net tension at the END moment? If yes, end-bearing splice is
+    // forbidden at that end (Cl 10.7.5.4).
+    function faceTensionAtEnd(combo, useTopEnd) {
+      // For x-axis: top-end moment is Mxt, bottom-end moment is Mxb.
+      // For y-axis: top-end Myt, bottom-end Myb.
+      // Take the worse of the two axes (max abs moment) since splice is
+      // the same for both axes.
+      const Mx = useTopEnd ? combo.Mxt : combo.Mxb;
+      const My = useTopEnd ? combo.Myt : combo.Myb;
+      const N  = combo.N * 1000;
+      const Magnitude = Math.sqrt(Mx*Mx + My*My);   // resultant for biaxial check
+      // Simple check: at this (N, M_resultant), is the section in tension on
+      // any face? The capacityAtN function returns dn — if dn < dout the
+      // outermost layer is in tension. Use the larger axis moment.
+      const Mlimit_x = capacityAtN(section,  N).Mu / 1e6;
+      const Mlimit_y = capacityAtN(sectionY, N).Mu / 1e6;
+      // If the demand exceeds the section's compression-line moment AND N is
+      // small relative to Nuo, the column is bending into tension on the far
+      // face. A simpler proxy: compute strain at dout using the cap.dn from
+      // capacityAtN at this N — if dn < dout, tension exists.
+      const useMx = Math.abs(Mx) >= Math.abs(My);
+      const sec = useMx ? section : sectionY;
+      const cap = capacityAtN(sec, N);
+      // For zero or negative N*, the column is in pure bending or net tension —
+      // the tension face is by definition in tension.
+      if (N <= 0) return true;
+      // Compare end moment to the section's moment at N* / N at decompression.
+      // Decompression moment = Mu at ku=1 (cap.dn = dout). If end moment
+      // exceeds the moment that would produce decompression, the face is in
+      // tension. A direct test: look at the strain in the outermost layer
+      // at the dn producing this N.
+      const dn = cap.dn;
+      if (dn <= 0) return false;
+      const dout = Math.max(...sec.layers.map(L => L.d));
+      return dn < dout;   // outermost layer in tension
+    }
+    let tensionTop = false, tensionBot = false;
+    for (const c of comboResults) {
+      // We need raw end moments not magnified Mmax — pull from the original combo
+      const cRaw = combos.find(cc => cc.name === c.name);
+      if (!cRaw) continue;
+      if (faceTensionAtEnd(cRaw, true))  tensionTop = true;
+      if (faceTensionAtEnd(cRaw, false)) tensionBot = true;
+    }
+    const spliceTopType  = document.getElementById('inSpliceTop').value;
+    const spliceTopRatio = parseFloat(document.getElementById('inSpliceTopRatio').value);
+    const spliceBotType  = document.getElementById('inSpliceBot').value;
+    const spliceBotRatio = parseFloat(document.getElementById('inSpliceBotRatio').value);
+    const spliceTop = checkSplice(spliceTopType, spliceTopRatio, tensionTop);
+    const spliceBot = checkSplice(spliceBotType, spliceBotRatio, tensionBot);
+    spliceTop.tensionEver = tensionTop;
+    spliceBot.tensionEver = tensionBot;
+
+    // ── PRO Phase 6a ── Multi-ρ interaction curve family for chart overlay.
+    const rhoFamily = familyForRho(section, [0.01, 0.015, 0.02, 0.03, 0.04]);
+
+    // ── PRO Phase 7 ── Min geometry warnings (RCB §5.6.2 / Cl 10.7.4)
+    const geomWarnings = [];
+    const minDim = section.shape === 'circ' ? section.D : Math.min(section.D, section.b);
+    if (minDim < 200) geomWarnings.push(`Min dimension ${minDim.toFixed(0)} mm < 200 mm recommended (RCB §5.6.2)`);
+    // Clear bar spacing — for symmetric mode, compute approximate clear spacing on the X-face.
+    if (S.rebarMode === 'sym' && section.shape !== 'circ') {
+      const nx = parseInt(document.getElementById('inBarsX').value, 10);
+      const cover_g = parseFloat(document.getElementById('inCover').value);
+      const fitDia_g = parseFloat(document.getElementById('inFitBar').value);
+      const inset = cover_g + fitDia_g + S.barSize/2;
+      // Centre-to-centre between adjacent bars on x-face:
+      const ctc = nx > 1 ? (section.b - 2*inset) / (nx - 1) : section.b - 2*inset;
+      const clear = ctc - S.barSize;
+      const minClear = Math.max(1.5 * S.barSize, 25);
+      if (clear < minClear) {
+        geomWarnings.push(`Clear bar spacing ${clear.toFixed(0)} mm < 1.5·db = ${minClear.toFixed(0)} mm`);
+      }
+    }
+    // Min number of bars per Cl 10.7.1 — circular: ≥ 6, rect: ≥ 1 per corner (i.e. ≥ 4)
+    if (section.shape === 'circ') {
+      const Nbars = parseInt(document.getElementById('inBarsCirc').value, 10);
+      if (Nbars < 6) geomWarnings.push(`Circular: ${Nbars} bars < 6 minimum (Cl 10.7.1)`);
+    }
+
+    // ── PRO Phase 5b ── Cl 10.8 floor-joint transmission
+    const slabFc = parseFloat(document.getElementById('inSlabFc').value);
+    const jointRestraint = document.getElementById('inJointRestraint').value;
+    const D_col = section.D, b_col = section.shape === 'circ' ? section.D : section.b;
+    const c_col = Math.min(D_col, b_col);
+    const h_col = Math.max(D_col, b_col);
+    const joint = joinTransmissionCheck(section.fc, slabFc, h_col, c_col, jointRestraint);
+    // Pass criterion: required compressive capacity at the joint = NStar_max,
+    // available = fce × Ag (effective concrete) + fsy × As (column bars through
+    // the joint). Compare against governing N*.
+    const NStar_governing = governing.N * 1000;
+    const Ag_col = section.grossArea();
+    const As_col = section.totalSteel();
+    const N_joint = joint.fce * Ag_col + As_col * 500;   // bars at 500 MPa squash cap
+    joint.NStarRatio = NStar_governing / N_joint;
+    joint.ok = joint.NStarRatio <= 1.0 || !joint.applies;
+
+    // Cover/fire check
+    const coverUsed = parseFloat(document.getElementById('inCover').value);
+    const coverReq = getCoverRequired();
+    const coverOK = coverUsed >= coverReq;
+
+    return {
+      section, sectionY, Lu, k, Le,
+      Lu_x, Lu_y, k_x, k_y, Le_x, Le_y,                              // ── PRO ── per-axis
+      analysisMethod: S.analysisMethod, applyMagnifier, perAxis: S.perAxis,
+      r, r_x, r_y, slendRatio, slendRatio_x, slendRatio_y,
+      slendLimit, isShort, isShort_x, isShort_y,
+      Nc, Nc_x, Nc_y, betaD, dS_max, dS_warn,
+      Nuo, bp, bpY, pb, pb_y, kuo, kuo_x, kuo_y,
+      phiPrime, phiPrime_x, phiPrime_y, phio,
+      ptsX, ptsY, combos, comboResults, governing,
+      rho, fitSpec, fitMaxAS, fitDiaUsed, fitMinDia, fitDiaOK,
+      hsc, coverUsed, coverReq, coverOK,
+      spliceTop, spliceBot,                                          // ── PRO Phase 4a ──
+      restraintProvided, restraintRequired, restraintOK,             // ── PRO Phase 4c ──
+      joint,                                                         // ── PRO Phase 5b ──
+      rhoFamily,                                                     // ── PRO Phase 6a ──
+      geomWarnings,                                                  // ── PRO Phase 7 ──
+    };
+  } catch (e) { console.error('Compute error:', e); return null; }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// RENDERING
+// ════════════════════════════════════════════════════════════════════════
+
+function fmt(v, dp=0, unit='') {
+  if (v == null || !isFinite(v)) return '—';
+  return v.toFixed(dp) + (unit ? ' '+unit : '');
+}
+function classifyUtil(u) {
+  if (!isFinite(u)) return 'fail';
+  if (u > 1.0) return 'fail';
+  if (u >= 0.95) return 'warn';
+  return 'pass';
+}
+function colourFromClass(c) {
+  return c === 'pass' ? getCSS('--green') : c === 'warn' ? getCSS('--orange') : getCSS('--rust');
+}
+function getCSS(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+function renderHero(r) {
+  const u = r.governing.util;
+  const cls = classifyUtil(u);
+  document.getElementById('utilNum').textContent = isFinite(u) ? u.toFixed(2) : '∞';
+  const ring = document.getElementById('utilRingFg');
+  const C = 263.9;
+  const filled = Math.min(1, isFinite(u) ? u : 1);
+  ring.style.strokeDashoffset = C * (1 - filled);
+  ring.style.stroke = colourFromClass(cls);
+  const status = document.getElementById('heroStatus');
+  status.className = 'hero-status ' + cls;
+  status.textContent = cls === 'pass' ? 'PASS' : cls === 'warn' ? 'CHECK' : 'FAIL';
+  document.getElementById('heroHeadline').innerHTML =
+    cls === 'pass' ? `Section <strong>adequate</strong> for governing combination` :
+    cls === 'warn' ? `Section <strong>marginal</strong> — review reinforcement` :
+                     `Section <strong>insufficient</strong> — increase reinforcement or section`;
+  document.getElementById('heroMeta').innerHTML =
+    `<span><strong>Combo:</strong> ${r.governing.name}</span>`+
+    `<span><strong>N*:</strong> ${fmt(r.governing.N, 0, 'kN')}</span>`+
+    `<span><strong>M*x:</strong> ${fmt(r.governing.MxStar, 0, 'kNm')}</span>`+
+    `<span><strong>M*y:</strong> ${fmt(r.governing.MyStar, 0, 'kNm')}</span>`+
+    `<span><strong>δ:</strong> ${fmt(Math.max(r.governing.delta_x, r.governing.delta_y), 2)}</span>`+
+    `<span><strong>Method:</strong> ${r.analysisMethod}${r.applyMagnifier ? '' : ' (no δ)'}</span>`+
+    (r.geomWarnings && r.geomWarnings.length
+      ? `<span style="color:var(--rust);"><strong>⚠ ${r.geomWarnings.length} geom warning${r.geomWarnings.length>1?'s':''}</strong></span>`
+      : '');
+}
+
+function renderComboTable(r) {
+  const tbody = document.querySelector('#comboTable tbody');
+  tbody.innerHTML = r.comboResults.map(c => {
+    const gov = c === r.governing ? 'governing' : '';
+    const u = isFinite(c.util) ? c.util.toFixed(2) : '∞';
+    return `<tr class="${gov}"><td>${c.name}</td><td>${fmt(c.N,0)}</td><td>${fmt(c.MxStar,0)}</td><td>${fmt(c.MyStar,0)}</td><td>${u}</td></tr>`;
+  }).join('');
+}
+
+function renderHelpers(r) {
+  document.getElementById('totalAs').textContent = Math.round(r.section.totalSteel());
+  document.getElementById('rho').textContent = (r.rho * 100).toFixed(2);
+  document.getElementById('effLen').textContent = Math.round(r.Le);
+  document.getElementById('slendRatio').textContent = r.slendRatio.toFixed(1);
+  const v = document.getElementById('slendVerdict');
+  v.textContent = r.isShort ? 'SHORT' : (r.slendRatio > 120 ? 'TOO SLENDER' : 'SLENDER');
+  v.style.background = r.isShort ? 'var(--green-soft)' : (r.slendRatio > 120 ? 'var(--rust-soft)' : 'var(--orange-soft)');
+  v.style.color = r.isShort ? 'var(--green)' : (r.slendRatio > 120 ? 'var(--rust)' : 'var(--orange)');
+}
+
+function setTile(name, value, detail, util, classOverride) {
+  const tile = document.querySelector(`[data-check="${name}"]`);
+  if (!tile) return;
+  tile.querySelector('.check-value').textContent = value;
+  tile.querySelector('.check-detail').textContent = detail;
+  const cls = classOverride || classifyUtil(util);
+  tile.className = 'check-tile ' + cls;
+  const dot = tile.querySelector('.check-status-dot');
+  dot.className = 'check-status-dot ' + (cls === 'pass' ? '' : cls);
+  const fillPct = Math.min(100, Math.max(0, util * 100));
+  const fill = tile.querySelector('.check-bar-fill');
+  fill.style.width = fillPct + '%';
+}
+
+function renderChecks(r) {
+  setTile('nm-x',
+    isFinite(r.governing.utilX) ? r.governing.utilX.toFixed(2) : '∞',
+    `M*=${fmt(r.governing.MxStar,0)} / φMu=${fmt(r.governing.phiMux,0)} kNm`,
+    r.governing.utilX);
+  setTile('nm-y',
+    isFinite(r.governing.utilY) ? r.governing.utilY.toFixed(2) : '∞',
+    `M*=${fmt(r.governing.MyStar,0)} / φMu=${fmt(r.governing.phiMuy,0)} kNm`,
+    r.governing.utilY);
+  // ── PRO Phase 5a ── Biaxial tile reflects whether Cl 10.6.3 concession applies.
+  if (r.governing.concession && r.governing.concession.applies) {
+    setTile('biax',
+      'concession',
+      `Cl 10.6.3 applies — ${r.governing.concession.reason}`,
+      0.5, 'pass');
+  } else {
+    setTile('biax',
+      isFinite(r.governing.biax.util) ? r.governing.biax.util.toFixed(2) : '∞',
+      `αn = ${r.governing.biax.an.toFixed(2)}`,
+      r.governing.biax.util);
+  }
+  // Slenderness — show the GOVERNING axis (B3): for rect, x and y can differ.
+  const slendDetail = (r.slendRatio_x !== r.slendRatio_y)
+    ? `Le/r_x=${r.slendRatio_x.toFixed(1)}, Le/r_y=${r.slendRatio_y.toFixed(1)}; limit ${r.slendLimit.toFixed(0)}`
+    : `limit ${r.slendLimit.toFixed(0)} (${r.isShort ? 'short' : 'slender'})`;
+  setTile('slender',
+    r.slendRatio.toFixed(1),
+    slendDetail + (r.dS_warn ? ' · δs>1.5' : ''),
+    r.slendRatio / r.slendLimit);
+  const rhoOK = r.rho >= 0.01 && r.rho <= 0.04;
+  setTile('long',
+    (r.rho * 100).toFixed(2) + '%',
+    rhoOK ? 'within 1–4%' : (r.rho < 0.01 ? 'below 1%' : 'above 4%'),
+    rhoOK ? 0.5 : 1.1, rhoOK ? 'pass' : 'fail');
+  // Fitments: spacing AND minimum diameter (C10).
+  const spacingOK = r.fitSpec <= r.fitMaxAS;
+  const fitOK = spacingOK && r.fitDiaOK;
+  const fitDetail = !r.fitDiaOK
+    ? `dia N${r.fitDiaUsed} < min N${r.fitMinDia} (Table 10.7.4.3)`
+    : `≤ ${Math.round(r.fitMaxAS)} mm`;
+  setTile('fit',
+    Math.round(r.fitSpec) + ' mm',
+    fitDetail,
+    r.fitSpec / r.fitMaxAS, fitOK ? 'pass' : 'fail');
+  if (r.hsc) {
+    const minSpacing = Math.min(r.hsc.simplified, r.hsc.deemed);
+    if (r.hsc.specialRegion) {
+      // ── PRO Phase 4b ── Two-zone schedule
+      const sIn  = r.hsc.sIn,  sOut = r.hsc.sOut;
+      const zT = Math.round(r.hsc.zoneTop), zM = Math.round(r.hsc.zoneMid), zB = Math.round(r.hsc.zoneBot);
+      const hscOK = r.fitSpec <= sIn;
+      const detail = (zM > 0)
+        ? `top ${zT} mm @ ${Math.round(sIn)} | mid ${zM} mm @ ${Math.round(sOut)} | bot ${zB} mm @ ${Math.round(sIn)}`
+        : `entire column @ ${Math.round(sIn)} mm`;
+      setTile('hsc',
+        Math.round(sIn) + ' mm (in)',
+        detail,
+        r.fitSpec / sIn, hscOK ? 'pass' : 'fail');
+    } else {
+      setTile('hsc',
+        'not in region',
+        `Cl 10.7.3.1 not triggered · max ${Math.round(r.hsc.sOut || 300)} mm general limit`,
+        0, 'pass');
+    }
+  } else {
+    setTile('hsc', 'N/A', 'fc′ ≤ 50 MPa', 0, 'na');
+  }
+  setTile('cover',
+    Math.round(r.coverUsed) + ' mm',
+    `req ${Math.round(r.coverReq)} mm`,
+    r.coverUsed / r.coverReq, r.coverOK ? 'pass' : 'fail');
+  // ── PRO Phase 5b ── Floor-joint Cl 10.8 tile
+  if (!r.joint.applies) {
+    setTile('joint',
+      'N/A',
+      'slab fc′ ≥ 0.75·col fc′',
+      0, 'na');
+  } else {
+    const okPct = (r.joint.NStarRatio * 100).toFixed(0);
+    setTile('joint',
+      `${okPct}%`,
+      `${r.joint.note} · N* / Nu_joint = ${r.joint.NStarRatio.toFixed(2)}`,
+      r.joint.NStarRatio, r.joint.ok ? 'pass' : 'fail');
+  }
+  // ── PRO Phase 4c ── Bar restraint pattern tile
+  setTile('restraint',
+    r.restraintProvided.replace('-', ' '),
+    `req: ${r.restraintRequired.replace('-', ' ')}`,
+    r.restraintOK ? 0.5 : 1.1, r.restraintOK ? 'pass' : 'fail');
+  // ── PRO Phase 4a ── Splice tiles
+  function spliceTileText(s) {
+    if (s.mode === 'none')       return { v:'no splice', d:'no check applied' };
+    if (s.mode === 'mechanical') return { v:'Mechanical', d:s.note };
+    if (s.mode === 'end-bearing'){
+      return { v:'End-bearing', d:s.note + (s.tensionEver ? ' · tension at face' : '') };
+    }
+    return { v:`${(s.capacityRatio*100).toFixed(0)}%`, d:s.note };
+  }
+  const spTop = spliceTileText(r.spliceTop);
+  setTile('splice-top', spTop.v, spTop.d, r.spliceTop.ok ? 0.5 : 1.1, r.spliceTop.ok ? 'pass' : 'fail');
+  const spBot = spliceTileText(r.spliceBot);
+  setTile('splice-bot', spBot.v, spBot.d, r.spliceBot.ok ? 0.5 : 1.1, r.spliceBot.ok ? 'pass' : 'fail');
+}
+
+// ────────────── 3D RENDERING (Three.js) ──────────────
+let three = null;
+function init3D() {
+  if (typeof THREE === 'undefined') { console.warn('THREE not loaded — skipping 3D'); return; }
+  const container = document.getElementById('canvas3d');
+  if (!container) return;
+  const w = Math.max(100, container.clientWidth || 600);
+  const h = Math.max(100, container.clientHeight || 400);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xfaf9f5);
+  const camera = new THREE.PerspectiveCamera(35, w/h, 1, 50000);
+  camera.position.set(2500, 2200, 2500);
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(window.devicePixelRatio || 1);
+  container.appendChild(renderer.domElement);
+  let controls = null;
+  if (typeof THREE.OrbitControls === 'function') {
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 1500, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+  } else {
+    // Fallback: static camera, looking at column centre
+    camera.lookAt(0, 1500, 0);
+    showError('OrbitControls not loaded', 'The 3D view will be static. Use Section / Elevation tabs for dimensioned views.');
+  }
+  // Lights
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+  dir.position.set(2000, 4000, 2000);
+  scene.add(dir);
+  const dir2 = new THREE.DirectionalLight(0xfff3e0, 0.4);
+  dir2.position.set(-2000, 3000, -1000);
+  scene.add(dir2);
+  // Group for column geometry
+  const colGroup = new THREE.Group();
+  scene.add(colGroup);
+  three = { scene, camera, renderer, controls, colGroup, container };
+  function animate() {
+    requestAnimationFrame(animate);
+    if (controls && controls.update) controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+  window.addEventListener('resize', () => {
+    const w = container.clientWidth, h = container.clientHeight;
+    if (w === 0 || h === 0) return;
+    camera.aspect = w/h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  });
+}
+function render3D(r) {
+  if (!three || typeof THREE === 'undefined') return;
+  const g = three.colGroup;
+  while (g.children.length) g.remove(g.children[0]);
+  const Lu = r.Lu;
+  const isCirc = r.section.shape === 'circ';
+  // Concrete
+  const concMat = new THREE.MeshLambertMaterial({
+    color: 0xe8e6dc, transparent: true, opacity: 0.35
+  });
+  const concEdge = new THREE.LineBasicMaterial({ color: 0x141413, transparent: true, opacity: 0.35 });
+  let concGeom;
+  if (isCirc) {
+    concGeom = new THREE.CylinderGeometry(r.section.D/2, r.section.D/2, Lu, 48);
+  } else {
+    concGeom = new THREE.BoxGeometry(r.section.b, Lu, r.section.D);
+  }
+  const conc = new THREE.Mesh(concGeom, concMat);
+  conc.position.set(0, Lu/2, 0);
+  g.add(conc);
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(concGeom), concEdge);
+  edges.position.set(0, Lu/2, 0);
+  g.add(edges);
+  // Floor slab caps
+  const slabT = 200;
+  const slabMat = new THREE.MeshLambertMaterial({ color: 0xd4cfc0, transparent: true, opacity: 0.5 });
+  const slabSize = isCirc ? r.section.D * 1.6 : Math.max(r.section.b, r.section.D) * 1.4;
+  const slabGeom = new THREE.BoxGeometry(slabSize, slabT, slabSize);
+  const slabBot = new THREE.Mesh(slabGeom, slabMat);
+  slabBot.position.set(0, -slabT/2, 0); g.add(slabBot);
+  const slabTop = new THREE.Mesh(slabGeom, slabMat);
+  slabTop.position.set(0, Lu + slabT/2, 0); g.add(slabTop);
+  // Bars
+  const barSize = S.barSize;
+  const barMat = new THREE.MeshLambertMaterial({ color: 0xd97757 });
+  const barGeom = new THREE.CylinderGeometry(barSize/2, barSize/2, Lu + slabT, 12);
+  function addBar(x, z) {
+    const m = new THREE.Mesh(barGeom, barMat);
+    m.position.set(x, Lu/2, z);
+    g.add(m);
+  }
+  const cover = r.coverUsed;
+  const fitDia = parseFloat(document.getElementById('inFitBar').value);
+  const inset = cover + fitDia + barSize/2;
+  if (isCirc) {
+    const N = parseInt(document.getElementById('inBarsCirc').value, 10);
+    const rr = r.section.D/2 - inset;
+    for (let i=0;i<N;i++) {
+      const a = 2*Math.PI*i/N;
+      addBar(rr*Math.cos(a), rr*Math.sin(a));
+    }
+  } else {
+    const b = r.section.b, D = r.section.D;
+    const nx = parseInt(document.getElementById('inBarsX').value, 10);
+    const ny = parseInt(document.getElementById('inBarsY').value, 10);
+    // X face bars (top + bottom of section, looking in plan z is depth axis)
+    // Bars on top X face: nx bars across width b, at z = D/2 - inset
+    for (let i=0;i<nx;i++) {
+      const x = -b/2 + inset + (b - 2*inset) * (nx > 1 ? i/(nx-1) : 0.5);
+      addBar(x, D/2 - inset);
+      addBar(x, -D/2 + inset);
+    }
+    // Y face bars (excluding corners — already placed)
+    if (ny > 2) {
+      const middle = ny - 2;
+      for (let j=1;j<=middle;j++) {
+        const z = -D/2 + inset + (D - 2*inset) * j/(middle+1);
+        addBar(-b/2 + inset, z);
+        addBar(b/2 - inset, z);
+      }
+    }
+  }
+  // Fitments — drawn as torus rings at spacing
+  const spacing = r.fitSpec;
+  const fitMat = new THREE.MeshLambertMaterial({ color: 0xc5663b });
+  function addFit(yPos) {
+    if (isCirc) {
+      const rr = r.section.D/2 - cover - fitDia/2;
+      const ringG = new THREE.TorusGeometry(rr, fitDia/2, 8, 36);
+      const ring = new THREE.Mesh(ringG, fitMat);
+      ring.position.set(0, yPos, 0);
+      ring.rotation.x = Math.PI/2;
+      g.add(ring);
+    } else {
+      const b = r.section.b, D = r.section.D;
+      const sb = b - 2*cover - fitDia;
+      const sd = D - 2*cover - fitDia;
+      // Build a square frame from 4 boxes
+      const t = fitDia;
+      const top = new THREE.Mesh(new THREE.BoxGeometry(sb, t, t), fitMat);
+      top.position.set(0, yPos, sd/2); g.add(top);
+      const bot = top.clone(); bot.position.z = -sd/2; g.add(bot);
+      const lf = new THREE.Mesh(new THREE.BoxGeometry(t, t, sd), fitMat);
+      lf.position.set(-sb/2, yPos, 0); g.add(lf);
+      const rt = lf.clone(); rt.position.x = sb/2; g.add(rt);
+    }
+  }
+  for (let y = spacing/2; y < Lu; y += spacing) addFit(y);
+  // Frame center
+  if (three.controls && three.controls.target) three.controls.target.set(0, Lu/2, 0);
+}
+
+// ────────────── 2D SECTION + ELEVATION ──────────────
+function drawSection(r) {
+  const cv = document.getElementById('canvasSection');
+  const ctx = cv.getContext('2d');
+  const W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = W * devicePixelRatio; cv.height = H * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#faf9f5';
+  ctx.fillRect(0,0,W,H);
+  const isCirc = r.section.shape === 'circ';
+  const D = isCirc ? r.section.D : r.section.D;
+  const b = isCirc ? r.section.D : r.section.b;
+  const margin = 60;
+  const scale = Math.min((W - margin*2) / b, (H - margin*2) / D) * 0.85;
+  const cx = W/2, cy = H/2;
+  // Concrete
+  ctx.strokeStyle = '#141413'; ctx.lineWidth = 1.5;
+  ctx.fillStyle = '#e8e6dc';
+  if (isCirc) {
+    ctx.beginPath(); ctx.arc(cx, cy, D/2 * scale, 0, 2*Math.PI);
+    ctx.fill(); ctx.stroke();
+  } else {
+    const x = cx - b/2*scale, y = cy - D/2*scale;
+    ctx.fillRect(x, y, b*scale, D*scale);
+    ctx.strokeRect(x, y, b*scale, D*scale);
+  }
+  // Hatch
+  ctx.strokeStyle = 'rgba(20,20,19,0.10)'; ctx.lineWidth = 0.6;
+  for (let i=-Math.max(W,H); i<Math.max(W,H); i+=8) {
+    ctx.beginPath();
+    ctx.moveTo(cx - W/2 + i, cy - H/2);
+    ctx.lineTo(cx - W/2 + i + H, cy + H/2);
+    if (isCirc) {
+      // clip to circle
+      ctx.save(); ctx.beginPath();
+      ctx.arc(cx, cy, D/2 * scale, 0, 2*Math.PI); ctx.clip();
+      ctx.stroke();
+      ctx.restore();
+    } else {
+      ctx.save(); ctx.beginPath();
+      const x = cx - b/2*scale, y = cy - D/2*scale;
+      ctx.rect(x, y, b*scale, D*scale); ctx.clip();
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+  // Cover/fitment
+  const cover = r.coverUsed;
+  const fitDia = parseFloat(document.getElementById('inFitBar').value);
+  ctx.strokeStyle = '#c5663b'; ctx.lineWidth = fitDia * scale;
+  if (isCirc) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, (D/2 - cover - fitDia/2) * scale, 0, 2*Math.PI);
+    ctx.stroke();
+  } else {
+    const x = cx - (b/2 - cover - fitDia/2)*scale;
+    const y = cy - (D/2 - cover - fitDia/2)*scale;
+    ctx.strokeRect(x, y, (b - 2*cover - fitDia)*scale, (D - 2*cover - fitDia)*scale);
+  }
+  // Bars
+  ctx.fillStyle = '#d97757';
+  ctx.lineWidth = 1; ctx.strokeStyle = '#7a3d28';
+  const inset = cover + fitDia + S.barSize/2;
+  function bar(x, y) {
+    ctx.beginPath();
+    ctx.arc(cx + x*scale, cy + y*scale, S.barSize/2 * scale, 0, 2*Math.PI);
+    ctx.fill(); ctx.stroke();
+  }
+  if (isCirc) {
+    const N = parseInt(document.getElementById('inBarsCirc').value, 10);
+    const rr = D/2 - inset;
+    for (let i=0;i<N;i++) {
+      const a = 2*Math.PI*i/N - Math.PI/2;
+      bar(rr * Math.cos(a), rr * Math.sin(a));
+    }
+  } else {
+    const nx = parseInt(document.getElementById('inBarsX').value, 10);
+    const ny = parseInt(document.getElementById('inBarsY').value, 10);
+    for (let i=0;i<nx;i++) {
+      const x = -b/2 + inset + (b - 2*inset) * (nx>1?i/(nx-1):0.5);
+      bar(x, -D/2 + inset);
+      bar(x, D/2 - inset);
+    }
+    if (ny > 2) {
+      const m = ny - 2;
+      for (let j=1;j<=m;j++) {
+        const y = -D/2 + inset + (D - 2*inset) * j/(m+1);
+        bar(-b/2 + inset, y);
+        bar(b/2 - inset, y);
+      }
+    }
+  }
+  // Dimensioning
+  ctx.fillStyle = '#141413'; ctx.font = '500 11px Poppins, Arial';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (isCirc) {
+    ctx.fillText(`Ø ${Math.round(D)} mm`, cx, cy + D/2*scale + 22);
+  } else {
+    ctx.fillText(`b = ${Math.round(b)} mm`, cx, cy + D/2*scale + 22);
+    ctx.save();
+    ctx.translate(cx - b/2*scale - 22, cy);
+    ctx.rotate(-Math.PI/2);
+    ctx.fillText(`D = ${Math.round(D)} mm`, 0, 0);
+    ctx.restore();
+  }
+  // Labels
+  ctx.font = '500 10px Poppins'; ctx.fillStyle = '#b0aea5';
+  ctx.textAlign = 'left';
+  ctx.fillText(`fc′ = ${r.section.fc} MPa  ·  fsy = ${r.section.fsy} MPa  ·  cover = ${cover} mm`, 16, 22);
+  ctx.fillText(`As = ${Math.round(r.section.totalSteel())} mm²  ·  ρ = ${(r.rho*100).toFixed(2)}%`, 16, 38);
+}
+
+function drawElevation(r) {
+  const cv = document.getElementById('canvasElevation');
+  const ctx = cv.getContext('2d');
+  const W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = W*devicePixelRatio; cv.height = H*devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#faf9f5'; ctx.fillRect(0,0,W,H);
+  const Lu = r.Lu;
+  const isCirc = r.section.shape === 'circ';
+  const widthDim = isCirc ? r.section.D : r.section.b;
+  const margin = 60;
+  const scale = Math.min((W - margin*2 - 200) / widthDim, (H - margin*2) / Lu) * 0.95;
+  const colW = widthDim * scale;
+  const colH = Lu * scale;
+  const cx = margin + 100 + colW/2;
+  const top = margin;
+  // Concrete
+  ctx.fillStyle = '#e8e6dc'; ctx.strokeStyle = '#141413'; ctx.lineWidth = 1.5;
+  ctx.fillRect(cx - colW/2, top, colW, colH);
+  ctx.strokeRect(cx - colW/2, top, colW, colH);
+  // Slabs
+  ctx.fillStyle = '#d4cfc0';
+  ctx.fillRect(cx - colW*1.4, top - 15, colW*2.8, 15);
+  ctx.fillRect(cx - colW*1.4, top + colH, colW*2.8, 15);
+  ctx.strokeRect(cx - colW*1.4, top - 15, colW*2.8, 15);
+  ctx.strokeRect(cx - colW*1.4, top + colH, colW*2.8, 15);
+  // Bars (vertical)
+  const cover = r.coverUsed;
+  const fitDia = parseFloat(document.getElementById('inFitBar').value);
+  const inset = cover + fitDia + S.barSize/2;
+  ctx.strokeStyle = '#d97757'; ctx.lineWidth = Math.max(1.5, S.barSize * scale);
+  const xL = cx - colW/2 + inset*scale;
+  const xR = cx + colW/2 - inset*scale;
+  ctx.beginPath(); ctx.moveTo(xL, top - 15); ctx.lineTo(xL, top + colH + 15); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(xR, top - 15); ctx.lineTo(xR, top + colH + 15); ctx.stroke();
+  // Fitments — short horizontal lines at spacing
+  const spacing = r.fitSpec;
+  ctx.strokeStyle = '#c5663b'; ctx.lineWidth = Math.max(1, fitDia * scale);
+  for (let s = spacing/2; s < Lu; s += spacing) {
+    const y = top + s * scale;
+    ctx.beginPath();
+    ctx.moveTo(cx - colW/2 + cover*scale, y);
+    ctx.lineTo(cx + colW/2 - cover*scale, y);
+    ctx.stroke();
+  }
+  // Dimension on left
+  ctx.fillStyle = '#141413'; ctx.font = '500 11px Poppins';
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  ctx.fillText(`Lu = ${Math.round(Lu)} mm`, cx - colW/2 - 12, top + colH/2);
+  ctx.fillText(`Le = ${Math.round(r.Le)} mm`, cx - colW/2 - 12, top + colH/2 + 16);
+  // Width dimension on top
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.fillText(`${Math.round(widthDim)} mm`, cx, top - 22);
+  // Fitment spacing label
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#c5663b'; ctx.font = '500 10px Poppins';
+  ctx.fillText(`fitments @ ${Math.round(spacing)} mm`, cx + colW/2 + 12, top + colH/2);
+  // Slenderness verdict
+  ctx.fillStyle = '#141413'; ctx.font = '600 11px Poppins';
+  ctx.fillText(r.isShort ? 'SHORT' : (r.slendRatio > 120 ? 'TOO SLENDER' : 'SLENDER'), cx + colW/2 + 12, top + colH/2 + 18);
+  ctx.fillStyle = '#b0aea5'; ctx.font = '500 10px Poppins';
+  ctx.fillText(`Le/r = ${r.slendRatio.toFixed(1)}`, cx + colW/2 + 12, top + colH/2 + 34);
+}
+
+// ────────────── CHARTS (Chart.js) ──────────────
+let chart = null;
+function renderChart(r) {
+  if (typeof Chart === 'undefined') return;
+  const cv = document.getElementById('chartCanvas');
+  if (!cv) return;
+  const ctx = cv.getContext('2d');
+  if (!ctx) return;
+  if (chart) { try { chart.destroy(); } catch (_) {} chart = null; }
+  if (S.chartTab === 'nm') renderNMChart(ctx, r);
+  else if (S.chartTab === 'biax') renderBiaxialChart(ctx, r);
+  else if (S.chartTab === 'strain') renderStrainChart(ctx, r);
+}
+function renderNMChart(ctx, r) {
+  const phio = r.phio, phiPrime = r.phiPrime;
+  const bp = r.bp;
+  const ptsRaw = r.ptsX;
+  const unfactored = ptsRaw.map(p => ({ x: p.M / 1e6, y: p.N / 1000 }));
+  const factored = ptsRaw.map(p => {
+    const phi = p.N >= bp.Nu ? phio : (p.N <= 0 ? phiPrime : phiCompression(p.N, bp.Nu, phio, phiPrime));
+    return { x: phi * p.M / 1e6, y: phi * p.N / 1000 };
+  });
+  // ── PRO Phase 6a ── Multi-ρ overlay (faded). Apply same φ shape as the
+  // primary section for fair comparison.
+  const rhoDatasets = (r.rhoFamily || []).map(fam => {
+    const data = fam.points.map(p => {
+      const phi = p.N >= fam.bp.Nu ? phio
+        : (p.N <= 0 ? phiPrime : phiCompression(p.N, fam.bp.Nu, phio, phiPrime));
+      return { x: phi * p.M / 1e6, y: phi * p.N / 1000 };
+    });
+    return {
+      label: `ρ=${(fam.rho*100).toFixed(1)}%`, data, type: 'line', showLine: true,
+      borderColor: 'rgba(106,155,204,0.45)', borderWidth: 1, borderDash: [2,3],
+      pointRadius: 0, fill: false, tension: 0.15,
+    };
+  });
+  // Combo points (using x-axis utilisation)
+  const comboPts = r.comboResults.map(c => ({
+    x: c.MxStar, y: c.N,
+    bg: c === r.governing ? '#d97757' : '#6a9bcc',
+    radius: c === r.governing ? 7 : 5,
+    label: c.name,
+  }));
+  chart = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [
+        ...rhoDatasets,
+        { label: 'Mu (unfactored)', data: unfactored, type: 'line', showLine: true,
+          borderColor: 'rgba(176,174,165,0.6)', borderDash: [4,3], borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.15 },
+        { label: 'φMu (factored, this design)', data: factored, type: 'line', showLine: true,
+          borderColor: '#141413', borderWidth: 2.5, pointRadius: 0, fill: false, tension: 0.15 },
+        { label: 'Load combos', data: comboPts,
+          backgroundColor: comboPts.map(p => p.bg),
+          pointRadius: comboPts.map(p => p.radius),
+          pointBorderColor: '#fff', pointBorderWidth: 2 },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 350 },
+      plugins: {
+        legend: { display: true, position: 'bottom', labels: { boxWidth: 18, font: { family: 'Poppins', size: 10 } } },
+        tooltip: { callbacks: {
+          label: (ctx) => {
+            const d = ctx.raw;
+            return `${d.label || ''} N = ${d.y.toFixed(0)} kN, M = ${d.x.toFixed(0)} kNm`;
+          }
+        }},
+      },
+      scales: {
+        x: { title: { display: true, text: 'Moment Mu (kNm)', font: { family: 'Poppins', size: 11 } },
+             grid: { color: 'rgba(20,20,19,0.05)' },
+             ticks: { font: { family: 'Poppins', size: 10 } } },
+        y: { title: { display: true, text: 'Axial N (kN)', font: { family: 'Poppins', size: 11 } },
+             grid: { color: 'rgba(20,20,19,0.05)' },
+             ticks: { font: { family: 'Poppins', size: 10 } } },
+      },
+    },
+  });
+}
+function renderBiaxialChart(ctx, r) {
+  const N = r.governing.N * 1000;
+  const phiMux = r.governing.phiMux;
+  const phiMuy = r.governing.phiMuy;
+  const an = r.governing.biax.an;
+  // Generate the contour: (Mx/phiMux)^an + (My/phiMuy)^an = 1
+  const contour = [];
+  for (let t = 0; t <= 1.001; t += 0.02) {
+    const Mx_norm = t;
+    const My_norm = Math.pow(Math.max(0, 1 - Math.pow(Mx_norm, an)), 1/an);
+    contour.push({ x: Mx_norm * phiMux, y: My_norm * phiMuy });
+  }
+  const point = [{ x: r.governing.MxStar, y: r.governing.MyStar }];
+  chart = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [
+        { label: 'Capacity contour', data: contour, type: 'line', showLine: true,
+          borderColor: '#141413', borderWidth: 2, pointRadius: 0, fill: false, tension: 0.05 },
+        { label: 'Demand', data: point,
+          backgroundColor: '#d97757', pointRadius: 8,
+          pointBorderColor: '#fff', pointBorderWidth: 2 },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: 'bottom', labels: { boxWidth: 18, font: { family: 'Poppins', size: 10 } } },
+        title: { display: true, text: `Biaxial contour @ N* = ${(N/1000).toFixed(0)} kN  (αn = ${an.toFixed(2)})`, font: { family: 'Poppins', size: 11, weight: 600 } },
+      },
+      scales: {
+        x: { title: { display: true, text: 'M*x (kNm)', font: { family: 'Poppins', size: 11 } },
+             ticks: { font: { family: 'Poppins', size: 10 } } },
+        y: { title: { display: true, text: 'M*y (kNm)', font: { family: 'Poppins', size: 11 } },
+             ticks: { font: { family: 'Poppins', size: 10 } } },
+      },
+    },
+  });
+}
+function renderStrainChart(ctx, r) {
+  // Strain profile at the governing combo's neutral axis
+  const NStar = r.governing.N * 1000;
+  const cap = capacityAtN(r.section, NStar);
+  const dn = cap.dn;
+  const D = r.section.shape === 'circ' ? r.section.D : r.section.D;
+  // Strain at extreme compressive fibre = 0.003; linear to extreme tensile fibre
+  const epsTop = 0.003;
+  const epsBot = 0.003 * (dn - D) / dn;
+  const profile = [
+    { x: epsTop * 1000, y: 0 },          // top fibre, depth 0
+    { x: epsBot * 1000, y: D },          // bottom fibre
+  ];
+  // Bar strain points
+  const layerPts = r.section.layers.map(L => ({
+    x: 0.003 * (dn - L.d) / dn * 1000,
+    y: L.d,
+    area: L.area,
+  }));
+  // Neutral axis
+  const naLine = [{ x: -10, y: dn }, { x: 10, y: dn }];
+  chart = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [
+        { label: 'Strain profile', data: profile, type: 'line', showLine: true,
+          borderColor: '#141413', borderWidth: 2, pointRadius: 4,
+          pointBackgroundColor: '#141413', fill: false },
+        { label: 'Neutral axis', data: naLine, type: 'line', showLine: true,
+          borderColor: '#d97757', borderWidth: 1.5, borderDash: [4,3],
+          pointRadius: 0, fill: false },
+        { label: 'Reinforcement strain', data: layerPts,
+          backgroundColor: layerPts.map(p => p.x > r.section.fsy/r.section.Es*1000 ? '#788c5d' : (p.x < -r.section.fsy/r.section.Es*1000 ? '#c15a3e' : '#6a9bcc')),
+          pointRadius: 7, pointBorderColor: '#fff', pointBorderWidth: 2 },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: 'bottom', labels: { boxWidth: 18, font: { family: 'Poppins', size: 10 } } },
+        title: { display: true, text: `Strain profile @ N* = ${(NStar/1000).toFixed(0)} kN  ·  dn = ${dn.toFixed(0)} mm  ·  ku = ${(dn/Math.max(...r.section.layers.map(L=>L.d))).toFixed(3)}`, font: { family: 'Poppins', size: 11, weight: 600 } },
+      },
+      scales: {
+        x: { title: { display: true, text: 'Strain × 1000 (compressive +)', font: { family: 'Poppins', size: 11 } } },
+        y: { reverse: true, title: { display: true, text: 'Depth from compressive face (mm)', font: { family: 'Poppins', size: 11 } } },
+      },
+    },
+  });
+}
+
+// ────────────── PDF EXPORT ──────────────
+async function generatePDF(r) {
+  const root = document.getElementById('pdfRoot');
+  root.innerHTML = pdfBuildHTML(r);
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
+  const pages = root.querySelectorAll('.pdf-page');
+  for (let i=0;i<pages.length;i++) {
+    const canvas = await html2canvas(pages[i], { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const img = canvas.toDataURL('image/png');
+    if (i > 0) pdf.addPage();
+    pdf.addImage(img, 'PNG', 0, 0, 595, 842);
+  }
+  const projectName = (document.getElementById('projectName').value || 'Column Design').trim();
+  pdf.save(`${projectName.replace(/[^\w-]+/g, '_')}_AS3600_calc.pdf`);
+}
+
+function pdfBuildHTML(r) {
+  const projectName = document.getElementById('projectName').value || 'Untitled column';
+  const date = new Date().toLocaleDateString('en-AU', { year: 'numeric', month: 'short', day: 'numeric' });
+  const g = r.governing;
+  // Compute hash of inputs for audit trail
+  const inputsStr = JSON.stringify(getAllInputs());
+  let hash = 0;
+  for (let i=0;i<inputsStr.length;i++) hash = ((hash<<5) - hash + inputsStr.charCodeAt(i)) | 0;
+  const hashHex = (hash >>> 0).toString(16).padStart(8, '0');
+
+  function header(pageNum, totalPages) {
+    return `<div class="pdf-header">
+      <div class="pdf-header-l">
+        <div class="pdf-mark">BT</div>
+        <div>
+          <h1>Concrete Column Design — AS 3600:2018</h1>
+          <div class="sub">Engine v${ENGINE_VERSION} · validated against RCB 3e Examples 5.2/5.4/5.5/5.6/5.7</div>
+        </div>
+      </div>
+      <div class="pdf-header-r">
+        <strong>${projectName}</strong><br>
+        Date: ${date}<br>
+        Hash: ${hashHex}
+      </div>
+    </div>`;
+  }
+  function footer(pageNum, totalPages) {
+    return `<div class="pdf-footer">
+      <span>Concrete Column Designer · Bligh Tanner</span>
+      <span>Page ${pageNum} of ${totalPages}</span>
+    </div>`;
+  }
+
+  // PAGE 1 — Summary
+  let p1 = `<div class="pdf-page">${header(1)}
+    <div class="pdf-title">${projectName}</div>
+    <div class="pdf-subtitle">Strength check of reinforced concrete column to AS 3600:2018 Section 10</div>
+    <div class="pdf-h2">1. Result Summary</div>
+    <div class="pdf-narrative">
+      <p>For the governing load combination <strong>${g.name}</strong> with N* = ${g.N.toFixed(0)} kN,
+      M*x = ${g.MxStar.toFixed(0)} kNm and M*y = ${g.MyStar.toFixed(0)} kNm, the section
+      ${g.util <= 1 ? 'is <strong class="pdf-pass">ADEQUATE</strong>' : 'is <strong class="pdf-fail">INADEQUATE</strong>'}
+      with a maximum utilisation of <strong>${isFinite(g.util) ? g.util.toFixed(3) : '∞'}</strong>.</p>
+    </div>
+    <table class="pdf-table">
+      <thead><tr><th>Combo</th><th>N* (kN)</th><th>M*x (kNm)</th><th>M*y (kNm)</th>
+        <th>φMux (kNm)</th><th>φMuy (kNm)</th><th>Util.</th></tr></thead>
+      <tbody>
+        ${r.comboResults.map(c => `<tr class="${c===g?'gov':''}">
+          <td>${c.name}</td><td>${c.N.toFixed(0)}</td><td>${c.MxStar.toFixed(0)}</td>
+          <td>${c.MyStar.toFixed(0)}</td><td>${c.phiMux.toFixed(0)}</td>
+          <td>${c.phiMuy.toFixed(0)}</td>
+          <td class="${c.util<=1?'pdf-pass':'pdf-fail'}">${isFinite(c.util)?c.util.toFixed(2):'∞'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    <div class="pdf-h2">2. Section &amp; Material Inputs</div>
+    <table class="pdf-table">
+      ${pdfKV([
+        ['Shape', r.section.shape === 'circ' ? 'Circular' : 'Rectangular/Square'],
+        ['Dimensions', r.section.shape==='circ' ? `Ø ${r.section.D} mm` : `${r.section.b} × ${r.section.D} mm`],
+        ['Length Lu', `${r.Lu} mm`],
+        ['fc′', `${r.section.fc} MPa  →  α₁ = ${alpha1(r.section.fc).toFixed(3)}, α₂ = ${alpha2(r.section.fc).toFixed(3)}, γ = ${gammaCo(r.section.fc).toFixed(3)}  (Cl 10.6.2)`],
+        ['fsy (long.)', `${r.section.fsy} MPa`],
+        ['Cover', `${r.coverUsed} mm  (req: ${r.coverReq} mm — durability + fire) ${r.coverOK?'<span class="pdf-pass">OK</span>':'<span class="pdf-fail">CHECK</span>'}`],
+        ['Long. reinforcement', `As = ${Math.round(r.section.totalSteel())} mm² · ρ = ${(r.rho*100).toFixed(2)}% (limit 1–4%, Cl 10.7.1)`],
+        ['Fitment', `N${parseFloat(document.getElementById('inFitBar').value).toFixed(0)} @ ${Math.round(r.fitSpec)} mm c/c`],
+      ])}
+    </table>
+    <div class="pdf-h2">3. Slenderness &amp; Effective Length</div>
+    <div class="pdf-narrative">
+      <p>Effective length factor k = <strong>${r.k.toFixed(3)}</strong>. <span class="as-ref">AS 3600 Cl 10.5.3</span></p>
+      <p>Le = k·Lu = ${r.k.toFixed(3)} × ${r.Lu} = <strong>${r.Le.toFixed(0)} mm</strong></p>
+      <p>r = ${r.section.shape==='circ'?'0.25':'0.30'}D = <strong>${r.r.toFixed(0)} mm</strong>. <span class="as-ref">Cl 10.5.2</span></p>
+      <p>Le/r = ${r.Le.toFixed(0)} / ${r.r.toFixed(0)} = <strong>${r.slendRatio.toFixed(1)}</strong></p>
+      <p>Short/slender limit: ${r.slendLimit.toFixed(1)} → column is
+      <strong class="${r.isShort?'pdf-pass':'pdf-warn'}">${r.isShort?'SHORT':(r.slendRatio>120?'TOO SLENDER':'SLENDER')}</strong>. <span class="as-ref">Cl 10.3.1</span></p>
+      ${r.isShort ? '' :
+        `<p>For slender columns, moment magnifier δb = km/(1 − N*/Nc) is applied. <span class="as-ref">Cl 10.4.2</span></p>
+        <div class="pdf-eq">Nc = (π²/Le²) · 182·d₀·φMub / (1 + βd) = ${(r.Nc/1000).toFixed(0)} kN  (with βd = ${r.betaD.toFixed(2)}, φMub = 0.65·Mub = ${(0.65*r.bp.Mu/1e6).toFixed(0)} kNm)</div>`}
+    </div>
+    ${footer(1)}</div>`;
+
+  // PAGE 2 — Section capacity & governing combo workings
+  let p2 = `<div class="pdf-page">${header(2)}
+    <div class="pdf-h2">4. Section Capacity (N–M Interaction)</div>
+    <div class="pdf-narrative">
+      <p>Section capacity is computed using the equivalent rectangular stress block of intensity α₂·fc′
+      acting over a depth of γ·dn. <span class="as-ref">Cl 10.6.2.5</span></p>
+      <p>Squash load: N<sub>uo</sub> = α₁·fc′·(A<sub>g</sub>−A<sub>s</sub>) + A<sub>s</sub>·f<sub>sy</sub> = <strong>${(r.Nuo/1000).toFixed(0)} kN</strong>. <span class="as-ref">Cl 10.6.2.2 Eq 10.6.2.2</span></p>
+      <p>Balanced point: at k<sub>ub</sub> = ${r.bp.kub.toFixed(3)} (tension steel yields with concrete crushing at ε = 0.003):
+      N<sub>ub</sub> = ${(r.bp.Nu/1000).toFixed(0)} kN, M<sub>ub</sub> = ${(r.bp.Mu/1e6).toFixed(0)} kNm.</p>
+      <p>Pure bending: M<sub>uo</sub> = ${(r.pb.Mu/1e6).toFixed(0)} kNm at dn = ${r.pb.dn.toFixed(0)} mm (k<sub>uo</sub> = ${r.kuo.toFixed(3)}).</p>
+      <p>Capacity reduction factor: φ varies along the curve (Table 2.2.2):</p>
+      <ul>
+        <li>φ<sub>o</sub> = ${r.phio.toFixed(2)} ${r.phio===0.65?'(stocky, Q/G ≥ 0.25)':'(slender or Q/G &lt; 0.25 — k<sub>φ</sub> = 12/13)'}</li>
+        <li>φ′ = 1.24 − 13k<sub>uo</sub>/12 = ${r.phiPrime.toFixed(3)} (pure bending)</li>
+        <li>For N* between 0 and N<sub>ub</sub>: linear interpolation</li>
+      </ul>
+    </div>
+    <div class="pdf-h2">5. Governing Combination — ${g.name}</div>
+    <table class="pdf-table">
+      ${pdfKV([
+        ['Axial demand N*', `${g.N.toFixed(1)} kN`],
+        ['M*x — design moment about x-axis', `${g.MxStar.toFixed(1)} kNm  (after δ = ${g.delta_x.toFixed(2)} magnification, km = ${g.km_x.toFixed(2)})`],
+        ['M*y — design moment about y-axis', `${g.MyStar.toFixed(1)} kNm  (after δ = ${g.delta_y.toFixed(2)} magnification, km = ${g.km_y.toFixed(2)})`],
+        ['φMux at this N*', `${g.phiMux.toFixed(1)} kNm  →  Utilisation x = ${g.utilX.toFixed(3)}`],
+        ['φMuy at this N*', `${g.phiMuy.toFixed(1)} kNm  →  Utilisation y = ${g.utilY.toFixed(3)}`],
+        ['Biaxial αn (Cl 10.6.4)', `${g.biax.an.toFixed(3)} = 0.7 + 1.7·N*/Nuo`],
+        ['Biaxial utilisation', `(M*x/φMux)<sup>αn</sup> + (M*y/φMuy)<sup>αn</sup> = <strong>${g.biax.util.toFixed(3)}</strong>`],
+        ['Minimum eccentricity', `M<sub>min</sub> = 0.05·D·N* applied as floor (Cl 10.1.2)`],
+        ['Overall utilisation', `<strong class="${g.util<=1?'pdf-pass':'pdf-fail'}">${g.util.toFixed(3)}  ${g.util<=1?'PASS':'FAIL'}</strong>`],
+      ])}
+    </table>
+    ${footer(2)}</div>`;
+
+  // PAGE 3 — Detailing checks
+  const fitDia = parseFloat(document.getElementById('inFitBar').value);
+  const Dc = r.section.shape === 'circ' ? r.section.D : Math.min(r.section.D, r.section.b);
+  let p3 = `<div class="pdf-page">${header(3)}
+    <div class="pdf-h2">6. Detailing Checks</div>
+    <div class="pdf-h3">6.1 Longitudinal reinforcement (Cl 10.7.1)</div>
+    <table class="pdf-table">
+      ${pdfKV([
+        ['Reinforcement provided', `${Math.round(r.section.totalSteel())} mm² (ρ = ${(r.rho*100).toFixed(2)}%)`],
+        ['Min ratio (1% Ag)', `${(r.section.grossArea()*0.01).toFixed(0)} mm² ${r.rho>=0.01?'<span class="pdf-pass">OK</span>':'<span class="pdf-fail">FAIL</span>'}`],
+        ['Max ratio (4% Ag)', `${(r.section.grossArea()*0.04).toFixed(0)} mm² ${r.rho<=0.04?'<span class="pdf-pass">OK</span>':'<span class="pdf-fail">FAIL</span>'}`],
+      ])}
+    </table>
+    <div class="pdf-h3">6.2 Fitments / lateral restraint (Cl 10.7.4)</div>
+    <table class="pdf-table">
+      ${pdfKV([
+        ['Fitment bar diameter', `N${fitDia.toFixed(0)}  (Table 10.7.4.3 minimum: ${S.barSize<=20?'6':S.barSize<=28?'10':S.barSize<=36?'12':'16'})`],
+        ['Fitment spacing provided', `${Math.round(r.fitSpec)} mm`],
+        ['Spacing limit (Cl 10.7.4.3)', `min(D<sub>c</sub>, 15·d<sub>b</sub>) = min(${Dc.toFixed(0)}, ${15*S.barSize}) = ${r.fitMaxAS.toFixed(0)} mm ${r.fitSpec<=r.fitMaxAS?'<span class="pdf-pass">OK</span>':'<span class="pdf-fail">FAIL</span>'}`],
+      ])}
+    </table>
+    ${r.hsc ? `
+    <div class="pdf-h3">6.3 HSC core confinement (Cl 10.7.3 — fc′ &gt; 50 MPa)</div>
+    <div class="pdf-narrative">
+      <p>For high-strength concrete, an effective confining pressure f<sub>r,eff</sub> ≥ 0.01·fc′ is required in special confinement regions.</p>
+    </div>
+    <table class="pdf-table">
+      ${pdfKV([
+        ['Required f<sub>r,eff</sub>', `${(0.01*r.section.fc).toFixed(2)} MPa`],
+        ['Maximum spacing — simplified (Cl 10.7.3.3)', `${r.hsc.simplified.toFixed(0)} mm`],
+        ['Maximum spacing — deemed-to-comply (Cl 10.7.3.4)', `${r.hsc.deemed.toFixed(0)} mm`],
+        ['Spacing provided', `${Math.round(r.fitSpec)} mm ${r.fitSpec<=Math.min(r.hsc.simplified, r.hsc.deemed)?'<span class="pdf-pass">OK</span>':'<span class="pdf-fail">FAIL</span>'}`],
+      ])}
+    </table>` : ''}
+    <div class="pdf-h3">6.4 Cover &amp; fire (Sections 4 &amp; 5)</div>
+    <table class="pdf-table">
+      ${(() => {
+        const expo = document.getElementById('inExposure').value;
+        const durRow = COVER_DURABILITY[expo] || COVER_DURABILITY.B1;
+        const dur = durRow[fcTier(r.section.fc)];
+        const durStr = isFinite(dur)
+          ? `${dur} mm (exposure ${expo}, fc′=${r.section.fc} MPa, Table 4.10.3.2)`
+          : `<span class="pdf-fail">fc′=${r.section.fc} MPa not permitted for exposure ${expo}</span>`;
+        return pdfKV([
+          ['Cover provided', `${r.coverUsed} mm`],
+          ['Required (durability)', durStr],
+          ['Required (fire)', `${COVER_BY_FRL[parseInt(document.getElementById('inFRL').value,10)] || 0} mm (Section 5.5, simplified)`],
+          ['Governing required', `<strong>${r.coverReq} mm</strong> ${r.coverOK?'<span class="pdf-pass">OK</span>':'<span class="pdf-fail">FAIL</span>'}`],
+        ]);
+      })()}
+    </table>
+    ${footer(3)}</div>`;
+
+  // ── PRO Phase 8 ── PAGE 4 — PRO checks (splices, joint, restraint, HSC zones, warnings)
+  const methodLabel = r.analysisMethod === 1 ? 'Method 1 — Linear elastic (with magnifier)'
+                    : r.analysisMethod === 2 ? 'Method 2 — Non-linear elastic (no magnifier)'
+                    : 'Method 3 — Rigorous non-linear (no magnifier)';
+  function spliceRow(label, s) {
+    const status = s.ok ? '<span class="pdf-pass">OK</span>' : '<span class="pdf-fail">FAIL</span>';
+    return [label, `${s.mode} · ${s.note} ${status}`];
+  }
+  let p4 = `<div class="pdf-page">${header(4)}
+    <div class="pdf-h2">8. PRO Checks</div>
+
+    <div class="pdf-h3">8.1 Method of analysis (Cl 6.2 / 10.2.1)</div>
+    <table class="pdf-table">
+      ${pdfKV([
+        ['Method used', methodLabel],
+        ['Magnifier applied?', r.applyMagnifier ? 'Yes — δb (Cl 10.4.2) and δs (Cl 10.4.3) applied' : 'No — P-Δ already in input M*'],
+        ['Per-axis Le?', r.perAxis ? `Yes — Le_x = ${r.Le_x.toFixed(0)}, Le_y = ${r.Le_y.toFixed(0)}` : `No — single Le = ${r.Le.toFixed(0)}`],
+      ])}
+    </table>
+
+    <div class="pdf-h3">8.2 Splice provisions (Cl 10.7.5)</div>
+    <table class="pdf-table">
+      ${pdfKV([
+        spliceRow('TOP splice', r.spliceTop),
+        spliceRow('BOT splice', r.spliceBot),
+        ['Tensile criterion', '0.25·fsy·As must be developable at any face (Cl 10.7.5.1)'],
+        ['End-bearing rule',  'Permitted only where face is in compression for ALL combos (Cl 10.7.5.4)'],
+      ])}
+    </table>
+
+    <div class="pdf-h3">8.3 Lateral restraint pattern (Cl 10.7.4.1)</div>
+    <table class="pdf-table">
+      ${pdfKV([
+        ['Provided',     r.restraintProvided.replace('-', ' ')],
+        ['Required',     `${r.restraintRequired.replace('-', ' ')} ${r.restraintOK ? '<span class="pdf-pass">OK</span>' : '<span class="pdf-fail">FAIL</span>'}`],
+        ['Trigger rules','every bar if s &gt; 150 mm OR N* &gt; 0.3·fc′·Ag; else every alternate'],
+      ])}
+    </table>
+
+    ${r.hsc ? `
+    <div class="pdf-h3">8.4 HSC confinement zone schedule (Cl 10.7.3.1, RCB Fig 5.31)</div>
+    <table class="pdf-table">
+      ${pdfKV([
+        ['Special region triggered?', r.hsc.specialRegion ? `YES (${r.hsc.triggerA ? 'N*≥0.75·Nuo' : 'N*≥0.3·fc′·Ag and M*≥0.6·Mu'})` : 'no'],
+        ['Spacing — inside region',  r.hsc.specialRegion ? `${Math.round(r.hsc.sIn)} mm` : 'n/a'],
+        ['Spacing — outside region', r.hsc.specialRegion ? `${Math.round(r.hsc.sOut)} mm` : 'n/a'],
+        ['Top zone length',          r.hsc.specialRegion ? `${Math.round(r.hsc.zoneTop)} mm` : 'n/a'],
+        ['Mid zone length',          r.hsc.specialRegion ? `${Math.round(r.hsc.zoneMid)} mm` : 'n/a'],
+        ['Bot zone length',          r.hsc.specialRegion ? `${Math.round(r.hsc.zoneBot)} mm` : 'n/a'],
+      ])}
+    </table>` : ''}
+
+    <div class="pdf-h3">8.5 Floor-joint transmission (Cl 10.8)</div>
+    <table class="pdf-table">
+      ${pdfKV([
+        ['Slab fc′',           `${document.getElementById('inSlabFc').value} MPa`],
+        ['Column fc′',         `${r.section.fc} MPa`],
+        ['Joint restraint',    document.getElementById('inJointRestraint').value],
+        ['Check applies?',     r.joint.applies ? 'YES — slab fc′ &lt; 0.75·col fc′' : 'no'],
+        ['Effective fce',      r.joint.applies ? `${r.joint.fce.toFixed(1)} MPa (${(r.joint.ratio*100).toFixed(0)}% of col fc′)` : 'n/a'],
+        ['N*/N_joint',         r.joint.applies ? `${r.joint.NStarRatio.toFixed(2)} ${r.joint.ok ? '<span class="pdf-pass">OK</span>' : '<span class="pdf-fail">FAIL</span>'}` : 'n/a'],
+      ])}
+    </table>
+
+    ${r.geomWarnings && r.geomWarnings.length ? `
+    <div class="pdf-h3">8.6 Geometry warnings (RCB §5.6.2)</div>
+    <ul style="font-size:11px;color:var(--rust);padding-left:24px;">
+      ${r.geomWarnings.map(w => `<li>${w}</li>`).join('')}
+    </ul>` : ''}
+
+    <div class="pdf-h2">9. Assumptions &amp; Limitations</div>
+    <div class="pdf-narrative">
+      <ul>
+        <li>Analysis Method ${r.analysisMethod} per Cl 6.2 / Cl 10.2.1.</li>
+        <li>Effective length per ${r.perAxis ? 'per-axis Lu and k inputs' : (document.getElementById('inKMethod').value === 'manual' ? 'user-entered k' : 'γ-based lookup of Fig 10.5.3')}.</li>
+        <li>βd = G/(G+Q) = ${r.betaD.toFixed(3)}.</li>
+        <li>Capacity reduction φ per Table 2.2.2 with φ<sub>o</sub> = ${r.phio.toFixed(2)}, φ′ = ${r.phiPrime.toFixed(3)}; for combos with N* &lt; 0, φ uses Cl Table 2.2.2 row (c) interpolating to 0.85 at pure tension.</li>
+        <li>Biaxial check uses AS 3600 Cl 10.6.4 formula: αn = 0.7 + 1.7·N*/N<sub>uo</sub>; Cl 10.6.3 concession applied where geometry and load eccentricity permit.</li>
+        <li>Minimum eccentricity 0.05D applied as floor on M*max (Cl 10.1.2).</li>
+        <li>Voids (if any) reduce A<sub>g</sub>, dpc and Cc per RCB §5.4.1 and Eq 5.8.</li>
+        <li>Splice TOP/BOT modes: ${r.spliceTop.mode} / ${r.spliceBot.mode}; tensile criterion 0.25·fsy·As (Cl 10.7.5.1).</li>
+        ${S.brace==='unbraced' ? '<li>δs computed for the column treated as a single-column storey — for multi-column storeys, ΣN* and ΣNc should be entered separately.</li>' : ''}
+      </ul>
+    </div>
+    ${footer(4)}</div>`;
+
+  return p1 + p2 + p3 + p4;
+}
+
+function pdfKV(rows) {
+  return rows.map(([k,v]) => `<tr><td style="width:240px;color:#777;">${k}</td><td>${v}</td></tr>`).join('');
+}
+
+function getAllInputs() {
+  const inputs = {};
+  document.querySelectorAll('input, select').forEach(el => {
+    inputs[el.id] = el.value;
+  });
+  inputs.shape = S.shape;
+  inputs.fc = S.fc;
+  inputs.barSize = S.barSize;
+  inputs.brace = S.brace;
+  return inputs;
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// MAIN UPDATE LOOP
+// ════════════════════════════════════════════════════════════════════════
+
+let updateScheduled = false;
+function scheduleUpdate() {
+  if (updateScheduled) return;
+  updateScheduled = true;
+  requestAnimationFrame(() => {
+    updateScheduled = false;
+    update();
+  });
+}
+
+function update() {
+  const r = safe('compute', () => compute());
+  if (!r) return;
+  S.result = r;
+  safe('hero', () => renderHero(r));
+  safe('combo table', () => renderComboTable(r));
+  safe('helpers', () => renderHelpers(r));
+  safe('checks', () => renderChecks(r));
+  if (S.geomTab === '3d') safe('3D render', () => render3D(r));
+  else if (S.geomTab === 'section') safe('section draw', () => drawSection(r));
+  else if (S.geomTab === 'elevation') safe('elevation draw', () => drawElevation(r));
+  safe('chart', () => renderChart(r));
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// EVENT WIRING
+// ════════════════════════════════════════════════════════════════════════
+
+function wireChips(groupId, cb) {
+  const grp = document.getElementById(groupId);
+  grp.addEventListener('click', e => {
+    const ch = e.target.closest('.chip');
+    if (!ch) return;
+    grp.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    ch.classList.add('active');
+    cb(ch);
+  });
+}
+
+function setShape(shape) {
+  S.shape = shape;
+  document.getElementById('rectDims').style.display = shape === 'circ' ? 'none' : 'flex';
+  document.getElementById('circDims').style.display = shape === 'circ' ? 'flex' : 'none';
+  document.getElementById('barsCircWrap').style.display = shape === 'circ' ? 'flex' : 'none';
+  document.querySelector('#barsXLabel').parentElement.style.display = shape === 'circ' ? 'none' : 'flex';
+  document.querySelector('#barsYLabel').parentElement.style.display = shape === 'circ' ? 'none' : 'flex';
+  if (shape === 'square') {
+    // Sync inD with inB
+    document.getElementById('inD').value = document.getElementById('inB').value;
+  }
+}
+
+// ─── Global error reporter ───
+function showError(title, msg) {
+  const box = document.getElementById('globalErrors');
+  if (!box) { console.error(title, msg); return; }
+  const el = document.createElement('div');
+  el.className = 'gerr';
+  el.innerHTML = '<span class="gerr-close" title="dismiss">×</span><strong>' + title + '</strong>' + msg;
+  el.querySelector('.gerr-close').addEventListener('click', () => el.remove());
+  box.appendChild(el);
+  box.classList.add('show');
+}
+window.addEventListener('error', function(e){
+  showError('Runtime error', '<code>' + (e.message || 'unknown') + '</code>' + (e.filename ? ' at line ' + e.lineno : ''));
+});
+window.addEventListener('unhandledrejection', function(e){
+  showError('Async error', '<code>' + (e.reason && e.reason.message ? e.reason.message : String(e.reason)) + '</code>');
+});
+
+// Replay any errors captured before this script ran
+if (Array.isArray(window.__earlyErrors)) {
+  window.__earlyErrors.forEach(e => showError('Load error', '<code>' + e.msg + '</code>'));
+}
+
+function safe(label, fn) {
+  try { return fn(); } catch (e) {
+    console.error('[' + label + ']', e);
+    showError('Failed: ' + label, '<code>' + (e.message || e) + '</code>');
+    return null;
+  }
+}
+
+function init() {
+  // Verify required globals are loaded
+  if (typeof THREE === 'undefined') showError('THREE not loaded', 'Three.js failed to load. The 3D view will be unavailable but the rest of the tool will still work.');
+  if (typeof Chart === 'undefined') showError('Chart.js not loaded', 'Charts will be unavailable.');
+  if (typeof window.jspdf === 'undefined') showError('jsPDF not loaded', 'PDF export will be unavailable.');
+  if (typeof html2canvas === 'undefined') showError('html2canvas not loaded', 'PDF export will be unavailable.');
+
+  // Chips
+  safe('chip wiring', () => {
+    wireChips('shapeChips', ch => { setShape(ch.dataset.shape); scheduleUpdate(); });
+    wireChips('fcChips', ch => { S.fc = +ch.dataset.fc; scheduleUpdate(); });
+    wireChips('barSizeChips', ch => { S.barSize = +ch.dataset.bar; scheduleUpdate(); });
+    wireChips('braceChips', ch => { S.brace = ch.dataset.brace; scheduleUpdate(); });
+    // ── PRO ── method-of-analysis chips and per-axis Le toggle
+    wireChips('analysisMethodChips', ch => {
+      S.analysisMethod = +ch.dataset.amethod;
+      const help = document.getElementById('analysisMethodHelp');
+      if (S.analysisMethod === 1) {
+        help.innerHTML = '<strong>Method 1</strong> — column moments are end moments from a linear elastic analysis on undeformed geometry. Calculator applies moment magnifiers δb (Cl 10.4.2) and δs (Cl 10.4.3) to obtain M*max.';
+      } else if (S.analysisMethod === 2) {
+        help.innerHTML = '<strong>Method 2</strong> — non-linear elastic analysis on the deformed structure. Magnifiers δb and δs are <em>not</em> applied — your input M* is taken as M*max along the column.';
+      } else {
+        help.innerHTML = '<strong>Method 3</strong> — rigorous non-linear (geometric + material). Magnifiers not applied. Per Cl 10.2.1, section strength checks are not strictly required when this method is used; calculator still reports them as a sanity check.';
+      }
+      scheduleUpdate();
+    });
+    wireChips('perAxisChips', ch => {
+      S.perAxis = ch.dataset.axissep === '1';
+      document.getElementById('singleAxisRow').style.display = S.perAxis ? 'none' : 'flex';
+      document.getElementById('perAxisRow1').style.display  = S.perAxis ? 'flex' : 'none';
+      // When toggling on, seed per-axis fields from the single-axis values
+      if (S.perAxis) {
+        const Lu = parseFloat(document.getElementById(S.shape === 'circ' ? 'inLu2' : 'inLu').value);
+        const k  = parseFloat(document.getElementById('inK').value);
+        document.getElementById('inLuX').value = Lu;
+        document.getElementById('inLuY').value = Lu;
+        document.getElementById('inKx').value  = k;
+        document.getElementById('inKy').value  = k;
+      }
+      scheduleUpdate();
+    });
+    // ── PRO ── Per-layer rebar mode chips and add/remove rows
+    wireChips('rebarModeChips', ch => {
+      S.rebarMode = ch.dataset.rebarmode;
+      document.getElementById('rebarSymRow').style.display   = (S.rebarMode === 'sym') ? 'flex' : 'none';
+      document.getElementById('rebarLayerWrap').style.display = (S.rebarMode === 'layer') ? 'block' : 'none';
+      // When switching to layer mode for the first time, seed with the current symmetric layout
+      if (S.rebarMode === 'layer' && document.querySelectorAll('#layersList .layer-row').length === 0) {
+        const D = parseFloat(document.getElementById(S.shape === 'circ' ? 'inDia' : 'inD').value);
+        const cover = parseFloat(document.getElementById('inCover').value);
+        const fitDia = parseFloat(document.getElementById('inFitBar').value);
+        const dCover = cover + fitDia + S.barSize/2;
+        const Abar = BAR_AREAS[S.barSize];
+        const nx = parseInt(document.getElementById('inBarsX').value, 10);
+        addLayerRow(dCover, nx * Abar);
+        addLayerRow(D - dCover, nx * Abar);
+      }
+      scheduleUpdate();
+    });
+    const layersList = document.getElementById('layersList');
+    function addLayerRow(d=300, area=600) {
+      const row = document.createElement('div');
+      row.className = 'row layer-row';
+      row.style.marginTop = '6px';
+      row.innerHTML = `
+        <div class="field"><label>Depth d (mm)</label><input type="number" class="layer-d" value="${d}" step="10"></div>
+        <div class="field"><label>Total area (mm²)</label><input type="number" class="layer-area" value="${area}" step="50"></div>
+        <button class="btn layer-rm" style="height:28px;align-self:flex-end;">×</button>
+      `;
+      layersList.appendChild(row);
+      row.querySelectorAll('input').forEach(el => el.addEventListener('input', scheduleUpdate));
+      row.querySelector('.layer-rm').addEventListener('click', e => {
+        e.preventDefault();
+        row.remove();
+        scheduleUpdate();
+      });
+    }
+    document.getElementById('btnAddLayer').addEventListener('click', e => { e.preventDefault(); addLayerRow(); scheduleUpdate(); });
+
+    // ── PRO ── Voids: add/remove rows
+    const voidsList = document.getElementById('voidsList');
+    function addVoidRow(d=300, dia=100) {
+      const row = document.createElement('div');
+      row.className = 'row void-row';
+      row.style.marginTop = '6px';
+      row.innerHTML = `
+        <div class="field"><label>Depth d (mm)</label><input type="number" class="void-d" value="${d}" step="10"></div>
+        <div class="field"><label>Diameter (mm)</label><input type="number" class="void-dia" value="${dia}" step="10"></div>
+        <button class="btn void-rm" style="height:28px;align-self:flex-end;">×</button>
+      `;
+      voidsList.appendChild(row);
+      row.querySelectorAll('input').forEach(el => el.addEventListener('input', scheduleUpdate));
+      row.querySelector('.void-rm').addEventListener('click', e => {
+        e.preventDefault();
+        row.remove();
+        scheduleUpdate();
+      });
+      scheduleUpdate();
+    }
+    document.getElementById('btnAddVoid').addEventListener('click', e => { e.preventDefault(); addVoidRow(); });
+
+    // γ widget Apply button
+    const gApply = document.getElementById('gammaApply');
+    if (gApply) gApply.addEventListener('click', e => {
+      e.preventDefault();
+      const end  = document.getElementById('gammaEndPick').value;
+      const sumIc = parseFloat(document.getElementById('gammaSumIc').value);
+      const sumIb = parseFloat(document.getElementById('gammaSumIb').value);
+      if (sumIb <= 0) { alert('Σ(β·I/L)b must be > 0'); return; }
+      const g = sumIc / sumIb;
+      const id = end === '1' ? 'inGamma1' : 'inGamma2';
+      document.getElementById(id).value = g.toFixed(2);
+      // Switch to γ method automatically
+      document.getElementById('inKMethod').value = 'gamma';
+      document.getElementById('kManualWrap').style.display  = 'none';
+      document.getElementById('kGammaWrap').style.display   = 'flex';
+      document.getElementById('kGammaWrap2').style.display  = 'flex';
+      scheduleUpdate();
+    });
+  });
+
+  // All inputs trigger update
+  document.querySelectorAll('input, select').forEach(el => {
+    el.addEventListener('input', () => {
+      // Square auto-sync
+      if (S.shape === 'square' && el.id === 'inB') document.getElementById('inD').value = el.value;
+      scheduleUpdate();
+    });
+  });
+
+  // K method toggle
+  document.getElementById('inKMethod').addEventListener('change', e => {
+    const m = e.target.value;
+    document.getElementById('kManualWrap').style.display = m === 'manual' ? 'flex' : 'none';
+    document.getElementById('kGammaWrap').style.display = m === 'gamma' ? 'flex' : 'none';
+    document.getElementById('kGammaWrap2').style.display = m === 'gamma' ? 'flex' : 'none';
+    scheduleUpdate();
+  });
+
+  // Cover auto-update on exposure / FRL change
+  function autoCover() {
+    document.getElementById('inCover').value = getCoverRequired();
+    scheduleUpdate();
+  }
+  document.getElementById('inExposure').addEventListener('change', autoCover);
+  document.getElementById('inFRL').addEventListener('change', autoCover);
+
+  // Geom tab switching
+  document.getElementById('geomTabs').addEventListener('click', e => {
+    const tab = e.target.closest('.tab'); if (!tab) return;
+    document.querySelectorAll('#geomTabs .tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    S.geomTab = tab.dataset.view;
+    document.getElementById('canvas3d').style.display = S.geomTab === '3d' ? 'block' : 'none';
+    document.getElementById('canvasSection').style.display = S.geomTab === 'section' ? 'block' : 'none';
+    document.getElementById('canvasElevation').style.display = S.geomTab === 'elevation' ? 'block' : 'none';
+    scheduleUpdate();
+  });
+
+  // Chart tab switching
+  document.getElementById('chartTabs').addEventListener('click', e => {
+    const tab = e.target.closest('.tab'); if (!tab) return;
+    document.querySelectorAll('#chartTabs .tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    S.chartTab = tab.dataset.chart;
+    scheduleUpdate();
+  });
+
+  // Check tile click — expand for detail
+  document.getElementById('checksGrid').addEventListener('click', e => {
+    const tile = e.target.closest('.check-tile');
+    if (!tile) return;
+    tile.classList.toggle('expanded');
+  });
+
+  // Action buttons
+  document.getElementById('btnSaveJSON').addEventListener('click', () => {
+    const data = JSON.stringify(getAllInputs(), null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const proj = document.getElementById('projectName').value || 'column';
+    a.download = `${proj.replace(/[^\w-]+/g,'_')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+  document.getElementById('btnLoadJSON').addEventListener('click', () => {
+    document.getElementById('fileLoader').click();
+  });
+  document.getElementById('fileLoader').addEventListener('change', async e => {
+    const file = e.target.files[0]; if (!file) return;
+    const text = await file.text();
+    try {
+      const data = JSON.parse(text);
+      Object.entries(data).forEach(([k,v]) => {
+        const el = document.getElementById(k);
+        if (el) el.value = v;
+      });
+      if (data.shape) setShape(data.shape);
+      if (data.fc) {
+        S.fc = +data.fc;
+        document.querySelectorAll('#fcChips .chip').forEach(c => c.classList.toggle('active', +c.dataset.fc === +data.fc));
+      }
+      if (data.barSize) {
+        S.barSize = +data.barSize;
+        document.querySelectorAll('#barSizeChips .chip').forEach(c => c.classList.toggle('active', +c.dataset.bar === +data.barSize));
+      }
+      if (data.brace) {
+        S.brace = data.brace;
+        document.querySelectorAll('#braceChips .chip').forEach(c => c.classList.toggle('active', c.dataset.brace === data.brace));
+      }
+      scheduleUpdate();
+    } catch (err) { alert('Invalid JSON: ' + err.message); }
+  });
+  document.getElementById('btnPrintPDF').addEventListener('click', async () => {
+    const btn = document.getElementById('btnPrintPDF');
+    btn.disabled = true;
+    btn.textContent = 'Generating PDF…';
+    try {
+      await generatePDF(S.result);
+    } catch (err) {
+      console.error(err);
+      alert('PDF generation failed: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"/><rect x="6" y="14" width="12" height="8"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/></svg> Print Calculations';
+    }
+  });
+
+  // ── PRO Phase 6b ── Auto-design — sweeps bar size + nx + ny, picks the
+  // smallest configuration that brings the governing utilisation into [0.85, 0.95].
+  document.getElementById('btnAutoDesign').addEventListener('click', () => {
+    if (S.shape === 'circ') { alert('Auto-design currently supports rect/square only. Adjust manually for circular.'); return; }
+    if (S.rebarMode === 'layer') { alert('Auto-design works in Symmetric mode only. Switch the rebar mode chip first.'); return; }
+    const origBar = S.barSize, origNx = +document.getElementById('inBarsX').value, origNy = +document.getElementById('inBarsY').value;
+    function utilFor(sz, nx, ny) {
+      S.barSize = sz;
+      document.getElementById('inBarsX').value = nx;
+      document.getElementById('inBarsY').value = ny;
+      const r = compute();
+      return r ? r.governing.util : Infinity;
+    }
+    const best = autoDesign(utilFor);
+    if (!best) {
+      // Restore originals
+      S.barSize = origBar;
+      document.getElementById('inBarsX').value = origNx;
+      document.getElementById('inBarsY').value = origNy;
+      document.querySelectorAll('#barSizeChips .chip').forEach(c => c.classList.toggle('active', +c.dataset.bar === origBar));
+      alert('Auto-design failed: no configuration satisfies util ≤ 1. Increase section size, fc′, or relax bracing.');
+      scheduleUpdate();
+      return;
+    }
+    S.barSize = best.barSize;
+    document.getElementById('inBarsX').value = best.nx;
+    document.getElementById('inBarsY').value = best.ny;
+    document.querySelectorAll('#barSizeChips .chip').forEach(c => c.classList.toggle('active', +c.dataset.bar === best.barSize));
+    alert(`Auto-design → N${best.barSize}, nx=${best.nx}, ny=${best.ny}, util=${best.util.toFixed(2)} (As=${Math.round(best.totalAs)} mm²)`);
+    scheduleUpdate();
+  });
+
+  // Example loader (RCB Example 5.5 style)
+  document.getElementById('btnLoadExample').addEventListener('click', () => {
+    document.getElementById('projectName').value = 'RCB Example 5.5 — Column C2-3';
+    document.getElementById('inB').value = 400;
+    document.getElementById('inD').value = 600;
+    document.getElementById('inLu').value = 3200;
+    S.fc = 40;
+    document.querySelectorAll('#fcChips .chip').forEach(c => c.classList.toggle('active', +c.dataset.fc === 40));
+    document.getElementById('inFsy').value = 500;
+    document.getElementById('inCover').value = 40;
+    S.barSize = 28;
+    document.querySelectorAll('#barSizeChips .chip').forEach(c => c.classList.toggle('active', +c.dataset.bar === 28));
+    document.getElementById('inBarsX').value = 3;
+    document.getElementById('inBarsY').value = 2;
+    document.getElementById('inFitBar').value = 10;
+    document.getElementById('inFitSpacing').value = 300;
+    S.brace = 'unbraced';
+    document.querySelectorAll('#braceChips .chip').forEach(c => c.classList.toggle('active', c.dataset.brace === 'unbraced'));
+    document.getElementById('inK').value = 1.98;  // approximate Le=6340 / Lu=3200
+    document.getElementById('inNG').value = 1300;
+    document.getElementById('inNQ').value = 600;
+    document.getElementById('inMGxt').value = 220;
+    document.getElementById('inMGxb').value = -160;
+    document.getElementById('inMQxt').value = 100;
+    document.getElementById('inMQxb').value = -75;
+    scheduleUpdate();
+  });
+
+  // Init 3D once (graceful — fails if THREE.OrbitControls missing)
+  safe('3D init', () => init3D());
+  // First compute (must run regardless of 3D status)
+  safe('initial compute', () => scheduleUpdate());
+  // Window resize for canvases
+  window.addEventListener('resize', () => scheduleUpdate());
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+</script>
+
+</body>
+</html>

@@ -787,10 +787,15 @@ input, select { font-family: inherit; }
         <div class="field"><label>MQ,y bot (kNm)</label><input type="number" id="inMQyb" value="0" step="5"></div>
       </div>
       <div class="row">
-        <div class="field"><label>Mw,x (kNm)</label><input type="number" id="inMWx" value="0" step="5"></div>
-        <div class="field"><label>Mw,y (kNm)</label><input type="number" id="inMWy" value="0" step="5"></div>
+        <div class="field"><label>MW,x top (kNm)</label><input type="number" id="inMWxt" value="0" step="5"></div>
+        <div class="field"><label>MW,x bot (kNm)</label><input type="number" id="inMWxb" value="0" step="5"></div>
+        <div class="field"><label>MW,y top (kNm)</label><input type="number" id="inMWyt" value="0" step="5"></div>
+        <div class="field"><label>MW,y bot (kNm)</label><input type="number" id="inMWyb" value="0" step="5"></div>
+      </div>
+      <div class="row">
         <div class="field"><label>ψc (combo)</label><input type="number" id="inPsiC" value="0.4" step="0.1" min="0" max="1"></div>
         <div class="field"><label>ψl (long-term)</label><input type="number" id="inPsiL" value="0.4" step="0.1" min="0" max="1"></div>
+        <div class="field" style="flex:2;"><label>&nbsp;</label><div style="font-size:10px;color:var(--mute);padding-top:8px;">Wind moments are entered with their actual signs (typically opposite top/bot for sway columns — double curvature).</div></div>
       </div>
       <div class="combo-table-wrap">
         <table class="combo-table" id="comboTable">
@@ -962,9 +967,13 @@ class Section {
   }
   totalSteel() { return this.layers.reduce((s,L)=>s+L.area, 0); }
   nuo() {
+    // Cl 10.6.2.2: max compressive strain in longitudinal steel at squash = 0.0025,
+    // so contributing stress is capped at εs·Es = 0.0025·Es (= 500 MPa for Es=200 GPa).
+    // For 500 MPa Class N bars this is moot; for 600 MPa bars the cap binds.
     const a1 = alpha1(this.fc);
     const As = this.totalSteel();
-    return a1 * this.fc * (this.grossArea() - As) + As * this.fsy;
+    const sigmaSquash = Math.min(this.fsy, 0.0025 * this.Es);
+    return a1 * this.fc * (this.grossArea() - As) + As * sigmaSquash;
   }
   nuot() { return this.totalSteel() * this.fsy; }
   plasticCentroid() {
@@ -1220,14 +1229,41 @@ const S = {
   result: null,
 };
 
-// Cover lookup (AS 3600 Section 4.10.3.2 and Section 5.3 for fire)
-const COVER_BY_EXPOSURE = { A1: 20, A2: 25, B1: 30, B2: 40, C1: 50, C2: 65, U: 60 };
+// ── B7 ── Cover lookup, AS 3600:2018 Table 4.10.3.2 (durability, normal class concrete).
+// Cover is a function of BOTH exposure class AND fc′. Values below are the
+// minimum cover (mm) for "standard formwork & compaction"; '-' means the fc′ is
+// not allowed for that exposure (treat as Infinity in the lookup so the user
+// sees a clear FAIL).
+const COVER_DURABILITY = {
+  // [fc=20, fc=25, fc=32, fc=40, fc=50, fc=65+]
+  A1: [20, 20, 20, 20, 20, 20],
+  A2: [50, 30, 25, 20, 20, 20],
+  B1: [Infinity, 50, 40, 30, 25, 25],
+  B2: [Infinity, Infinity, 60, 45, 35, 35],
+  C1: [Infinity, Infinity, Infinity, 65, 50, 45],
+  C2: [Infinity, Infinity, Infinity, Infinity, 70, 65],
+  U:  [60, 60, 60, 60, 60, 60],   // user-defined / special — generic placeholder
+};
+function fcTier(fc) {
+  if (fc < 22.5) return 0;        // 20 MPa
+  if (fc < 28.5) return 1;        // 25 MPa
+  if (fc < 36)   return 2;        // 32 MPa
+  if (fc < 45)   return 3;        // 40 MPa
+  if (fc < 57.5) return 4;        // 50 MPa
+  return 5;                       // 65+ MPa
+}
+// Fire cover (AS 3600 Section 5.5, simplified — for 'compression member with
+// ≥ 3 sides exposed and load level μfi ≤ 0.7'). For other geometry/load levels
+// the user should refer to AS 3600 Table 5.5.2 directly.
 const COVER_BY_FRL = { 0: 0, 60: 25, 90: 30, 120: 35, 180: 40, 240: 45 };
 
 function getCoverRequired() {
   const expo = document.getElementById('inExposure').value;
   const frl = parseInt(document.getElementById('inFRL').value, 10);
-  return Math.max(COVER_BY_EXPOSURE[expo] || 30, COVER_BY_FRL[frl] || 0);
+  const fc = S.fc;
+  const row = COVER_DURABILITY[expo] || COVER_DURABILITY.B1;
+  const dur = row[fcTier(fc)];
+  return Math.max(isFinite(dur) ? dur : 999, COVER_BY_FRL[frl] || 0);
 }
 
 // Build section from current inputs
@@ -1304,19 +1340,23 @@ function loadCombos() {
   const MGyb = +document.getElementById('inMGyb').value;
   const MQyt = +document.getElementById('inMQyt').value;
   const MQyb = +document.getElementById('inMQyb').value;
-  const MWx = +document.getElementById('inMWx').value;
-  const MWy = +document.getElementById('inMWy').value;
+  // ── B4 ── Wind moments at top and bottom are now entered separately so that
+  // double-curvature (typical for sway columns) is captured correctly.
+  const MWxt = +document.getElementById('inMWxt').value;
+  const MWxb = +document.getElementById('inMWxb').value;
+  const MWyt = +document.getElementById('inMWyt').value;
+  const MWyb = +document.getElementById('inMWyb').value;
   const psiC = +document.getElementById('inPsiC').value;
   const psiL = +document.getElementById('inPsiL').value;
 
-  function combo(name, fG, fQ, fW=0, fE=0, fQpsi=null) {
+  function combo(name, fG, fQ, fW=0, fE=0) {
     return {
       name,
       N: fG*NG + fQ*NQ + fW*NW + fE*NE,
-      Mxt: fG*MGxt + fQ*MQxt + fW*MWx,
-      Mxb: fG*MGxb + fQ*MQxb + fW*MWx,
-      Myt: fG*MGyt + fQ*MQyt + fW*MWy,
-      Myb: fG*MGyb + fQ*MQyb + fW*MWy,
+      Mxt: fG*MGxt + fQ*MQxt + fW*MWxt,
+      Mxb: fG*MGxb + fQ*MQxb + fW*MWxb,
+      Myt: fG*MGyt + fQ*MQyt + fW*MWyt,
+      Myb: fG*MGyb + fQ*MQyb + fW*MWyb,
     };
   }
   return [
@@ -1329,26 +1369,26 @@ function loadCombos() {
   ];
 }
 
-// Compute final M*max with magnifier and minimum eccentricity
-function combineMomentEnvelope(combo, section, Le, dB, dS, braced, D, Bdim) {
-  // For each axis, take the larger of |Mt|, |Mb| as M2, smaller as M1 (signed)
-  function axisMoments(Mt, Mb, axisDim) {
-    const M2_abs = Math.max(Math.abs(Mt), Math.abs(Mb));
-    const M2_sign = (Math.abs(Mt) >= Math.abs(Mb)) ? Mt : Mb;
-    const M1 = (Math.abs(Mt) >= Math.abs(Mb)) ? Mb : Mt;
-    const M2 = M2_sign;
-    const m1m2 = M2 !== 0 ? M1 / M2 : -1;  // single curvature default
+// Compute final M*max with magnifier and minimum eccentricity.
+// Per-axis Nc and δs are now passed in (B2, B3): each axis has its own buckling
+// load and per-combo storey magnifier so weak-axis governance is captured.
+function combineMomentEnvelope(combo, section, Le, ncX, ncY, dsX, dsY, braced) {
+  function axisMoments(Mt, Mb, axisDim, Nc_axis, dS_axis) {
+    const M2 = (Math.abs(Mt) >= Math.abs(Mb)) ? Mt : Mb;            // signed, larger |·|
+    const M1 = (Math.abs(Mt) >= Math.abs(Mb)) ? Mb : Mt;            // signed, smaller |·|
+    const m1m2 = M2 !== 0 ? M1 / M2 : -1;                           // -1 = single curvature (conservative)
     const km = kmFactor(M1, M2);
-    const delta = braced ? deltaB(km, combo.N*1000, dB.Nc) : Math.max(deltaB(km, combo.N*1000, dB.Nc), dS);
+    const dB = deltaB(km, combo.N*1000, Nc_axis);                   // per-axis δb
+    const delta = braced ? dB : Math.max(dB, dS_axis);              // per-axis δs already per-combo
     let Mmax = Math.abs(M2) * delta;
-    const Mmin = combo.N * 0.05 * axisDim / 1000; // kNm
+    const Mmin = combo.N * 0.05 * axisDim / 1000;                   // kNm — Cl 10.1.2 floor
     Mmax = Math.max(Mmax, Mmin);
     return { Mmax, M1, M2, km, delta, m1m2 };
   }
   const Dx = section.shape === 'circ' ? section.D : section.D;
   const Dy = section.shape === 'circ' ? section.D : section.b;
-  const xRes = axisMoments(combo.Mxt, combo.Mxb, Dx);
-  const yRes = axisMoments(combo.Myt, combo.Myb, Dy);
+  const xRes = axisMoments(combo.Mxt, combo.Mxb, Dx, ncX, dsX);
+  const yRes = axisMoments(combo.Myt, combo.Myb, Dy, ncY, dsY);
   return { x: xRes, y: yRes };
 }
 
@@ -1357,10 +1397,9 @@ function compute() {
   try {
     const section = buildSection();
     const Lu = parseFloat(document.getElementById(S.shape === 'circ' ? 'inLu2' : 'inLu').value);
-    const D_overall = section.shape === 'circ' ? section.D : section.D;
-    const r = radiusGyration(section.shape, D_overall);
 
-    // Effective length
+    // Effective length (single k assumed for both axes — typical assumption for
+    // symmetric framing; user can edit per-axis Lu/k once UI supports it).
     const kMethod = document.getElementById('inKMethod').value;
     let k;
     if (kMethod === 'manual') k = parseFloat(document.getElementById('inK').value);
@@ -1370,44 +1409,27 @@ function compute() {
       k = S.brace === 'braced' ? kBraced(g1, g2) : kUnbraced(g1, g2);
     }
     const Le = k * Lu;
-    const slendRatio = Le / r;
 
-    // Buckling load (per AS 3600 Cl 10.4.4)
-    const NG = +document.getElementById('inNG').value;
-    const NQ = +document.getElementById('inNQ').value;
-    const betaD = (NG + NQ) > 0 ? NG / (NG + NQ) : 0.5;
-    const Nc = bucklingNc(section, Le, betaD);
+    // ── B3 ── Per-axis radius of gyration & slenderness ratio.
+    // r = 0.3D (rect, D = dim ⊥ to bending axis) / 0.25D (circ).
+    const Dx_dim = section.shape === 'circ' ? section.D : section.D;     // for x-axis bending
+    const Dy_dim = section.shape === 'circ' ? section.D : section.b;     // for y-axis bending
+    const r_x = radiusGyration(section.shape, Dx_dim);
+    const r_y = radiusGyration(section.shape, Dy_dim);
+    const slendRatio_x = Le / r_x;
+    const slendRatio_y = Le / r_y;
+    const slendRatio = Math.max(slendRatio_x, slendRatio_y);  // governing
+    const r = Math.min(r_x, r_y);                             // for backward-compat output
 
-    // Storey magnifier — single column treated as the storey for now (1 column model)
-    const combos = loadCombos();
-    const sumNStar = combos.reduce((s,c) => s + Math.max(0, c.N*1000), 0) / combos.length;
-    let dS = 1.0;
-    if (S.brace === 'unbraced') dS = Math.max(1, 1 / Math.max(0.001, 1 - sumNStar / Nc));
-
-    // Pure-bending φ' (used in interpolation)
-    const pb = section.pureBending();
-    const dout = Math.max(...section.layers.map(L=>L.d));
-    const kuo = pb.dn / dout;
-    const phiPrime = phiBendingOnly(kuo);
-    const Q_over_G = NG > 0 ? NQ / NG : 1;
-    const stocky = slendRatio <= 25; // approximate for φo
-    const phio = (stocky && Q_over_G >= 0.25) ? 0.65 : 0.60;
-
-    const Nuo = section.nuo();
-    const bp = section.balancedPoint();
-    const ptsX = section.interactionDiagram(80);
-
-    // For y-axis (only meaningful for rect; for circ both axes are symmetric)
+    // Build sectionY (rotated 90°) for y-axis interaction & Nc_y.
     let sectionY = section;
     if (section.shape === 'rect' || S.shape === 'square') {
-      // Build a section rotated 90° (b becomes D and vice versa, layers re-distributed
-      // around new compressive face). For square sections this is identical.
       const D_y = section.b, b_y = section.D;
       const cover = parseFloat(document.getElementById('inCover').value);
       const fitDia = parseFloat(document.getElementById('inFitBar').value);
       const dCover = cover + fitDia + S.barSize/2;
       const Abar = BAR_AREAS[S.barSize];
-      const ny = parseInt(document.getElementById('inBarsY').value, 10); // bars on Y face become "top/bottom" in y bending
+      const ny = parseInt(document.getElementById('inBarsY').value, 10);
       const nx = parseInt(document.getElementById('inBarsX').value, 10);
       const layersY = [{ d: dCover, area: ny * Abar }, { d: D_y - dCover, area: ny * Abar }];
       if (nx > 2) {
@@ -1419,20 +1441,89 @@ function compute() {
       }
       sectionY = new Section({ shape:'rect', D: D_y, b: b_y, fc: section.fc, fsy: section.fsy, layers: layersY });
     }
+
+    // ── B3 ── Per-axis buckling load (Cl 10.4.4). Each axis uses its own Mub
+    // and do (depth to outermost tensile bar from that axis's compressive face).
+    const NG = +document.getElementById('inNG').value;
+    const NQ = +document.getElementById('inNQ').value;
+    const betaD = (NG + NQ) > 0 ? NG / (NG + NQ) : 0.5;
+    const Nc_x = bucklingNc(section, Le, betaD);
+    const Nc_y = bucklingNc(sectionY, Le, betaD);
+    const Nc = Math.min(Nc_x, Nc_y);   // governing for output/backward-compat
+
+    // Pure-bending φ' per axis (kuo can differ between axes for non-square rect).
+    const pb = section.pureBending();
+    const pb_y = sectionY.pureBending();
+    const dout_x = Math.max(...section.layers.map(L=>L.d));
+    const dout_y = Math.max(...sectionY.layers.map(L=>L.d));
+    const kuo_x = pb.dn / dout_x;
+    const kuo_y = pb_y.dn / dout_y;
+    const phiPrime_x = phiBendingOnly(kuo_x);
+    const phiPrime_y = phiBendingOnly(kuo_y);
+    const kuo = kuo_x;                              // legacy single-value output
+    const phiPrime = phiPrime_x;
+
+    const Nuo = section.nuo();
+    const bp = section.balancedPoint();
+    const bpY = sectionY.balancedPoint();
+    const Q_over_G = NG > 0 ? NQ / NG : 1;
+    const combos = loadCombos();
+
+    // Helper: per-axis (M1, M2) signed pair.
+    function axisM1M2(Mt, Mb) {
+      if (Math.abs(Mt) < 1e-9 && Math.abs(Mb) < 1e-9) return { M1: 0, M2: 0, ratio: -1 };
+      const M2 = (Math.abs(Mt) >= Math.abs(Mb)) ? Mt : Mb;
+      const M1 = (Math.abs(Mt) >= Math.abs(Mb)) ? Mb : Mt;
+      const ratio = M2 !== 0 ? M1 / M2 : -1;
+      return { M1, M2, ratio };
+    }
+
+    // ── B5 ── Determine isShort using the proper Cl 10.3.1 criterion across all
+    // combos and both axes. Worst case (smallest limit) drives φo selection.
+    let worstLimit = Infinity;
+    let isShort_x = true, isShort_y = true;
+    for (const c of combos) {
+      const NStar_c = Math.max(0, c.N * 1000);
+      const mx = axisM1M2(c.Mxt, c.Mxb).ratio;
+      const my = axisM1M2(c.Myt, c.Myb).ratio;
+      const lim_x = shortColumnLimit(S.brace==='braced', NStar_c, Nuo, mx, section.fc);
+      const lim_y = shortColumnLimit(S.brace==='braced', NStar_c, Nuo, my, section.fc);
+      if (slendRatio_x > lim_x) isShort_x = false;
+      if (slendRatio_y > lim_y) isShort_y = false;
+      if (Math.min(lim_x, lim_y) < worstLimit) worstLimit = Math.min(lim_x, lim_y);
+    }
+    const isShort = isShort_x && isShort_y;
+    const slendLimit = worstLimit;
+
+    // ── B5 ── φo per Table 2.2.2 footnote: 0.65 only if column is short
+    // (Cl 10.3.1 sense — not just Le/r ≤ 25) AND Q/G ≥ 0.25.
+    const phio = (isShort && Q_over_G >= 0.25) ? 0.65 : 0.60;
+
+    const ptsX = section.interactionDiagram(80);
     const ptsY = sectionY.interactionDiagram(80);
 
-    // Per-combo evaluation
+    // Per-combo evaluation with per-combo, per-axis δs (B2, B3).
+    let dS_max = 1.0, dS_warn = false;
     const comboResults = combos.map(c => {
-      const env = combineMomentEnvelope(c, section, Le, { Nc }, dS, S.brace === 'braced',
-                                         section.shape === 'circ' ? section.D : section.D,
-                                         section.shape === 'circ' ? section.D : section.b);
       const NStar = c.N * 1000;
+      // ── B2 ── Per-combo δs using each axis's Nc.
+      let dsX = 1.0, dsY = 1.0;
+      if (S.brace === 'unbraced' && NStar > 0) {
+        const denX = 1 - NStar / Nc_x;
+        const denY = 1 - NStar / Nc_y;
+        dsX = denX > 0 ? Math.max(1, 1/denX) : Infinity;
+        dsY = denY > 0 ? Math.max(1, 1/denY) : Infinity;
+      }
+      const dsThis = Math.max(dsX, dsY);
+      if (isFinite(dsThis) && dsThis > dS_max) dS_max = dsThis;
+      if (isFinite(dsThis) && dsThis > 1.5) dS_warn = true;   // ── C7 ── Cl 10.4.3 cap
+
+      const env = combineMomentEnvelope(c, section, Le, Nc_x, Nc_y, dsX, dsY, S.brace === 'braced');
       const capX = capacityAtN(section, NStar);
       const capY = capacityAtN(sectionY, NStar);
-      const phiX = phiCompression(NStar, bp.Nu, phio, phiPrime);
-      const bpY = sectionY.balancedPoint();
-      const phiY = phiCompression(NStar, bpY.Nu, phio, phiPrime);
-      const phiMux = phiX * capX.Mu / 1e6;  // kNm
+      const phiX = phiCompression(NStar, bp.Nu, phio, phiPrime_x);
+      const phiY = phiCompression(NStar, bpY.Nu, phio, phiPrime_y);
+      const phiMux = phiX * capX.Mu / 1e6;
       const phiMuy = phiY * capY.Mu / 1e6;
       const utilX = phiMux > 0 ? env.x.Mmax / phiMux : Infinity;
       const utilY = phiMuy > 0 ? env.y.Mmax / phiMuy : Infinity;
@@ -1443,19 +1534,12 @@ function compute() {
         env, phiMux, phiMuy, utilX, utilY, biax, util,
         delta_x: env.x.delta, delta_y: env.y.delta,
         km_x: env.x.km, km_y: env.y.km,
+        dS_x: dsX, dS_y: dsY,
       };
     });
     // Find governing
     let governing = comboResults[0];
     for (const r of comboResults) if (r.util > governing.util) governing = r;
-
-    // Slenderness check
-    const NStar_max = Math.max(...comboResults.map(r=>r.N*1000));
-    const m1m2_check = governing.env.x.M1 !== 0 && governing.env.x.M2 !== 0
-        ? governing.env.x.M1 / governing.env.x.M2 : -1;
-    const slendLimit = shortColumnLimit(S.brace==='braced', NStar_max, Nuo, m1m2_check, section.fc);
-    const isShort = slendRatio <= slendLimit;
-    const slendUtil = slendRatio / 120;  // hard cap
 
     // Steel ratio
     const rho = section.totalSteel() / section.grossArea();
@@ -1496,7 +1580,25 @@ function compute() {
                               fc: section.fc, n, bc }),
         };
       }
+      // ── C8 ── Cl 10.7.3.1: special confinement region trigger.
+      // Check governing combo against (a) N* ≥ 0.75 Nuo, OR
+      // (b) N* ≥ 0.3·fc′·Ag AND M* ≥ 0.6·Mu at that N*.
+      const NStar_g = governing.N * 1000;
+      const triggerA = NStar_g >= 0.75 * Nuo;
+      const Ag = section.grossArea();
+      const capAtG = capacityAtN(section, NStar_g);
+      const Mu_g = capAtG.Mu / 1e6; // kNm
+      const Mstar_g = Math.max(governing.MxStar, governing.MyStar);
+      const triggerB = (NStar_g >= 0.3 * section.fc * Ag) && (Mstar_g >= 0.6 * Mu_g);
+      hsc.specialRegion = triggerA || triggerB;
+      hsc.triggerA = triggerA;
+      hsc.triggerB = triggerB;
     }
+
+    // ── C10 ── Fitment-bar diameter minimum (Table 10.7.4.3).
+    const fitDiaUsed = parseFloat(document.getElementById('inFitBar').value);
+    const fitMinDia = (S.barSize <= 20) ? 6 : (S.barSize <= 28) ? 10 : (S.barSize <= 36) ? 12 : 16;
+    const fitDiaOK = fitDiaUsed >= fitMinDia;
 
     // Cover/fire check
     const coverUsed = parseFloat(document.getElementById('inCover').value);
@@ -1504,10 +1606,15 @@ function compute() {
     const coverOK = coverUsed >= coverReq;
 
     return {
-      section, sectionY, Lu, k, Le, r, slendRatio, slendLimit, isShort,
-      Nc, betaD, dS, Nuo, bp, pb, kuo, phiPrime, phio,
+      section, sectionY, Lu, k, Le,
+      r, r_x, r_y, slendRatio, slendRatio_x, slendRatio_y,
+      slendLimit, isShort, isShort_x, isShort_y,
+      Nc, Nc_x, Nc_y, betaD, dS_max, dS_warn,
+      Nuo, bp, bpY, pb, pb_y, kuo, kuo_x, kuo_y,
+      phiPrime, phiPrime_x, phiPrime_y, phio,
       ptsX, ptsY, combos, comboResults, governing,
-      rho, fitSpec, fitMaxAS, hsc, coverUsed, coverReq, coverOK,
+      rho, fitSpec, fitMaxAS, fitDiaUsed, fitMinDia, fitDiaOK,
+      hsc, coverUsed, coverReq, coverOK,
     };
   } catch (e) { console.error('Compute error:', e); return null; }
 }
@@ -1602,27 +1709,44 @@ function renderChecks(r) {
     isFinite(r.governing.biax.util) ? r.governing.biax.util.toFixed(2) : '∞',
     `αn = ${r.governing.biax.an.toFixed(2)}`,
     r.governing.biax.util);
+  // Slenderness — show the GOVERNING axis (B3): for rect, x and y can differ.
+  const slendDetail = (r.slendRatio_x !== r.slendRatio_y)
+    ? `Le/r_x=${r.slendRatio_x.toFixed(1)}, Le/r_y=${r.slendRatio_y.toFixed(1)}; limit ${r.slendLimit.toFixed(0)}`
+    : `limit ${r.slendLimit.toFixed(0)} (${r.isShort ? 'short' : 'slender'})`;
   setTile('slender',
     r.slendRatio.toFixed(1),
-    `limit ${r.slendLimit.toFixed(0)} (${r.isShort ? 'short' : 'slender'})`,
+    slendDetail + (r.dS_warn ? ' · δs>1.5' : ''),
     r.slendRatio / r.slendLimit);
   const rhoOK = r.rho >= 0.01 && r.rho <= 0.04;
   setTile('long',
     (r.rho * 100).toFixed(2) + '%',
     rhoOK ? 'within 1–4%' : (r.rho < 0.01 ? 'below 1%' : 'above 4%'),
     rhoOK ? 0.5 : 1.1, rhoOK ? 'pass' : 'fail');
-  const fitOK = r.fitSpec <= r.fitMaxAS;
+  // Fitments: spacing AND minimum diameter (C10).
+  const spacingOK = r.fitSpec <= r.fitMaxAS;
+  const fitOK = spacingOK && r.fitDiaOK;
+  const fitDetail = !r.fitDiaOK
+    ? `dia N${r.fitDiaUsed} < min N${r.fitMinDia} (Table 10.7.4.3)`
+    : `≤ ${Math.round(r.fitMaxAS)} mm`;
   setTile('fit',
     Math.round(r.fitSpec) + ' mm',
-    `≤ ${Math.round(r.fitMaxAS)} mm`,
+    fitDetail,
     r.fitSpec / r.fitMaxAS, fitOK ? 'pass' : 'fail');
   if (r.hsc) {
     const minSpacing = Math.min(r.hsc.simplified, r.hsc.deemed);
-    const hscOK = r.fitSpec <= minSpacing;
-    setTile('hsc',
-      Math.round(minSpacing) + ' mm',
-      `simp ${Math.round(r.hsc.simplified)} / deem ${Math.round(r.hsc.deemed)}`,
-      r.fitSpec / minSpacing, hscOK ? 'pass' : 'fail');
+    if (r.hsc.specialRegion) {
+      const hscOK = r.fitSpec <= minSpacing;
+      const trig = r.hsc.triggerA ? 'N*≥0.75Nuo' : 'N*≥0.3fc′Ag & M*≥0.6Mu';
+      setTile('hsc',
+        Math.round(minSpacing) + ' mm',
+        `${trig} · simp ${Math.round(r.hsc.simplified)} / deem ${Math.round(r.hsc.deemed)}`,
+        r.fitSpec / minSpacing, hscOK ? 'pass' : 'fail');
+    } else {
+      setTile('hsc',
+        'not in region',
+        `Cl 10.7.3.1 not triggered · would need s ≤ ${Math.round(minSpacing)} if it were`,
+        0, 'pass');
+    }
   } else {
     setTile('hsc', 'N/A', 'fc′ ≤ 50 MPa', 0, 'na');
   }
@@ -2289,12 +2413,20 @@ function pdfBuildHTML(r) {
     </table>` : ''}
     <div class="pdf-h3">6.4 Cover &amp; fire (Sections 4 &amp; 5)</div>
     <table class="pdf-table">
-      ${pdfKV([
-        ['Cover provided', `${r.coverUsed} mm`],
-        ['Required (durability)', `${COVER_BY_EXPOSURE[document.getElementById('inExposure').value] || 30} mm`],
-        ['Required (fire)', `${COVER_BY_FRL[parseInt(document.getElementById('inFRL').value,10)] || 0} mm`],
-        ['Governing required', `<strong>${r.coverReq} mm</strong> ${r.coverOK?'<span class="pdf-pass">OK</span>':'<span class="pdf-fail">FAIL</span>'}`],
-      ])}
+      ${(() => {
+        const expo = document.getElementById('inExposure').value;
+        const durRow = COVER_DURABILITY[expo] || COVER_DURABILITY.B1;
+        const dur = durRow[fcTier(r.section.fc)];
+        const durStr = isFinite(dur)
+          ? `${dur} mm (exposure ${expo}, fc′=${r.section.fc} MPa, Table 4.10.3.2)`
+          : `<span class="pdf-fail">fc′=${r.section.fc} MPa not permitted for exposure ${expo}</span>`;
+        return pdfKV([
+          ['Cover provided', `${r.coverUsed} mm`],
+          ['Required (durability)', durStr],
+          ['Required (fire)', `${COVER_BY_FRL[parseInt(document.getElementById('inFRL').value,10)] || 0} mm (Section 5.5, simplified)`],
+          ['Governing required', `<strong>${r.coverReq} mm</strong> ${r.coverOK?'<span class="pdf-pass">OK</span>':'<span class="pdf-fail">FAIL</span>'}`],
+        ]);
+      })()}
     </table>
     <div class="pdf-h2">7. Assumptions &amp; Limitations</div>
     <div class="pdf-narrative">

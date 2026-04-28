@@ -2,12 +2,13 @@
 
 This folder is the source-of-truth for generating structural inspection programs at Bligh Tanner. When the user drops a project folder containing a combined PDF of the structural drawing set, follow the procedure below to produce a clean, on-brand, single-screen `inspection-program.html` that the engineer reviews and approves.
 
-This file replaces ad-hoc per-project instructions. It is grounded in two reference projects:
+This file replaces ad-hoc per-project instructions. It is grounded in three reference projects:
 
-- **52 Second Avenue, Maroochydore** — residential, hybrid concrete + CLT, 7 storeys, CFA pile foundation, 66 sheets, 31 inspections.
-- **Emmanuel College Senior School Redevelopment, Carrara** — commercial school, 3 storeys + steel roof + 4 sub-builds (lecture theatre, amphitheatre, fin frames, elevated link), bored pier foundation, 104 sheets, 33 inspections.
+- **52 Second Avenue, Maroochydore** — residential, hybrid concrete + CLT, 7 storeys, CFA pile foundation, 66 sheets, 31 inspections. Older BT A1 template.
+- **Emmanuel College Senior School Redevelopment, Carrara** — commercial school, 3 storeys + steel roof + 4 sub-builds (lecture theatre, amphitheatre, fin frames, elevated link), bored pier foundation, 104 sheets, 33 inspections. Older BT A1 template.
+- **MBC Creativity & Arts Centre, Manly West** — school arts centre, 2 storeys + 3-tier steel roof + atrium feature stair, hybrid bored pier + pad/strip footing on duricrust, PT suspended slab at L1, 62 sheets, 28 inspections, **TENDER ISSUE**. Uses the **newer BT A1 template variant** (see `skills/reading-bt-drawings/SKILL.md` Section 10).
 
-Both used the BT A1 title block, both produced clean output. Every reference value, code snippet, and design decision in this file came from those builds.
+All used a BT A1 title block (different variants); all produced clean output. Every reference value, code snippet, and design decision in this file came from those builds.
 
 ---
 
@@ -694,6 +695,10 @@ A short list of things that took time to figure out and shouldn't be re-derived 
 8. **The hotspot polygon authoring is the highest-value, slowest step.** Plan ~60–90 minutes for a complex project. Do it once, save the polygons in a per-project JSON, never redo.
 9. **Conservative bias on the inspection plan.** Engineers prune in-app fast. Missing an inspection is worse than including one they delete.
 10. **Sub-builds are real and named.** Lecture theatre, amphitheatre, fin frames, elevated link, plant rooms — they each get their own card(s) under a `Sub-Builds` phase. Don't try to fold them into the main level cycle.
+11. **There are at least two BT A1 template variants.** The older one (52SA/Emmanuel pre-mid-2024) and the newer one (MBC, 2024.0230 onwards) have different title-block geometries. Detect which template applies before extracting — see the recogniser snippet in `skills/reading-bt-drawings/SKILL.md` Section 10. (Discovered on MBC, April 2026.)
+12. **Cover-sheet drawing list is more reliable than per-page title cells.** Especially in the newer template variant, per-page title extraction is hit-and-miss but the cover-sheet `STRUCTURAL DRAWING LIST` always has every sheet. Cross-check; for projects where per-page is unreliable, use the cover list as authoritative.
+13. **Tender Issue projects need a "provisional" caveat.** When a project is "TENDER — NOT FOR CONSTRUCTION", the inspection program is necessarily provisional. Flag this on the HTML (badge in header), in the approve mailto subject, and as a footer note. Re-run the procedure when the Construction Issue arrives.
+14. **Multi-tier roofs are common in commercial.** MBC has Lower / Main / Upper roof tiers — three separate inspection sequences (frame + connections + purlins per tier). Don't lump them into one "roof" card.
 
 ---
 
@@ -752,8 +757,8 @@ When the engineer says "we just figured out X", do this:
 
 See `skills/README.md` for the canonical list. As of last revision:
 
-- `reading-bt-drawings` — BT A1 title-block geometry, General Notes parsing, cover-schedule positional extraction.
+- `reading-bt-drawings` — BT A1 title-block geometry (older AND newer variants), General Notes parsing, cover-schedule positional extraction, cover-sheet drawing-list extraction.
 
 ---
 
-*This playbook is the source of truth for the BT inspection workflow. Update it when patterns emerge that aren't yet documented. Date last revised: 2026-04-26.*
+*This playbook is the source of truth for the BT inspection workflow. Update it when patterns emerge that aren't yet documented. Date last revised: 2026-04-28 — added MBC reference project + newer-template-variant lessons.*

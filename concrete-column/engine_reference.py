@@ -76,6 +76,20 @@ class RebarLayer:
 
 
 @dataclass
+class Void:
+    """Internal void (PT duct, conduit) in the cross-section.
+
+    d_from_comp_face : depth of void centre from extreme compressive fibre, mm
+    diameter         : void diameter, mm
+    """
+    d_from_comp_face: float
+    diameter: float
+
+    def area(self) -> float:
+        return math.pi * self.diameter ** 2 / 4.0
+
+
+@dataclass
 class Section:
     """Generic cross-section (rectangular, square, or circular).
 
@@ -100,11 +114,17 @@ class Section:
     fsy: float
     layers: List[RebarLayer]
     Es: float = 200_000.0
+    voids: List[Void] = field(default_factory=list)
+
+    def void_area(self) -> float:
+        return sum(v.area() for v in self.voids)
 
     def gross_area(self) -> float:
         if self.shape == "circ":
-            return math.pi * (self.D ** 2) / 4.0
-        return self.b * self.D
+            base = math.pi * (self.D ** 2) / 4.0
+        else:
+            base = self.b * self.D
+        return base - self.void_area()
 
     def total_steel_area(self) -> float:
         return sum(L.area for L in self.layers)
@@ -113,28 +133,39 @@ class Section:
     def plastic_centroid(self) -> float:
         """Depth to the plastic centroid measured from the extreme
         compressive fibre (RCB §5.4.2, Eq 5.8). For a symmetric section
-        this equals D/2."""
+        without voids this equals D/2; voids and asymmetric reinforcement
+        shift it. Validated against RCB Example 5.1 (600×800, 8N32, 150 mm
+        void at d=500 → 397 mm)."""
         a1 = alpha_1(self.fc)
-        # Concrete contribution (moment about the compressive face)
+        sigma_s = min(self.fsy, 0.0025 * self.Es)
         if self.shape == "circ":
-            Ac = self.gross_area() - self.total_steel_area()
-            # Symmetric — concrete centroid at D/2
-            Mc = a1 * self.fc * Ac * (self.D / 2)
+            Ag_solid = math.pi * self.D ** 2 / 4.0
         else:
-            Ac = self.b * self.D - self.total_steel_area()
-            Mc = a1 * self.fc * Ac * (self.D / 2)
-        # Steel contribution
-        Ms = sum(L.area * self.fsy * L.d_from_comp_face for L in self.layers)
-        Nuo = self.nuo()
-        return (Mc + Ms) / Nuo
+            Ag_solid = self.b * self.D
+        # Concrete first moment about compressive face (gross), then subtract
+        # voids and steel-displaced areas.
+        Mc = a1 * self.fc * Ag_solid * (self.D / 2)
+        for v in self.voids:
+            Mc -= a1 * self.fc * v.area() * v.d_from_comp_face
+        for L in self.layers:
+            Mc -= a1 * self.fc * L.area * L.d_from_comp_face
+        Ms = sum(L.area * sigma_s * L.d_from_comp_face for L in self.layers)
+        return (Mc + Ms) / self.nuo()
 
     # ----- Squash load (Cl 10.6.2.2, RCB Eq 5.6) --------------------------
     def nuo(self) -> float:
-        """Squash load, N (compression positive)."""
+        """Squash load, N (compression positive).
+
+        Cl 10.6.2.2 limits the maximum compressive strain in the longitudinal
+        reinforcement at squash to 0.0025, so the contributing steel stress is
+        capped at εs·Es = 0.0025·Es (=500 MPa for Es=200 GPa). For Class N
+        500 MPa bars the cap doesn't bind; for 600 MPa bars it does.
+        """
         a1 = alpha_1(self.fc)
         As = self.total_steel_area()
         Ag = self.gross_area()
-        return a1 * self.fc * (Ag - As) + As * self.fsy
+        sigma_s_squash = min(self.fsy, 0.0025 * self.Es)
+        return a1 * self.fc * (Ag - As) + As * sigma_s_squash
 
     # ----- Pure tension (RCB Eq 5.17) -------------------------------------
     def nuo_t(self) -> float:
@@ -162,32 +193,36 @@ class Section:
         to its centroid from the extreme compressive fibre in mm.
 
         Uses the equivalent rectangular stress block (Cl 10.6.2.5) of
-        intensity alpha_2*fc acting over a depth of gamma*dn.
+        intensity alpha_2*fc acting over a depth of gamma*dn. Voids whose
+        centre lies within the stress block are subtracted (point approx).
         """
         a2 = alpha_2(self.fc)
         g = gamma(self.fc)
         if self.shape == "circ":
-            # Note 3 to Cl 10.6.2.5: for circular/tapering, reduce a2 by 5%
             a2 = 0.95 * a2
         stress_block_depth = g * dn
         if stress_block_depth <= 0:
             return 0.0, 0.0
         if self.shape == "rect":
-            b = self.b
-            Cc = a2 * self.fc * b * stress_block_depth
-            dC = stress_block_depth / 2.0
-            return Cc, dC
-        # Circular — integrate width across the block
-        n = 40
-        dy = stress_block_depth / n
-        Cc = 0.0
-        moment = 0.0  # about the compressive face
-        for i in range(n):
-            y_mid = (i + 0.5) * dy
-            w = self.width_at_depth(y_mid)
-            dF = a2 * self.fc * w * dy
-            Cc += dF
-            moment += dF * y_mid
+            Cc = a2 * self.fc * self.b * stress_block_depth
+            moment = Cc * (stress_block_depth / 2.0)
+        else:
+            n = 40
+            dy = stress_block_depth / n
+            Cc = 0.0
+            moment = 0.0
+            for i in range(n):
+                y_mid = (i + 0.5) * dy
+                w = self.width_at_depth(y_mid)
+                dF = a2 * self.fc * w * dy
+                Cc += dF
+                moment += dF * y_mid
+        # ── PRO ── Subtract voids inside the stress block (point approximation)
+        for v in self.voids:
+            if v.d_from_comp_face <= stress_block_depth:
+                dF = a2 * self.fc * v.area()
+                Cc -= dF
+                moment -= dF * v.d_from_comp_face
         if Cc <= 0:
             return 0.0, 0.0
         return Cc, moment / Cc
@@ -354,6 +389,110 @@ def phi_tension(Nu: float, Nuot: float, phi_prime: float) -> float:
     t = abs(Nu) / Nuot
     t = max(0.0, min(1.0, t))
     return phi_prime + (0.85 - phi_prime) * t
+
+
+# =============================================================================
+# PRO ── Cl 10.7.5 splice provisions (top & bottom of column)
+# =============================================================================
+
+def check_splice(splice_type: str, lap_ratio: float = 1.0,
+                 face_in_tension_ever: bool = False) -> dict:
+    """Cl 10.7.5 splice check — same logic as the JS engine."""
+    if splice_type == 'none':
+        return dict(ok=True, mode='none', capacityRatio=float('inf'),
+                    note='no splice')
+    if splice_type == 'mech':
+        return dict(ok=True, mode='mechanical', capacityRatio=1.0,
+                    note='rated >= fsy')
+    if splice_type == 'endb':
+        if face_in_tension_ever:
+            return dict(ok=False, mode='end-bearing', capacityRatio=0,
+                        note='face in tension under at least one combo — not permitted (Cl 10.7.5.4)')
+        return dict(ok=True, mode='end-bearing', capacityRatio=0,
+                    note='permitted: face in compression for all combos')
+    # lap
+    required = 0.25
+    ok = lap_ratio >= required
+    return dict(ok=ok, mode='lap', capacityRatio=lap_ratio,
+                note=f"develops {lap_ratio*100:.0f}% of fsy ({'≥' if ok else '<'} 25% required)")
+
+
+# =============================================================================
+# PRO ── Cl 10.7.3.1 / Fig 5.31 — special confinement region length
+# =============================================================================
+
+def special_region_length(M_high: float, M_other: float, L: float, D: float,
+                          M_thresh: float) -> float:
+    """Distance from the high-moment end where |M(x)| drops to M_thresh.
+
+    M_high, M_other are SIGNED (BMD convention); L is column length, D the
+    column dimension perp. to the bending axis being checked. Lower-bounded by
+    1.2·D per RCB Fig 5.31. Validated against RCB Example 5.7 (Mt=+225, Mb=-190
+    → 586 mm).
+    """
+    Mhi_abs = abs(M_high)
+    if Mhi_abs <= M_thresh:
+        return max(1.2 * D, 0)
+    slope = (M_other - M_high) / L
+    if abs(slope) < 1e-9:
+        return max(L, 1.2 * D)
+    target = (1 if M_high >= 0 else -1) * M_thresh
+    x = (target - M_high) / slope
+    if x < 0:
+        return max(1.2 * D, 0)
+    return max(x, 1.2 * D)
+
+
+# =============================================================================
+# PRO ── Cl 10.7.4.1 — lateral restraint pattern
+# =============================================================================
+
+def restraint_pattern_required(s: float, N_star: float, fc: float, Ag: float) -> str:
+    """Returns 'every-bar' or 'alternate-bar' per Cl 10.7.4.1."""
+    if s > 150:
+        return 'every-bar'
+    if N_star > 0.3 * fc * Ag:
+        return 'every-bar'
+    return 'alternate-bar'
+
+
+# =============================================================================
+# PRO ── Cl 10.6.3 — biaxial concession (skip αn check)
+# =============================================================================
+
+def biaxial_concession(b: float, D: float, Mx_ratio: float, My_ratio: float) -> dict:
+    """Returns {applies, reason}."""
+    if b <= 0 or D <= 0:
+        return dict(applies=False, reason='invalid section')
+    aspect = max(b, D) / min(b, D)
+    if aspect > 3:
+        return dict(applies=False, reason=f'aspect ratio {aspect:.2f} > 3')
+    minRatio = min(Mx_ratio, My_ratio)
+    if minRatio <= 0.06:
+        return dict(applies=True, reason=f'aspect {aspect:.2f}; min M*/φMu = {minRatio:.3f} ≤ 0.06')
+    return dict(applies=False, reason=f'aspect {aspect:.2f} OK but both M*/φMu > 0.06')
+
+
+# =============================================================================
+# PRO ── Cl 10.8 — floor-joint transmission of axial force
+# =============================================================================
+
+def joint_transmission_check(fc_col: float, fc_slab: float, h: float, c: float,
+                             restraint: str = '4-sides') -> dict:
+    """Returns dict with applies, fce, ratio, note."""
+    if fc_slab >= 0.75 * fc_col:
+        return dict(applies=False, fce=fc_col, ratio=1.0,
+                    note=f'slab fc′={fc_slab} ≥ 0.75·col fc′={0.75*fc_col:.0f} — no check required')
+    dh = h / (2 * c) if c > 0 else 0
+    if restraint == '4-sides':
+        fce = min(fc_col, 0.75 * fc_col + dh * (fc_col - fc_slab))
+    elif restraint == '2-opposite':
+        fce = min(fc_col, 0.85 * fc_col + dh * (fc_col - fc_slab))
+    else:
+        fce = 0.65 * fc_col
+    ratio = fce / fc_col
+    return dict(applies=True, fce=fce, ratio=ratio,
+                note=f'fce = {fce:.1f} MPa ({ratio*100:.0f}% of col fc′)')
 
 
 # =============================================================================

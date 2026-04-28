@@ -9,10 +9,10 @@ Examples validated:
   5.7 — HSC core confinement (moderate axial, high moment)
 """
 import math
-from as3600_columns import (
-    Section, RebarLayer,
+from engine_reference import (
+    Section, RebarLayer, Void,
     alpha_1, alpha_2, gamma,
-    phi_bending_only, phi_compression,
+    phi_bending_only, phi_compression, phi_tension,
     radius_of_gyration, is_short_column,
     effective_length_factor_braced, effective_length_factor_unbraced,
     buckling_load_Nc, moment_magnifier_braced, km_factor,
@@ -21,6 +21,9 @@ from as3600_columns import (
     HSCConfinementInput, hsc_fitment_spacing_simplified,
     hsc_fitment_spacing_deemed,
     capacity_at_N_star,
+    # ── PRO ──
+    check_splice, special_region_length, restraint_pattern_required,
+    biaxial_concession, joint_transmission_check,
 )
 
 
@@ -55,9 +58,11 @@ def section_5_2():
     print(f"\n  Plastic centroid dpc = {dpc:.1f} mm  (book: 300 mm)")
 
     results = []
-    # Point A — squash
+    # Point A — squash. AS 3600 Cl 10.6.2.2: uses (Ag - As) and caps steel
+    # stress at εs·Es = 0.0025·Es = 500 MPa for Es=200 GPa. RCB uses Ag (no
+    # subtraction), so the book's 9360 kN is ~0.9% higher than AS 3600.
     Nuo = sec.nuo() / 1000.0
-    results.append(check("A: Nuo (squash)", Nuo, 9360, unit="kN"))
+    results.append(check("A: Nuo (squash, AS 3600)", Nuo, 9278, unit="kN"))
 
     # Point B — decompression (ku = 1.0)
     Nb_N, Mb_Nmm = sec.decompression_point()
@@ -230,6 +235,204 @@ def section_5_7():
     return all(results)
 
 
+def e2e_b1_fsy_cap():
+    """End-to-end: 600 MPa longitudinal steel must NOT raise Nuo above the
+    500 MPa cap (Cl 10.6.2.2). Engine should give same Nuo regardless of fsy
+    once fsy ≥ 500."""
+    print("\n=== E2E B1 — Squash-load 500 MPa cap (fsy=600) ===")
+    sec500 = Section(
+        shape="rect", D=600.0, b=400.0, fc=40.0, fsy=500.0,
+        layers=[
+            RebarLayer(d_from_comp_face=74.0,  area=1200.0),
+            RebarLayer(d_from_comp_face=526.0, area=1200.0),
+        ],
+    )
+    sec600 = Section(
+        shape="rect", D=600.0, b=400.0, fc=40.0, fsy=600.0,
+        layers=[
+            RebarLayer(d_from_comp_face=74.0,  area=1200.0),
+            RebarLayer(d_from_comp_face=526.0, area=1200.0),
+        ],
+    )
+    results = []
+    n500 = sec500.nuo() / 1000.0
+    n600 = sec600.nuo() / 1000.0
+    print(f"  Nuo with fsy=500 MPa: {n500:.0f} kN")
+    print(f"  Nuo with fsy=600 MPa: {n600:.0f} kN  (must equal fsy=500 case after cap)")
+    results.append(check("Nuo cap binds at 500 MPa", n600, n500, tol_rel=0.001, unit="kN"))
+    return all(results)
+
+
+def e2e_b3_axis_slenderness():
+    """End-to-end: rectangular column 400×600 — Le/r about each axis differs."""
+    print("\n=== E2E B3 — Per-axis radius of gyration (rect 400×600) ===")
+    rx = radius_of_gyration("rect", 600.0)
+    ry = radius_of_gyration("rect", 400.0)
+    Le = 2550.0
+    print(f"  rx = 0.3·600 = {rx:.0f} mm,  Le/rx = {Le/rx:.2f}")
+    print(f"  ry = 0.3·400 = {ry:.0f} mm,  Le/ry = {Le/ry:.2f}")
+    results = []
+    results.append(check("rx",  rx, 180.0, tol_rel=0.001, unit="mm"))
+    results.append(check("ry",  ry, 120.0, tol_rel=0.001, unit="mm"))
+    results.append(check("Le/rx",  Le/rx, 14.17, tol_rel=0.005))
+    results.append(check("Le/ry",  Le/ry, 21.25, tol_rel=0.005))
+    print(f"  → governing slenderness uses min(rx, ry) = ry = {ry:.0f} mm")
+    return all(results)
+
+
+def e2e_b2_per_combo_ds():
+    """End-to-end: storey magnifier δs is per-combo, not averaged across combos."""
+    print("\n=== E2E B2 — Per-combo storey magnifier δs ===")
+    Nc = 10_000.0  # kN, illustrative
+    combos = [
+        ("1.35G",          1080.0),
+        ("1.2G+1.5Q",      1485.0),
+        ("1.2G+1.5*psi*Q", 1170.0),
+        ("1.2G+Wu+psi*Q",  1100.0),
+        ("0.9G+Wu",         720.0),
+        ("G+Eu+psi*Q",      940.0),
+    ]
+    print(f"  Nc = {Nc:.0f} kN")
+    results = []
+    for name, NStar in combos:
+        ds_correct = 1.0 / (1.0 - NStar / Nc)
+        ds_engine = moment_magnifier_unbraced_storey(
+            sum_N_star=NStar, sum_Nc=Nc
+        )
+        ok = abs(ds_correct - ds_engine) / ds_correct < 0.001
+        print(f"  {name:18s}: N*={NStar:>5.0f}  δs={ds_engine:.3f}  (expected {ds_correct:.3f})  {'PASS' if ok else 'FAIL'}")
+        results.append(ok)
+    return all(results)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# PRO validation tests (engine extensions for the comprehensive build)
+# ─────────────────────────────────────────────────────────────────────
+
+def pro_voids_example_5_1():
+    """RCB Example 5.1 — 600×800 column with 8N32 + 150 mm dia void at d=500.
+    Expected dpc ≈ 397 mm. Engine Nuo differs from book by ~1% because the
+    book uses Ag (not Ag-As) and σs=fsy without the 500 MPa cap."""
+    print("\n=== PRO ── Voids — RCB Example 5.1 ===")
+    sec = Section(
+        shape="rect", D=800.0, b=600.0, fc=40.0, fsy=500.0,
+        layers=[
+            RebarLayer(d_from_comp_face= 66.0, area=3*800.0),
+            RebarLayer(d_from_comp_face=400.0, area=2*800.0),
+            RebarLayer(d_from_comp_face=734.0, area=3*800.0),
+        ],
+        voids=[Void(d_from_comp_face=500.0, diameter=150.0)],
+    )
+    results = []
+    results.append(check("dpc with void", sec.plastic_centroid(), 397, tol_rel=0.005, unit="mm"))
+    # Sanity — without void, dpc = D/2 = 400
+    secNoVoid = Section(
+        shape="rect", D=800.0, b=600.0, fc=40.0, fsy=500.0,
+        layers=sec.layers,
+    )
+    results.append(check("dpc without void = D/2", secNoVoid.plastic_centroid(), 400, tol_rel=0.001, unit="mm"))
+    return all(results)
+
+
+def pro_special_region_5_7():
+    """RCB Example 5.7 — special-region length from top end ≈ 586 mm."""
+    print("\n=== PRO ── Special-region length — RCB Example 5.7 ===")
+    x = special_region_length(M_high=+225, M_other=-190, L=3200, D=350, M_thresh=149)
+    results = []
+    results.append(check("Top-end zone length", x, 586, tol_rel=0.01, unit="mm"))
+    # Bottom end: M_high becomes -190, M_other becomes +225 → also needs distance
+    # from bot end. By symmetry of the calc with signs flipped, distance from bot
+    # = (190-149)/(225+190) * 3200 = 316 mm. Lower bound 1.2D = 420.
+    x2 = special_region_length(M_high=-190, M_other=+225, L=3200, D=350, M_thresh=149)
+    results.append(check("Bot-end zone length (1.2D bound)", x2, 420, tol_rel=0.005, unit="mm"))
+    return all(results)
+
+
+def pro_splice_provisions():
+    """Cl 10.7.5 — splice mode logic."""
+    print("\n=== PRO ── Splice provisions Cl 10.7.5 ===")
+    results = []
+    cases = [
+        ('lap',   1.00, False, True,  'full lap'),
+        ('lap',   0.50, False, True,  '50% lap'),
+        ('lap',   0.30, False, True,  '30% lap (just satisfies 25%)'),
+        ('lap',   0.15, False, False, '15% lap fails 25% min'),
+        ('mech',  1.00, False, True,  'mechanical'),
+        ('endb',  1.00, False, True,  'end-bearing, no tension ever'),
+        ('endb',  1.00, True,  False, 'end-bearing, face goes tension — must FAIL'),
+        ('none',  1.00, True,  True,  'no splice'),
+    ]
+    for typ, ratio, tens, expectOk, label in cases:
+        res = check_splice(typ, ratio, tens)
+        ok = (res['ok'] == expectOk)
+        status = "PASS" if ok else "FAIL"
+        print(f"  {status}  {label:50s} mode={res['mode']:12s} ok={res['ok']} expected={expectOk}")
+        results.append(ok)
+    return all(results)
+
+
+def pro_restraint_pattern():
+    """Cl 10.7.4.1 — restraint pattern triggers."""
+    print("\n=== PRO ── Lateral restraint pattern Cl 10.7.4.1 ===")
+    results = []
+    tests = [
+        # s, N* (N), fc, Ag (mm²), expected
+        (120, 1_000_000,  40, 240_000, 'alternate-bar', 'low s, low N*'),
+        (160, 1_000_000,  40, 240_000, 'every-bar',     's > 150'),
+        (120, 4_000_000,  40, 240_000, 'every-bar',     'N* > 0.3 fc Ag'),
+    ]
+    for s, N, fc, Ag, expected, label in tests:
+        out = restraint_pattern_required(s, N, fc, Ag)
+        ok = (out == expected)
+        status = "PASS" if ok else "FAIL"
+        print(f"  {status}  {label:30s} → {out} (expected {expected})")
+        results.append(ok)
+    return all(results)
+
+
+def pro_joint_transmission():
+    """Cl 10.8 — fce calc."""
+    print("\n=== PRO ── Floor-joint Cl 10.8 ===")
+    results = []
+    # Slab fc' >= 0.75 col fc' → no check
+    j1 = joint_transmission_check(40, 32, 400, 400, '4-sides')
+    results.append(check("slab fc=32 >= 0.75*40 → no check", 1 if not j1['applies'] else 0, 1))
+    # Strict ratio fce = 0.65*col for 2-adjacent
+    j2 = joint_transmission_check(80, 20, 400, 400, '2-adjacent')
+    results.append(check("2-adjacent fce = 0.65 * 80", j2['fce'], 52, tol_rel=0.005))
+    return all(results)
+
+
+def pro_biaxial_concession():
+    """Cl 10.6.3 — concession applies only when aspect ≤ 3 AND one ratio ≤ 0.06."""
+    print("\n=== PRO ── Biaxial concession Cl 10.6.3 ===")
+    results = []
+    c1 = biaxial_concession(400, 600, 0.05, 0.5)
+    results.append(check("aspect 1.5, min 0.05 → applies", 1 if c1['applies'] else 0, 1))
+    c2 = biaxial_concession(400, 1500, 0.05, 0.5)
+    results.append(check("aspect 3.75 → does NOT apply", 1 if not c2['applies'] else 0, 1))
+    c3 = biaxial_concession(400, 600, 0.30, 0.50)
+    results.append(check("both > 0.06 → does NOT apply", 1 if not c3['applies'] else 0, 1))
+    return all(results)
+
+
+def pro_phi_tension():
+    """Cl Table 2.2.2 row (c) — interpolation φ' → 0.85 at pure tension."""
+    print("\n=== PRO ── φ for axial tension + bending ===")
+    results = []
+    phiPrime = 0.85
+    Nuot = 1200
+    # At Nu = 0 → φ = φ'
+    results.append(check("φ at N=0", phi_tension(0, Nuot, phiPrime), 0.85))
+    # At Nu = -Nuot/2 → φ = 0.85 (since φ' = 0.85 already)
+    results.append(check("φ at N=-Nuot/2 (φ'=0.85)", phi_tension(-Nuot/2, Nuot, phiPrime), 0.85))
+    # With φ' = 0.65 → at -Nuot, φ = 0.85
+    results.append(check("φ at N=-Nuot (φ'=0.65)", phi_tension(-Nuot, Nuot, 0.65), 0.85))
+    # Halfway: φ = 0.65 + 0.5·0.20 = 0.75
+    results.append(check("φ at N=-600 (half, φ'=0.65)", phi_tension(-Nuot/2, Nuot, 0.65), 0.75))
+    return all(results)
+
+
 if __name__ == "__main__":
     print("=" * 72)
     print("AS 3600:2018 COLUMN ENGINE — VALIDATION AGAINST RCB 3e EXAMPLES")
@@ -241,9 +444,25 @@ if __name__ == "__main__":
     out.append(("5.6", section_5_6()))
     out.append(("5.7", section_5_7()))
     print("\n" + "=" * 72)
+    print("END-TO-END TESTS (orchestration / fix verification)")
+    print("=" * 72)
+    out.append(("E2E B1 — fsy cap",            e2e_b1_fsy_cap()))
+    out.append(("E2E B3 — axis r",             e2e_b3_axis_slenderness()))
+    out.append(("E2E B2 — per-combo δs",       e2e_b2_per_combo_ds()))
+    print("\n" + "=" * 72)
+    print("PRO TESTS (comprehensive coverage of RCB Chapter 5)")
+    print("=" * 72)
+    out.append(("PRO Voids — Ex 5.1",          pro_voids_example_5_1()))
+    out.append(("PRO Special region — Ex 5.7", pro_special_region_5_7()))
+    out.append(("PRO Splices",                 pro_splice_provisions()))
+    out.append(("PRO Restraint pattern",       pro_restraint_pattern()))
+    out.append(("PRO Joint Cl 10.8",           pro_joint_transmission()))
+    out.append(("PRO Biaxial concession",      pro_biaxial_concession()))
+    out.append(("PRO φ tension",               pro_phi_tension()))
+    print("\n" + "=" * 72)
     print("OVERALL VALIDATION SUMMARY")
     print("=" * 72)
     for name, ok in out:
-        print(f"  Example {name}: {'PASS' if ok else 'FAIL'}")
+        print(f"  {name}: {'PASS' if ok else 'FAIL'}")
     n_pass = sum(1 for _, ok in out if ok)
-    print(f"\n  {n_pass}/{len(out)} examples passing")
+    print(f"\n  {n_pass}/{len(out)} test groups passing")
