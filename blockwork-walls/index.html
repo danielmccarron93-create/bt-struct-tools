@@ -1,0 +1,2804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Blockwork Wall Designer — AS 3700:2018 · Bligh Tanner</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+:root {
+  --cream:        #faf9f5;
+  --surface:      #ffffff;
+  --surface-2:    #f3f1e8;
+  --hairline:     rgba(20,20,19,0.06);
+  --hairline-2:   rgba(20,20,19,0.10);
+  --ink:          #141413;
+  --ink-2:        #4a4a47;
+  --mute:         #b0aea5;
+  --light-gray:   #e8e6dc;
+  --orange:       #d97757;
+  --orange-soft:  rgba(217,119,87,0.10);
+  --orange-mid:   rgba(217,119,87,0.20);
+  --green:        #788c5d;
+  --green-soft:   rgba(120,140,93,0.12);
+  --blue:         #6a9bcc;
+  --blue-soft:    rgba(106,155,204,0.10);
+  --rust:         #c15a3e;
+  --rust-soft:    rgba(193,90,62,0.10);
+  --shadow-sm:    0 1px 2px rgba(20,20,19,0.04);
+  --shadow:       0 1px 2px rgba(20,20,19,0.04), 0 4px 12px rgba(20,20,19,0.04);
+  --shadow-lg:    0 1px 3px rgba(20,20,19,0.06), 0 12px 28px rgba(20,20,19,0.06);
+  --radius:       10px;
+  --radius-sm:    6px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  font-family: 'Poppins', -apple-system, Arial, sans-serif;
+  background: var(--cream);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+button { font-family: inherit; cursor: pointer; }
+input, select { font-family: inherit; }
+
+/* ── TOP BAR ── */
+.topbar {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--hairline);
+}
+.brand-block { display: flex; align-items: center; gap: 14px; }
+.brand-mark {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--orange) 0%, #c5663b 100%);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--cream); font-weight: 700; font-size: 14px; letter-spacing: -0.5px;
+  box-shadow: var(--shadow-sm);
+}
+.brand-meta { display: flex; flex-direction: column; line-height: 1.1; }
+.brand-name { font-size: 13px; font-weight: 600; letter-spacing: -0.1px; }
+.brand-tag  { font-size: 10.5px; color: var(--mute); font-weight: 500; }
+.project-name {
+  flex: 1;
+  max-width: 380px;
+  margin: 0 24px;
+  padding: 8px 14px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  text-align: center;
+  font-family: 'Lora', Georgia, serif;
+  font-style: italic;
+}
+.project-name:hover, .project-name:focus {
+  background: var(--surface-2);
+  outline: none;
+  border-color: var(--hairline);
+  font-style: normal;
+}
+.project-name::placeholder { color: var(--mute); }
+.actions { display: flex; gap: 8px; }
+.btn {
+  padding: 8px 14px;
+  border: 1px solid var(--hairline-2);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+}
+.btn:hover { background: var(--surface-2); border-color: var(--mute); }
+.btn.primary {
+  background: var(--orange);
+  color: var(--cream);
+  border-color: var(--orange);
+}
+.btn.primary:hover { background: #c5663b; border-color: #c5663b; }
+.btn svg { width: 14px; height: 14px; }
+.btn.icon { padding: 7px 9px; }
+
+/* ── LAYOUT ── */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(360px, 36%) 1fr;
+  height: calc(100vh - 56px);
+  gap: 0;
+}
+.inputs-pane {
+  background: var(--cream);
+  border-right: 1px solid var(--hairline);
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.outputs-pane {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: 16px;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* ── INPUT CARDS ── */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-sm);
+  padding: 10px 13px;
+}
+.card-title {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--mute);
+  margin-bottom: 6px;
+  display: flex; align-items: center; gap: 8px;
+}
+.card-title::before {
+  content: '';
+  width: 4px; height: 4px;
+  background: var(--orange);
+  border-radius: 50%;
+}
+.row { display: flex; gap: 6px; align-items: flex-end; }
+.row + .row { margin-top: 6px; }
+.field { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.field.fixed { flex: 0 0 auto; }
+.field label {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--mute);
+  margin-bottom: 2px;
+}
+.field input[type="number"], .field select {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--hairline-2);
+  background: var(--cream);
+  color: var(--ink);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  transition: all 0.12s;
+}
+.field input[type="number"]:focus, .field select:focus {
+  border-color: var(--orange);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px var(--orange-soft);
+}
+.field input[type="number"]:hover, .field select:hover {
+  border-color: var(--mute);
+}
+.field input[disabled] { color: var(--mute); background: var(--surface-2); }
+
+/* ── CHIPS ── */
+.chips { display: flex; flex-wrap: wrap; gap: 3px; }
+.chip {
+  padding: 4px 8px;
+  border: 1px solid var(--hairline-2);
+  background: var(--cream);
+  color: var(--ink-2);
+  font-size: 10.5px;
+  font-weight: 500;
+  border-radius: 999px;
+  transition: all 0.12s;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.chip:hover { border-color: var(--mute); background: var(--surface); }
+.chip.active {
+  background: var(--ink);
+  color: var(--cream);
+  border-color: var(--ink);
+}
+
+/* Help text under cards */
+.help {
+  font-size: 10.5px;
+  color: var(--mute);
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px dashed var(--hairline);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+}
+.help b { color: var(--ink-2); font-weight: 600; }
+
+/* Method banner */
+.method-banner {
+  margin-top: 6px;
+  padding: 5px 9px;
+  border-radius: var(--radius-sm);
+  background: var(--orange-soft);
+  border-left: 3px solid var(--orange);
+  font-size: 10px;
+  color: var(--ink-2);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* ── HERO STRIP ── */
+.hero-strip {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow);
+  padding: 16px 20px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 22px;
+  align-items: center;
+  min-height: 110px;
+}
+.util-ring-wrap { position: relative; width: 84px; height: 84px; }
+.util-ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.util-ring-bg { fill: none; stroke: var(--light-gray); stroke-width: 8; }
+.util-ring-fg {
+  fill: none;
+  stroke: var(--orange);
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.6s cubic-bezier(.2,.7,.3,1), stroke 0.3s;
+}
+.util-ring-text {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  line-height: 1;
+}
+.util-num {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.4px;
+}
+.util-pct { font-size: 9px; color: var(--mute); font-weight: 600; letter-spacing: 1px; margin-top: 2px; }
+
+.hero-info { display: flex; flex-direction: column; gap: 4px; }
+.hero-status {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  width: fit-content;
+}
+.hero-status.pass { background: var(--green-soft); color: var(--green); }
+.hero-status.fail { background: var(--rust-soft); color: var(--rust); }
+.hero-status.warn { background: var(--orange-soft); color: var(--orange); }
+.hero-status::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+}
+.hero-headline {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1.3;
+}
+.hero-headline strong { font-weight: 600; color: var(--orange); }
+.hero-meta {
+  font-size: 11.5px;
+  color: var(--mute);
+  font-variant-numeric: tabular-nums;
+  display: flex; gap: 14px;
+  flex-wrap: wrap;
+}
+.hero-meta span strong { color: var(--ink-2); font-weight: 600; }
+
+/* ── VISUALS BAND ── */
+.visuals {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  min-height: 0;
+}
+.visual {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  min-height: 280px;
+}
+.visual-head {
+  padding: 10px 14px 8px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--hairline);
+}
+.visual-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.tabs { display: flex; gap: 2px; }
+.tab {
+  padding: 4px 9px;
+  font-size: 10.5px;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  color: var(--mute);
+  border-radius: var(--radius-sm);
+  transition: all 0.12s;
+}
+.tab:hover { color: var(--ink); background: var(--surface-2); }
+.tab.active { color: var(--ink); background: var(--surface-2); }
+.visual-body { flex: 1; min-height: 0; position: relative; overflow: hidden; }
+.visual-canvas { position: absolute; inset: 0; }
+.visual-canvas svg { width: 100%; height: 100%; display: block; }
+
+/* ── CHECK GRID ── */
+.checks {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.check-tile {
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-sm);
+  padding: 10px 12px;
+  display: flex; flex-direction: column;
+  gap: 4px;
+  transition: all 0.15s;
+  cursor: pointer;
+}
+.check-tile:hover { border-color: var(--hairline-2); box-shadow: var(--shadow); }
+.check-tile.expanded { border-color: var(--orange); }
+.check-tile-head {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.check-label {
+  font-size: 9.5px; font-weight: 600; letter-spacing: 0.5px;
+  text-transform: uppercase; color: var(--mute);
+}
+.check-status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green);
+}
+.check-status-dot.fail { background: var(--rust); }
+.check-status-dot.na { background: var(--light-gray); }
+.check-value {
+  font-size: 22px; font-weight: 700;
+  color: var(--ink); font-variant-numeric: tabular-nums;
+  letter-spacing: -0.4px; line-height: 1;
+}
+.check-value.fail { color: var(--rust); }
+.check-detail {
+  font-size: 10.5px; color: var(--mute);
+  font-weight: 500;
+}
+.check-bar {
+  height: 3px; background: var(--light-gray); border-radius: 2px; overflow: hidden;
+  margin-top: 2px;
+}
+.check-bar-fill {
+  height: 100%; width: 0%; background: var(--green);
+  transition: width 0.4s cubic-bezier(.2,.7,.3,1), background 0.2s;
+}
+.check-bar-fill.fail { background: var(--rust); }
+
+/* ── DETAIL PANEL ── */
+.detail-panel {
+  margin-top: 6px;
+  display: none;
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-sm);
+  padding: 12px 14px;
+}
+.detail-panel.open { display: block; }
+.detail-panel h3 {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 14px; font-weight: 600;
+  margin-bottom: 8px; color: var(--ink);
+}
+.detail-panel table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+.detail-panel td { padding: 4px 6px; border-bottom: 1px dashed var(--hairline); }
+.detail-panel td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
+.detail-panel td.ref { color: var(--mute); font-size: 10px; }
+
+/* ── DETAILING CARD ── */
+.detailing-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-sm);
+  padding: 12px 14px;
+}
+.detailing-card h3 {
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.8px; text-transform: uppercase;
+  color: var(--mute); margin-bottom: 8px;
+  display: flex; align-items: center; gap: 8px;
+}
+.detailing-card h3::before {
+  content: ''; width: 4px; height: 4px;
+  background: var(--orange); border-radius: 50%;
+}
+.detailing-card table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.detailing-card th {
+  text-align: left; padding: 5px 8px;
+  font-size: 9.5px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.4px;
+  color: var(--mute);
+  border-bottom: 1px solid var(--hairline);
+}
+.detailing-card td {
+  padding: 5px 8px; border-bottom: 1px dashed var(--hairline);
+}
+.detailing-card td.status-pass { color: var(--green); font-weight: 600; }
+.detailing-card td.status-fail { color: var(--rust); font-weight: 600; }
+.detailing-card td.status-na   { color: var(--mute); }
+
+/* ── LC TABLE ── */
+.lc-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.lc-table th {
+  text-align: left; padding: 5px 8px;
+  font-size: 9.5px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.4px;
+  color: var(--mute);
+  border-bottom: 1px solid var(--hairline);
+  position: sticky; top: 0; background: var(--surface);
+}
+.lc-table td { padding: 5px 8px; border-bottom: 1px dashed var(--hairline); font-variant-numeric: tabular-nums; }
+.lc-table tr.governing { background: var(--orange-soft); font-weight: 600; }
+.lc-table tr.fail-row { color: var(--rust); }
+.lc-table tr:hover { background: var(--surface-2); cursor: pointer; }
+
+/* ── DROP ZONE ── */
+.drop-zone {
+  border: 2px dashed var(--hairline-2);
+  border-radius: var(--radius);
+  padding: 22px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--mute);
+  cursor: pointer;
+  transition: all 0.15s;
+  background: var(--cream);
+}
+.drop-zone:hover, .drop-zone.dragover {
+  border-color: var(--orange);
+  background: var(--orange-soft);
+  color: var(--orange);
+}
+
+/* ── HIDDEN PDF ROOT ── */
+#pdfRoot {
+  position: absolute; left: -9999px; top: 0;
+}
+.pdf-page {
+  width: 595px; min-height: 842px;
+  background: #ffffff;
+  font-family: 'Poppins', Arial, sans-serif;
+  font-size: 9px;
+  color: #141413;
+  padding: 35px 40px;
+  position: relative;
+  page-break-after: always;
+  box-sizing: border-box;
+}
+.pdf-page h1 { font-size: 14px; margin: 0; font-family: 'Lora', Georgia, serif; font-weight: 600; }
+.pdf-page h2 {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 13px; margin: 14px 0 6px;
+  color: #141413; padding-bottom: 4px;
+  border-bottom: 1px solid #d97757;
+}
+.pdf-page h3 { font-size: 10px; margin: 10px 0 4px; color: #4a4a47; text-transform: uppercase; letter-spacing: 0.6px; }
+.pdf-page table { width: 100%; border-collapse: collapse; font-size: 8px; margin-bottom: 8px; }
+.pdf-page th { text-align: left; background: #f3f1e8; padding: 3px 4px; font-weight: 600; border-bottom: 1px solid #d97757; }
+.pdf-page td { padding: 2px 4px; border-bottom: 1px solid rgba(20,20,19,0.06); vertical-align: top; }
+.pdf-page td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.pdf-page td.ref { color: #b0aea5; font-size: 7px; }
+.pdf-page td.calc { font-family: 'Menlo', 'Consolas', monospace; font-size: 7.5px; }
+.pdf-page td.desc { color: #4a4a47; font-size: 7px; }
+.pdf-page .pdf-header {
+  display: flex; justify-content: space-between; align-items: center;
+  border-bottom: 2px solid #d97757; padding-bottom: 6px; margin-bottom: 10px;
+}
+.pdf-page .pdf-mark {
+  width: 28px; height: 28px;
+  background: linear-gradient(135deg, #d97757, #c5663b);
+  color: #faf9f5; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 10px;
+}
+.pdf-page .pdf-header-l { display: flex; gap: 8px; align-items: center; }
+.pdf-page .pdf-header-r { font-size: 8px; text-align: right; color: #4a4a47; }
+.pdf-page .pdf-footer {
+  position: absolute; bottom: 20px; left: 40px; right: 40px;
+  display: flex; justify-content: space-between;
+  font-size: 7px; color: #b0aea5;
+  border-top: 1px solid #e8e6dc; padding-top: 5px;
+}
+.pdf-pass { color: #788c5d; font-weight: 700; }
+.pdf-fail { color: #c15a3e; font-weight: 700; }
+.pdf-na   { color: #b0aea5; }
+.pdf-eq { font-family: 'Menlo', 'Consolas', monospace; background: #f3f1e8; padding: 4px 6px; border-radius: 3px; font-size: 8px; margin: 4px 0; }
+
+/* responsive */
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: 350px 1fr; }
+  .visuals { grid-template-columns: 1fr; }
+  .checks { grid-template-columns: 1fr 1fr; }
+}
+
+/* error overlay */
+#globalErrors {
+  position: fixed; top: 60px; right: 20px; z-index: 99999;
+  display: flex; flex-direction: column; gap: 6px;
+  max-width: 360px;
+}
+.err-banner {
+  background: var(--rust-soft); color: var(--rust);
+  padding: 8px 12px; border-radius: 8px; font-size: 11px;
+  border: 1px solid var(--rust);
+  box-shadow: var(--shadow);
+}
+.err-banner strong { display: block; margin-bottom: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ─────────────  TOP BAR  ───────────── -->
+<header class="topbar">
+  <div class="brand-block">
+    <div class="brand-mark">BT</div>
+    <div class="brand-meta">
+      <div class="brand-name">Blockwork Wall Designer</div>
+      <div class="brand-tag">AS 3700:2018 · Bligh Tanner</div>
+    </div>
+  </div>
+  <input class="project-name" id="projectName" placeholder="Untitled wall · click to name…">
+  <div class="actions">
+    <button class="btn" id="btnExample">Example</button>
+    <button class="btn" id="btnSave">Save</button>
+    <button class="btn" id="btnLoad">Load</button>
+    <input type="file" id="fileLoader" accept=".json" style="display:none">
+    <button class="btn primary" id="btnPdf">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"/><rect x="6" y="14" width="12" height="8"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/></svg>
+      Print Calculations
+    </button>
+    <button class="btn icon" id="btnHelp" title="Keyboard shortcuts (?)">?</button>
+  </div>
+</header>
+
+<!-- ─────────────  MAIN LAYOUT  ───────────── -->
+<div class="layout">
+
+  <!-- ════ INPUTS PANE ════ -->
+  <aside class="inputs-pane" id="inputsPane">
+
+    <!-- WALL GEOMETRY -->
+    <div class="card">
+      <div class="card-title">Wall Geometry</div>
+      <div class="row">
+        <div class="field"><label>Length L (mm)</label><input type="number" id="inL" value="2000" step="100"></div>
+        <div class="field"><label>Thickness t (mm)</label><input type="number" id="inT" value="190" step="10"></div>
+        <div class="field"><label>Height H (mm)</label><input type="number" id="inH" value="5000" step="100"></div>
+      </div>
+      <div class="row">
+        <div class="field" style="flex: 0 0 auto;">
+          <label>Block series</label>
+          <div class="chips" id="seriesChips">
+            <button class="chip" data-series="110">110</button>
+            <button class="chip" data-series="140">140</button>
+            <button class="chip active" data-series="190">190</button>
+            <button class="chip" data-series="240">240</button>
+            <button class="chip" data-series="290">290</button>
+          </div>
+        </div>
+        <div class="field"><label>Face shell tfs</label><input type="number" id="inTfs" value="30" step="5"></div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Grouting</label>
+          <div class="chips" id="groutChips">
+            <button class="chip active" data-grout="full">Fully grouted</button>
+            <button class="chip" data-grout="partial">Partial</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MATERIALS -->
+    <div class="card">
+      <div class="card-title">Materials</div>
+      <div class="row">
+        <div class="field">
+          <label>f'uc (MPa)</label>
+          <div class="chips" id="fucChips">
+            <button class="chip" data-fuc="10">10</button>
+            <button class="chip active" data-fuc="15">15</button>
+            <button class="chip" data-fuc="20">20</button>
+            <button class="chip" data-fuc="30">30</button>
+            <button class="chip" data-fuc="40">40</button>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>f'cg (MPa)</label>
+          <div class="chips" id="fcgChips">
+            <button class="chip active" data-fcg="20">20</button>
+            <button class="chip" data-fcg="25">25</button>
+            <button class="chip" data-fcg="32">32</button>
+            <button class="chip" data-fcg="40">40</button>
+            <button class="chip" data-fcg="50">50</button>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Bedding</label>
+          <div class="chips" id="bedChips">
+            <button class="chip active" data-bed="full">Full</button>
+            <button class="chip" data-bed="face_shell">Face-shell</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Mortar</label>
+          <div class="chips" id="mortarChips">
+            <button class="chip active" data-mortar="M3">M3</button>
+            <button class="chip" data-mortar="M4">M4</button>
+          </div>
+        </div>
+      </div>
+      <div class="help">
+        <b>f'm</b> = <span id="dispFm">7.05</span> MPa &nbsp;·&nbsp; <b>kc</b> = <span id="dispKc">1.4</span> &nbsp;·&nbsp; <b>fsy</b> = 500 MPa
+      </div>
+    </div>
+
+    <!-- LATERAL SUPPORT & SLENDERNESS -->
+    <div class="card">
+      <div class="card-title">Lateral Support &amp; Slenderness</div>
+      <div class="row">
+        <div class="field">
+          <label>Vertical (av)</label>
+          <select id="inAv">
+            <option value="0.75">0.75 — partial both ends</option>
+            <option value="0.85" selected>0.85 — partial one end</option>
+            <option value="1.0">1.00 — supported both</option>
+            <option value="1.5">1.50 — partial top</option>
+            <option value="2.5">2.50 — freestanding</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Edges (ah)</label>
+          <select id="inAh">
+            <option value="1.0">1.0 — both edges</option>
+            <option value="2.5" selected>2.5 — one edge</option>
+            <option value="0">none — no edge</option>
+          </select>
+        </div>
+      </div>
+      <div class="help">
+        <b>Sr1</b> = <span id="dispSr1">22.4</span> · <b>Sr2</b> = <span id="dispSr2">17.0</span>
+        · <b>Sr</b> = <span id="dispSr">22.4</span> · <b>kes</b> = <span id="dispKes">0.29</span>
+      </div>
+    </div>
+
+    <!-- ECCENTRICITY -->
+    <div class="card">
+      <div class="card-title">Eccentricity</div>
+      <div class="row">
+        <div class="field">
+          <label>Method</label>
+          <select id="inEMethod">
+            <option value="single" selected>Deemed: single floor (e = t/6)</option>
+            <option value="continuous">Deemed: continuous (e = 0.05t)</option>
+            <option value="m_over_n">From M*/N* (live)</option>
+            <option value="manual">Manual</option>
+          </select>
+        </div>
+        <div class="field"><label>e (mm)</label><input type="number" id="inE" value="32" step="1"></div>
+      </div>
+      <div class="help">
+        <b>e/t</b> = <span id="dispEt">0.168</span> &nbsp;·&nbsp; implied M*/N* = <span id="dispEMN">83</span> mm
+      </div>
+    </div>
+
+    <!-- REINFORCEMENT -->
+    <div class="card">
+      <div class="card-title">Reinforcement</div>
+      <div class="row">
+        <div class="field">
+          <label>Vert (primary)</label>
+          <select id="inVertPrimary"></select>
+        </div>
+        <div class="field"><label>Spacing (mm)</label><input type="number" id="inVertPrimarySp" value="200" step="50"></div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Vert (additional)</label>
+          <select id="inVertAdd"></select>
+        </div>
+        <div class="field"><label>Spacing (mm)</label><input type="number" id="inVertAddSp" value="400" step="50"></div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Horiz (primary)</label>
+          <select id="inHorizPrimary"></select>
+        </div>
+        <div class="field"><label>Spacing (mm)</label><input type="number" id="inHorizPrimarySp" value="600" step="100"></div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Horiz (additional)</label>
+          <select id="inHorizAdd"></select>
+        </div>
+        <div class="field"><label>Spacing (mm)</label><input type="number" id="inHorizAddSp" value="600" step="100"></div>
+      </div>
+      <div class="help">
+        <b>Asv</b> = <span id="dispAsv">1000</span> mm²/m &nbsp;·&nbsp; <b>Ash</b> = <span id="dispAsh">183</span> mm²/m
+      </div>
+    </div>
+
+    <!-- METHOD -->
+    <div class="card">
+      <div class="card-title">Design Method</div>
+      <div class="row">
+        <div class="field">
+          <label>Reinforced?</label>
+          <div class="chips" id="reinfChips">
+            <button class="chip active" data-reinf="true">YES (Sec 8)</button>
+            <button class="chip" data-reinf="false">NO (URM)</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>αr (steel axial)</label>
+          <div class="chips" id="alpharChips">
+            <button class="chip" data-alphar="0">0 (cons.)</button>
+            <button class="chip active" data-alphar="0.4">0.40</button>
+            <button class="chip" data-alphar="1.0">1.0 (pier)</button>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Bending</label>
+          <select id="inBendMethod">
+            <option value="kes_in_axial" selected>kes-in-axial only</option>
+            <option value="explicit_8_6">+ Cl 8.6 explicit</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Sr rule</label>
+          <select id="inSrRule">
+            <option value="standard" selected>Cl 7.3.4.3(a)</option>
+            <option value="always_conservative">Always max</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>OOP bending</label>
+          <div class="chips" id="oopChips">
+            <button class="chip active" data-oop="false">Off</button>
+            <button class="chip" data-oop="true">On</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>EQ detailing</label>
+          <div class="chips" id="eqChips">
+            <button class="chip active" data-eq="false">Off</button>
+            <button class="chip" data-eq="true">Cl 8.4.5</button>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Cl 8.7.4 stability</label>
+          <div class="chips" id="stabChips">
+            <button class="chip active" data-stab="false">Off (top restrained)</button>
+            <button class="chip" data-stab="true">No top restraint</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Cl 8.8 cap</label>
+          <div class="chips" id="capChips">
+            <button class="chip active" data-cap="true">Enforced</button>
+            <button class="chip" data-cap="false">Off</button>
+          </div>
+        </div>
+      </div>
+      <div class="method-banner" id="methodBanner">Method: kes-in-axial · αr=0.40 · Cl 8.8 cap on</div>
+    </div>
+
+    <!-- LOADS -->
+    <div class="card">
+      <div class="card-title">Design Demands</div>
+      <div class="row">
+        <div class="field">
+          <label>Mode</label>
+          <div class="chips" id="loadModeChips">
+            <button class="chip active" data-mode="manual">Manual</button>
+            <button class="chip" data-mode="upload">Spreadsheet</button>
+          </div>
+        </div>
+      </div>
+      <div id="manualLoads">
+        <div class="row">
+          <div class="field"><label>N*c (kN)</label><input type="number" id="inNc" value="600" step="10"></div>
+          <div class="field"><label>N*t (kN)</label><input type="number" id="inNt" value="0" step="10"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>M* (kNm)</label><input type="number" id="inM" value="50" step="5"></div>
+          <div class="field"><label>V* (kN)</label><input type="number" id="inV" value="80" step="5"></div>
+        </div>
+        <div id="oopLoadRow" style="display:none; margin-top: 10px;">
+          <div class="row">
+            <div class="field"><label>M*y OOP (kNm)</label><input type="number" id="inMy" value="0" step="5"></div>
+            <div class="field"><label>V*y OOP (kN)</label><input type="number" id="inVy" value="0" step="5"></div>
+          </div>
+        </div>
+      </div>
+      <div id="uploadLoads" style="display:none; margin-top: 10px;">
+        <div class="drop-zone" id="dropZone">
+          <div style="font-weight: 500;">Drop XLSX here or click to browse</div>
+          <div style="font-size: 10px; margin-top: 4px; color: var(--mute);">L7 Input sheet column order</div>
+        </div>
+        <input type="file" id="xlsxLoader" accept=".xlsx,.xlsm,.xls" style="display:none">
+        <div id="uploadStatus" style="margin-top: 8px; font-size: 11px;"></div>
+        <div class="row" id="wallPickerRow" style="display:none; margin-top: 10px;">
+          <div class="field"><label>Wall</label><select id="wallPicker"></select></div>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ════ OUTPUTS PANE ════ -->
+  <main class="outputs-pane">
+
+    <!-- HERO STRIP -->
+    <div class="hero-strip">
+      <div class="util-ring-wrap">
+        <svg viewBox="0 0 100 100">
+          <circle class="util-ring-bg" cx="50" cy="50" r="42"/>
+          <circle class="util-ring-fg" id="utilRingFg" cx="50" cy="50" r="42"
+                  stroke-dasharray="263.9" stroke-dashoffset="263.9"/>
+        </svg>
+        <div class="util-ring-text">
+          <div class="util-num" id="utilNum">—</div>
+          <div class="util-pct">UTIL</div>
+        </div>
+      </div>
+      <div class="hero-info">
+        <div class="hero-status pass" id="heroStatus">computing…</div>
+        <div class="hero-headline" id="heroHeadline">Wall capacity — AS 3700</div>
+        <div class="hero-meta" id="heroMeta"></div>
+      </div>
+    </div>
+
+    <!-- VISUALS BAND -->
+    <div class="visuals">
+
+      <!-- GEOMETRY VISUAL -->
+      <div class="visual">
+        <div class="visual-head">
+          <div class="visual-title">Geometry</div>
+          <div class="tabs" id="geomTabs">
+            <button class="tab active" data-geom="3d">3D</button>
+            <button class="tab" data-geom="section">Section</button>
+            <button class="tab" data-geom="elevation">Elevation</button>
+          </div>
+        </div>
+        <div class="visual-body">
+          <div class="visual-canvas" id="canvas3d"></div>
+          <div class="visual-canvas" id="canvasSection" style="display:none;">
+            <svg id="svgPlan" viewBox="0 0 600 380" preserveAspectRatio="xMidYMid meet" style="background: var(--cream);"></svg>
+          </div>
+          <div class="visual-canvas" id="canvasElevation" style="display:none;">
+            <svg id="svgElevation" viewBox="0 0 600 380" preserveAspectRatio="xMidYMid meet" style="background: var(--cream);"></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- CAPACITY VISUAL -->
+      <div class="visual">
+        <div class="visual-head">
+          <div class="visual-title">Capacity</div>
+          <div class="tabs" id="capTabs">
+            <button class="tab active" data-cap="bars">Bars</button>
+            <button class="tab" data-cap="nm">N–M</button>
+            <button class="tab" data-cap="stress">Stress</button>
+          </div>
+        </div>
+        <div class="visual-body">
+          <div class="visual-canvas" id="capBars">
+            <svg id="svgBars" viewBox="0 0 600 380" preserveAspectRatio="xMidYMid meet" style="background: var(--cream);"></svg>
+          </div>
+          <div class="visual-canvas" id="capNM" style="display:none;">
+            <svg id="svgNM" viewBox="0 0 600 380" preserveAspectRatio="xMidYMid meet" style="background: var(--cream);"></svg>
+          </div>
+          <div class="visual-canvas" id="capStress" style="display:none;">
+            <svg id="svgStress" viewBox="0 0 600 380" preserveAspectRatio="xMidYMid meet" style="background: var(--cream);"></svg>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CHECKS GRID -->
+    <div class="checks" id="checksGrid">
+      <div class="check-tile" data-check="comp">
+        <div class="check-tile-head"><span class="check-label">Compression</span><span class="check-status-dot" id="dotComp"></span></div>
+        <div class="check-value" id="valComp">—</div>
+        <div class="check-detail" id="detailComp">Cl 8.5.1</div>
+        <div class="check-bar"><div class="check-bar-fill" id="barComp"></div></div>
+      </div>
+      <div class="check-tile" data-check="tens">
+        <div class="check-tile-head"><span class="check-label">Tension</span><span class="check-status-dot" id="dotTens"></span></div>
+        <div class="check-value" id="valTens">—</div>
+        <div class="check-detail" id="detailTens">Cl 8.10</div>
+        <div class="check-bar"><div class="check-bar-fill" id="barTens"></div></div>
+      </div>
+      <div class="check-tile" data-check="shear">
+        <div class="check-tile-head"><span class="check-label">Shear</span><span class="check-status-dot" id="dotShear"></span></div>
+        <div class="check-value" id="valShear">—</div>
+        <div class="check-detail" id="detailShear">Cl 8.7 / 8.8</div>
+        <div class="check-bar"><div class="check-bar-fill" id="barShear"></div></div>
+      </div>
+      <div class="check-tile" data-check="extra" id="extraTile">
+        <div class="check-tile-head"><span class="check-label" id="extraLabel">— —</span><span class="check-status-dot na" id="dotExtra"></span></div>
+        <div class="check-value" id="valExtra">—</div>
+        <div class="check-detail" id="detailExtra">Toggle in Method card</div>
+        <div class="check-bar"><div class="check-bar-fill" id="barExtra"></div></div>
+      </div>
+    </div>
+
+    <!-- DETAIL EXPANSION PANEL -->
+    <div class="detail-panel" id="detailPanel">
+      <h3 id="detailTitle">Detail</h3>
+      <div id="detailBody"></div>
+    </div>
+
+    <!-- LC TABLE (multi-LC mode) -->
+    <div class="card" id="lcSection" style="display: none; max-height: 260px; overflow-y: auto; padding: 12px 14px;">
+      <div class="card-title">Load Cases</div>
+      <table class="lc-table" id="lcTable">
+        <thead><tr><th>LC</th><th>N*</th><th>M*</th><th>V*</th><th>η max</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- PROJECT SUMMARY (multi-wall mode) -->
+    <div class="card" id="projectSection" style="display: none; max-height: 260px; overflow-y: auto; padding: 12px 14px;">
+      <div class="card-title">Project Summary — All Walls</div>
+      <table class="lc-table" id="projTable">
+        <thead><tr><th>Wall</th><th>LCs</th><th>Worst LC</th><th>η comp</th><th>η tens</th><th>η shear</th><th>η max</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div style="margin-top: 8px; display: flex; gap: 6px;">
+        <button class="btn primary" id="btnBatchPdf" style="padding: 6px 12px;">📦 Batch PDF (all walls)</button>
+      </div>
+    </div>
+
+    <!-- DETAILING CHECKS -->
+    <div class="detailing-card">
+      <h3>Detailing Checks</h3>
+      <table id="detailingTable">
+        <thead><tr><th>Clause</th><th>Rule</th><th style="text-align:right;">Status</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+  </main>
+
+</div>
+
+<!-- ── Hidden PDF + error overlays ── -->
+<div id="pdfRoot"></div>
+<div id="globalErrors"></div>
+
+<script>
+'use strict';
+
+// ════════════════════════════════════════════════════════════════════════
+// AS 3700:2018 ENGINE — JS PORT (matches as3700_walls.py 1.0.0)
+// ════════════════════════════════════════════════════════════════════════
+const ENGINE_VERSION = '1.0.0';
+
+const KM_TABLE = {
+  'clay|full|M2': 1.1, 'clay|full|M3': 1.4, 'clay|full|M4': 2.0, 'clay|face_shell|M3': 1.6,
+  'concrete|full|M3': 1.4, 'concrete|face_shell|M3': 1.6,
+  'calcium_silicate|full|M3': 1.4, 'calcium_silicate|full|M4': 2.0,
+};
+const PHI_REINFORCED = 0.75, PHI_URM_GROUT = 0.60, PHI_URM_FLEX_SHEAR = 0.60;
+const FSY = 500.0, FVM = 0.35, FVS = 17.5;
+
+// Reinforcement schedule lookup (mirrors L7.xlsm SCHEDULE!"reo" table)
+// EF = "Each Face" — bars on both faces, area pre-doubled.
+// SL meshes are mm²/m — spacing input is overridden to 1000 in the per-m formula.
+// Note: L7 has SL82 EF = 5448 (typo) — corrected here to 454 = 2 × 227.
+const REO_TABLE = {
+  "-":       0,
+  "N12":   110,
+  "N16":   200,
+  "N20":   314,
+  "N24":   450,
+  "N28":   620,
+  "N32":   800,
+  "N12 EF": 220, "N16 EF": 400, "N20 EF": 628, "N24 EF": 900,
+  "SL82":  227, "SL92": 290, "SL82 EF": 454, "SL92 EF": 580,
+};
+const MESH_CODES = new Set(["SL82","SL92","SL82 EF","SL92 EF"]);
+const EF_CODES   = new Set(Object.keys(REO_TABLE).filter(c => c.endsWith(" EF")));
+
+function reoAreaPerM(code, spacingMm) {
+  if (!code) return 0;
+  const a = REO_TABLE[code] || 0;
+  if (a === 0) return 0;
+  if (MESH_CODES.has(code)) return a;          // mesh — mm²/m directly
+  if (!spacingMm || spacingMm <= 0) return 0;
+  return a * 1000 / spacingMm;
+}
+function isEf(code) { return EF_CODES.has(code); }
+function isMesh(code) { return MESH_CODES.has(code); }
+function isPair(code) { return isEf(code) || isMesh(code); }
+function barDiaFromCode(code) {
+  if (!code || code === "-" || !code.startsWith("N")) return null;
+  const m = code.match(/N(\d+)/);
+  return m ? parseInt(m[1]) : null;
+}
+
+function barArea(d) { return Math.PI * d * d / 4.0; }
+
+function computeFm(m) {
+  const km = KM_TABLE[`${m.unit_type}|${m.bedding}|${m.mortar}`];
+  if (!km) throw new Error(`No km in Table 3.1 for ${m.unit_type}/${m.bedding}/${m.mortar}`);
+  return m.kh * km * Math.sqrt(m.fuc);
+}
+function getKc(m) {
+  if (m.kc_override != null) return m.kc_override;
+  return m.unit_density_high ? 1.4 : 1.2;
+}
+function AbPerM(g) { return 2.0 * g.tfs * 1000.0; }
+function AdPerM(g) { return g.grouting === 'full' ? g.t * 1000.0 : AbPerM(g); }
+function AgPerM(g) { return AdPerM(g) - AbPerM(g); }
+function AdTotal(g) { return AdPerM(g) * g.L / 1000.0; }
+function AgTotal(g) { return AgPerM(g) * g.L / 1000.0; }
+function Zex(g) { return g.t * g.L * g.L / 6.0; }
+
+function AsvPerM(reo) {
+  return reoAreaPerM(reo.vert_primary_code,    reo.vert_primary_spacing) +
+         reoAreaPerM(reo.vert_additional_code, reo.vert_additional_spacing);
+}
+function AshPerM(reo) {
+  return reoAreaPerM(reo.horiz_primary_code,    reo.horiz_primary_spacing) +
+         reoAreaPerM(reo.horiz_additional_code, reo.horiz_additional_spacing);
+}
+function Aov(reo, L) { return AsvPerM(reo) * L / 1000.0; }
+function Aoh(reo, H) { return AshPerM(reo) * H / 1000.0; }
+function vertIsEf(reo) {
+  return isPair(reo.vert_primary_code) || isPair(reo.vert_additional_code);
+}
+
+function SrEq1(s, g) { return s.av * g.H / (s.kt * g.t); }
+function SrEq2(s, g) { return (0.7 / g.t) * Math.sqrt(s.av * g.H * s.ah * g.L); }
+
+function governingSr(Sr1, Sr2, FdPerM, FoPerM, method, edges) {
+  if (method.sr_rule === 'always_conservative') return Math.max(Sr1, Sr2);
+  if (edges === 'none') return Sr1;
+  if (FoPerM <= 0) return Sr1;
+  return (FdPerM / FoPerM) <= 0.20 ? Math.min(Sr1, Sr2) : Sr1;
+}
+
+function kesFn(Sr, e, t) {
+  const raw = (1 - 0.025 * Sr) * (1 - 2 * e / t);
+  return Math.max(0, Math.min(1, raw));
+}
+function groutEffectiveStress(fcg) { return Math.pow(fcg / 1.3, 0.55 + 0.005 * fcg); }
+function FoNoSteelPerM(mat, geom) {
+  const fm = computeFm(mat), kc = getKc(mat);
+  return (fm * AbPerM(geom) + kc * groutEffectiveStress(mat.fcg) * AgPerM(geom)) / 1000.0;
+}
+function phiAxial(method) { return method.reinforced ? PHI_REINFORCED : PHI_URM_GROUT; }
+function phiTBS(method) { return method.reinforced ? PHI_REINFORCED : PHI_URM_FLEX_SHEAR; }
+
+function compressionCheck(mat, geom, reo, slend, ecc, method, demandNcKn) {
+  const Sr1 = SrEq1(slend, geom), Sr2 = SrEq2(slend, geom);
+  const FoBasic = FoNoSteelPerM(mat, geom);
+  const FdPerM = demandNcKn / (geom.L / 1000.0);
+  const FdOverFo = FoBasic > 0 ? FdPerM / FoBasic : 0;
+  const Sr = governingSr(Sr1, Sr2, FdPerM, FoBasic, method, slend.edges_supported);
+  const kes = kesFn(Sr, ecc.e, geom.t);
+  const fm = computeFm(mat), kc = getKc(mat);
+  const Ab_m = AbPerM(geom), Ag_m = AgPerM(geom), As_m = AsvPerM(reo);
+  const masonryTerm = fm * Ab_m;
+  const groutFactor = groutEffectiveStress(mat.fcg);
+  const groutTerm = kc * groutFactor * Ag_m;
+  const steelTerm = method.alphar * mat.fsy * As_m;
+  const bracketTotal = (masonryTerm + groutTerm + steelTerm) / 1000.0;
+  const phi = phiAxial(method);
+  const phiNucPerM = phi * kes * bracketTotal;
+  const phiNucTotal = phiNucPerM * geom.L / 1000.0;
+  const util = phiNucTotal > 0 ? demandNcKn / phiNucTotal : Infinity;
+  return {
+    demand_Nc_kN: demandNcKn, demand_Nc_per_m_kN: FdPerM,
+    Sr1, Sr2, Fo_basic_per_m_kN: FoBasic, Fd_over_Fo: FdOverFo, Sr_governing: Sr,
+    kes, fm, kc, Ab_per_m: Ab_m, Ag_per_m: Ag_m, As_per_m: As_m,
+    grout_effective_stress: groutFactor,
+    masonry_term_N_per_m: masonryTerm,
+    grout_term_N_per_m: groutTerm,
+    steel_term_N_per_m: steelTerm,
+    bracket_total_kN_per_m: bracketTotal,
+    phi, phi_Nuc_per_m_kN: phiNucPerM, phi_Nuc_total_kN: phiNucTotal,
+    utilisation: util, pass: util <= 1.0,
+  };
+}
+
+function tensionCheck(mat, geom, reo, method, demandNtKn) {
+  const As_m = AsvPerM(reo);
+  const As_total = As_m * geom.L / 1000.0;
+  const phi = phiTBS(method);
+  const phiNtPerM = phi * mat.fsy * As_m / 1000.0;
+  const phiNtTotal = phiNtPerM * geom.L / 1000.0;
+  const spacingOk = reo.vert_spacing <= 2000;
+  const edgeOk = barArea(reo.vert_bar_dia) >= 100;
+  let util, verdict;
+  if (demandNtKn <= 0) { util = 0; verdict = 'n/a'; }
+  else if (phiNtTotal <= 0) { util = Infinity; verdict = 'fail'; }
+  else { util = demandNtKn / phiNtTotal; verdict = util <= 1 ? 'pass' : 'fail'; }
+  return {
+    demand_Nt_kN: demandNtKn, As_per_m: As_m, As_total, phi, fsy: mat.fsy,
+    phi_Nt_per_m_kN: phiNtPerM, phi_Nt_total_kN: phiNtTotal,
+    spacing_check_ok: spacingOk, spacing_value: reo.vert_spacing,
+    edge_bar_check_ok: edgeOk, edge_bar_area: barArea(reo.vert_bar_dia),
+    utilisation: util, verdict, pass: verdict === 'pass' || verdict === 'n/a',
+  };
+}
+
+function shearLongWall(mat, geom, reo) {
+  const fvr = 1.5 - 0.5 * (geom.H / geom.L);
+  const HoverL = geom.H / geom.L;
+  const Aoh_v = Aoh(reo, geom.H), Aov_v = Aov(reo, geom.L);
+  const As = HoverL > 1.0 ? Aoh_v * geom.L / geom.H : Math.min(Aoh_v, Aov_v);
+  const Ad = AdTotal(geom);
+  const VuN = fvr * Ad + 0.8 * mat.fsy * As;
+  return { fvr, As_for_shear: As, Ad, Vu_kN: VuN / 1000.0 };
+}
+
+function shearShortWall(mat, geom, reo, method) {
+  const bw = geom.t, d = geom.L;
+  const masonryN = FVM * bw * d;
+  const Ast = Aov(reo, geom.L);
+  const fvsTermN = FVS * Ast;
+  // Cl 8.8 third term: fsy × d × (Ash_per_m / 1000), summing primary + additional.
+  // AshPerM handles mesh codes (treats spacing as 1000) via REO_TABLE lookup.
+  const shearReoN = mat.fsy * d * AshPerM(reo) / 1000.0;
+  const VuRawN = masonryN + fvsTermN + shearReoN;
+  const capN = 4.0 * FVM * bw * d;
+  const VuN = method.enforce_cl_8_8_cap ? Math.min(VuRawN, capN) : VuRawN;
+  return {
+    bw, d, fvm: FVM, fvs: FVS,
+    masonry_term_kN: masonryN / 1000, Ast_long: Ast, fvs_term_kN: fvsTermN / 1000,
+    horiz_reo_term_kN: shearReoN / 1000, Vu_raw_kN: VuRawN / 1000,
+    cap_kN: capN / 1000, Vu_kN: VuN / 1000,
+    cap_governs: VuRawN > capN,
+  };
+}
+
+function shearCheck(mat, geom, reo, method, demandVKn) {
+  const HoverL = geom.H / geom.L;
+  const isLong = HoverL <= 2.3;
+  const longBranch = shearLongWall(mat, geom, reo);
+  const shortBranch = shearShortWall(mat, geom, reo, method);
+  const VuGov = isLong ? longBranch.Vu_kN : shortBranch.Vu_kN;
+  const branchUsed = isLong ? 'Long (Cl 8.7.2)' : 'Short (Cl 8.7.3 → 8.8)';
+  const phi = phiTBS(method);
+  const phiVu = phi * VuGov;
+  const util = phiVu > 0 ? demandVKn / phiVu : Infinity;
+  return {
+    H_over_L: HoverL, is_long_wall: isLong, branch_used: branchUsed,
+    long_branch: longBranch, short_branch: shortBranch,
+    Vu_governing_kN: VuGov, phi, phi_Vu_kN: phiVu, demand_V_kN: demandVKn,
+    utilisation: util, pass: util <= 1.0,
+  };
+}
+
+function stabilityCheck(mat, geom, reo, method, demandNcKn, demandVKn, Lprime) {
+  Lprime = Lprime || 0;
+  const Ad = AdTotal(geom), fm = computeFm(mat);
+  const PvN = demandNcKn * 1000;
+  const ksw = (Ad * fm) > 0 ? 1 - PvN / (Ad * fm) : 0;
+  const kswUsed = Math.max(ksw, 0);
+  const Asv = Aov(reo, geom.L);
+  const phi = phiTBS(method);
+  const bracketNmm = kswUsed * PvN * geom.L / 2 + mat.fsy * Asv * (geom.L - 2 * Lprime);
+  const VdStabKn = phi * bracketNmm / geom.H / 1000;
+  const HoverL = geom.H / geom.L;
+  const applies = method.enforce_stability_check && HoverL <= 2.3 && method.no_top_restraint;
+  const util = (applies && VdStabKn > 0) ? demandVKn / VdStabKn : 0;
+  return {
+    ksw_raw: ksw, ksw: kswUsed, Pv_kN: demandNcKn, Ad, Asv, L_prime: Lprime,
+    phi, Vd_stab_kN: VdStabKn, applies,
+    utilisation: util, pass: applies ? util <= 1 : true,
+  };
+}
+
+function flexureCheck86(mat, geom, reo, method, demandMKnm, axis) {
+  axis = axis || 'in_plane';
+  const fm = computeFm(mat);
+  const b = axis === 'in_plane' ? geom.t : geom.L;
+  const dEff = axis === 'in_plane' ? 0.9 * geom.L : 0.9 * geom.t;
+  const AsdProvided = axis === 'in_plane' ? Aov(reo, geom.L) : AsvPerM(reo);
+  const AsdLimit = (0.29 * 1.3 * fm * b * dEff) / mat.fsy;
+  const Asd = Math.min(AsdProvided, AsdLimit);
+  if (Asd <= 0) return {
+    Mu_kNm: 0, phi_Mu_kNm: 0, demand_M_kNm: demandMKnm,
+    utilisation: demandMKnm > 0 ? Infinity : 0, pass: demandMKnm === 0,
+    Asd_provided: AsdProvided, Asd_limit: AsdLimit, Asd_used: Asd, b, d_eff: dEff, axis,
+  };
+  const bracket = 1 - (0.6 * mat.fsy * Asd) / (1.3 * fm * b * dEff);
+  const MuNmm = mat.fsy * Asd * dEff * Math.max(bracket, 0);
+  const MuKnm = MuNmm / 1e6;
+  const phi = phiTBS(method);
+  const phiMuKnm = phi * MuKnm;
+  const util = phiMuKnm > 0 ? demandMKnm / phiMuKnm : Infinity;
+  return {
+    Asd_provided: AsdProvided, Asd_limit: AsdLimit, Asd_used: Asd,
+    b, d_eff: dEff, fm, fsy: mat.fsy,
+    Mu_kNm: MuKnm, phi, phi_Mu_kNm: phiMuKnm, demand_M_kNm: demandMKnm,
+    utilisation: util, pass: util <= 1, axis,
+  };
+}
+
+function detailingChecks(mat, geom, reo, method) {
+  const Ad = AdTotal(geom);
+  const Aov_v = Aov(reo, geom.L);
+  const Aoh_v = Aoh(reo, geom.H);
+  const checks = [];
+  const minAs = 0.002 * Ad;
+  checks.push({ ref: 'Cl 8.5.1(f)', rule: 'Vert reo As ≥ 0.002·Ad (axial min)',
+    limit: minAs, actual: Aov_v, status: Aov_v >= minAs ? 'PASS' : 'FAIL', always_on: true });
+  const vmax = Math.min(0.75 * geom.H, 3000), hmax = Math.min(0.75 * geom.L, 3000);
+  checks.push({ ref: 'Cl 8.7.2(ii)', rule: 'Vert spacing ≤ min(0.75·H, 3000)',
+    limit: vmax, actual: reo.vert_spacing, status: reo.vert_spacing <= vmax ? 'PASS' : 'FAIL', always_on: true });
+  checks.push({ ref: 'Cl 8.7.2(ii)', rule: 'Horiz spacing ≤ min(0.75·L, 3000)',
+    limit: hmax, actual: reo.horiz_spacing, status: reo.horiz_spacing <= hmax ? 'PASS' : 'FAIL', always_on: true });
+  const minV = 0.0013 * Ad, minH = 0.0007 * Ad;
+  checks.push({ ref: 'Cl 8.7.2(iii)', rule: 'Vert reo ≥ 0.0013·Ad',
+    limit: minV, actual: Aov_v, status: Aov_v >= minV ? 'PASS' : 'FAIL', always_on: true });
+  checks.push({ ref: 'Cl 8.7.2(iii)', rule: 'Horiz reo ≥ 0.0007·Ad',
+    limit: minH, actual: Aoh_v, status: Aoh_v >= minH ? 'PASS' : 'FAIL', always_on: true });
+  const ba = barArea(reo.vert_bar_dia);
+  checks.push({ ref: 'Cl 8.7.2(iv) / 8.10(b)', rule: 'Edge reo ≥ 100 mm² within 300 mm of edge',
+    limit: 100, actual: ba, status: ba >= 100 ? 'PASS' : 'FAIL', always_on: true });
+  checks.push({ ref: 'Cl 8.10(c)', rule: 'Main reo spacing ≤ 2000 mm (tension)',
+    limit: 2000, actual: reo.vert_spacing, status: reo.vert_spacing <= 2000 ? 'PASS' : 'FAIL', always_on: true });
+  checks.push({ ref: 'Cl 8.6(a)', rule: 'Bending reo spacing ≤ 2000 mm',
+    limit: 2000, actual: reo.vert_spacing, status: reo.vert_spacing <= 2000 ? 'PASS' : 'FAIL', always_on: true });
+  if (method.enforce_eq_detailing) {
+    const eqMaxSp = 800, eqMinR = 0.0013 * Ad;
+    checks.push({ ref: 'Cl 8.4.5', rule: 'EQ: vert spacing ≤ 800 mm',
+      limit: eqMaxSp, actual: reo.vert_spacing, status: reo.vert_spacing <= eqMaxSp ? 'PASS' : 'FAIL', always_on: false });
+    checks.push({ ref: 'Cl 8.4.5', rule: 'EQ: horiz spacing ≤ 800 mm',
+      limit: eqMaxSp, actual: reo.horiz_spacing, status: reo.horiz_spacing <= eqMaxSp ? 'PASS' : 'FAIL', always_on: false });
+    checks.push({ ref: 'Cl 8.4.5', rule: 'EQ: vert reo ≥ 0.0013·Ad',
+      limit: eqMinR, actual: Aov_v, status: Aov_v >= eqMinR ? 'PASS' : 'FAIL', always_on: false });
+    checks.push({ ref: 'Cl 8.4.5', rule: 'EQ: horiz reo ≥ 0.0013·Ad',
+      limit: eqMinR, actual: Aoh_v, status: Aoh_v >= eqMinR ? 'PASS' : 'FAIL', always_on: false });
+    checks.push({ ref: 'Cl 8.4.5', rule: 'EQ: wall must be FULLY GROUTED',
+      limit: 'full', actual: geom.grouting, status: geom.grouting === 'full' ? 'PASS' : 'FAIL', always_on: false });
+  }
+  return checks;
+}
+
+function checkLoadCase(inputs, lc) {
+  const Nc = Math.max(lc.Nc_static || 0, lc.Nc_area || 0);
+  const Nt = lc.Nt || 0;
+  const Mip = Math.max(Math.abs(lc.Mx_top || 0), Math.abs(lc.Mx_btm || 0));
+  const Vip = Math.max(Math.abs(lc.Vx_top || 0), Math.abs(lc.Vx_btm || 0));
+  const Moop = Math.max(Math.abs(lc.My_top || 0), Math.abs(lc.My_btm || 0));
+  const comp = compressionCheck(inputs.material, inputs.geometry, inputs.reinforcement,
+                                inputs.slenderness, inputs.eccentricity, inputs.method, Nc);
+  const tens = tensionCheck(inputs.material, inputs.geometry, inputs.reinforcement, inputs.method, Nt);
+  const shear = shearCheck(inputs.material, inputs.geometry, inputs.reinforcement, inputs.method, Vip);
+  const stab = stabilityCheck(inputs.material, inputs.geometry, inputs.reinforcement,
+                              inputs.method, Nc, Vip);
+  const flexIp = inputs.method.bending_method === 'explicit_8_6'
+    ? flexureCheck86(inputs.material, inputs.geometry, inputs.reinforcement, inputs.method, Mip, 'in_plane')
+    : null;
+  const flexOop = inputs.method.include_oop_bending
+    ? flexureCheck86(inputs.material, inputs.geometry, inputs.reinforcement, inputs.method, Moop, 'out_of_plane')
+    : null;
+  const utils = [comp.utilisation, tens.utilisation, shear.utilisation];
+  if (stab.applies) utils.push(stab.utilisation);
+  if (flexIp) utils.push(flexIp.utilisation);
+  if (flexOop) utils.push(flexOop.utilisation);
+  const finite = utils.filter(u => isFinite(u));
+  const maxUtil = finite.length ? Math.max(...finite, 0) : 0;
+  return {
+    lc_name: lc.name || 'LC', Nc_kN: Nc, Nt_kN: Nt, M_inplane_kNm: Mip, V_inplane_kN: Vip, M_oop_kNm: Moop,
+    compression: comp, tension: tens, shear, stability: stab,
+    flexure_inplane: flexIp, flexure_oop: flexOop,
+    detailing: detailingChecks(inputs.material, inputs.geometry, inputs.reinforcement, inputs.method),
+    max_utilisation: maxUtil, pass: maxUtil <= 1.0,
+  };
+}
+
+function checkMany(inputs, loadCases) {
+  const results = loadCases.map(lc => checkLoadCase(inputs, lc));
+  if (!results.length) return { load_cases: [], governing: null, governing_lc_index: null };
+  let gIdx = 0;
+  for (let i = 1; i < results.length; i++) if (results[i].max_utilisation > results[gIdx].max_utilisation) gIdx = i;
+  return { load_cases: results, governing_lc_index: gIdx, governing: results[gIdx], engine_version: ENGINE_VERSION };
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// UI WIRING
+// ════════════════════════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const STATE = { lcs: null, walls: null, activeWallId: null, activeLcIndex: null };
+
+function getInputs() {
+  const series = document.querySelector('#seriesChips .chip.active')?.dataset.series || '190';
+  const grouting = document.querySelector('#groutChips .chip.active')?.dataset.grout || 'full';
+  const fuc = parseFloat(document.querySelector('#fucChips .chip.active')?.dataset.fuc || '15');
+  const fcg = parseFloat(document.querySelector('#fcgChips .chip.active')?.dataset.fcg || '20');
+  const bedding = document.querySelector('#bedChips .chip.active')?.dataset.bed || 'full';
+  const mortar = document.querySelector('#mortarChips .chip.active')?.dataset.mortar || 'M3';
+  const reinforced = document.querySelector('#reinfChips .chip.active')?.dataset.reinf === 'true';
+  const alphar = parseFloat(document.querySelector('#alpharChips .chip.active')?.dataset.alphar || '0.4');
+  const oop = document.querySelector('#oopChips .chip.active')?.dataset.oop === 'true';
+  const eq = document.querySelector('#eqChips .chip.active')?.dataset.eq === 'true';
+  const stab = document.querySelector('#stabChips .chip.active')?.dataset.stab === 'true';
+  const cap = document.querySelector('#capChips .chip.active')?.dataset.cap === 'true';
+  return {
+    geometry: { L: +$('inL').value, t: +$('inT').value, H: +$('inH').value, tfs: +$('inTfs').value, grouting },
+    material: { fuc, fcg, unit_type: 'concrete', bedding, mortar, kh: 1.3, fsy: FSY, unit_density_high: true, kc_override: null },
+    reinforcement: {
+      vert_primary_code:    $('inVertPrimary').value,
+      vert_primary_spacing: +$('inVertPrimarySp').value,
+      vert_additional_code:    $('inVertAdd').value,
+      vert_additional_spacing: +$('inVertAddSp').value,
+      horiz_primary_code:    $('inHorizPrimary').value,
+      horiz_primary_spacing: +$('inHorizPrimarySp').value,
+      horiz_additional_code:    $('inHorizAdd').value,
+      horiz_additional_spacing: +$('inHorizAddSp').value,
+    },
+    slenderness: { av: +$('inAv').value, ah: +$('inAh').value, kt: 1.0, edges_supported: +$('inAh').value > 0 ? 'one' : 'none' },
+    eccentricity: { e: +$('inE').value },
+    method: {
+      reinforced, alphar, bending_method: $('inBendMethod').value, sr_rule: $('inSrRule').value,
+      enforce_cl_8_8_cap: cap, enforce_stability_check: stab, enforce_eq_detailing: eq,
+      enforce_concentrated_loads: false, include_oop_bending: oop, no_top_restraint: stab,
+    },
+  };
+}
+
+function getActiveLoadCases() {
+  const mode = document.querySelector('#loadModeChips .chip.active')?.dataset.mode || 'manual';
+  if (mode === 'manual') {
+    return [{
+      name: 'Manual', Nc_static: +$('inNc').value, Nc_area: 0, Nt: +$('inNt').value,
+      Mx_top: +$('inM').value, Mx_btm: 0, My_top: +($('inMy')?.value || 0), My_btm: 0,
+      Vx_top: +$('inV').value, Vx_btm: 0, Vy_top: +($('inVy')?.value || 0), Vy_btm: 0,
+    }];
+  }
+  return STATE.lcs || [];
+}
+
+function recompute() {
+  let inputs;
+  try { inputs = getInputs(); } catch (e) { showError('Inputs error', e.message); return; }
+  const lcs = getActiveLoadCases();
+  if (!lcs.length) { renderNoLoad(); return; }
+  let res;
+  if (lcs.length === 1) {
+    const single = checkLoadCase(inputs, lcs[0]);
+    res = { load_cases: [single], governing: single, governing_lc_index: 0 };
+  } else {
+    res = checkMany(inputs, lcs);
+  }
+  STATE.lastResult = res;
+  STATE.lastInputs = inputs;
+  renderResults(res, inputs);
+  renderModelViews(res, inputs);
+}
+
+function renderNoLoad() {
+  $('utilNum').textContent = '—';
+  $('heroStatus').textContent = 'no load cases';
+  $('heroHeadline').textContent = 'Add a load case to begin';
+}
+
+function setHeroGauge(util) {
+  const ring = $('utilRingFg');
+  const C = 263.9;
+  const clamped = Math.min(util, 1.5);
+  const offset = C * (1 - clamped / 1.5);
+  ring.style.strokeDashoffset = offset;
+  let color;
+  if (util <= 0.7) color = '#788c5d';
+  else if (util <= 1.0) color = '#d97757';
+  else color = '#c15a3e';
+  ring.style.stroke = color;
+}
+
+function renderResults(res, inputs) {
+  const g = res.governing;
+  const u = g.max_utilisation;
+  $('utilNum').textContent = isFinite(u) ? u.toFixed(2) : '∞';
+  setHeroGauge(u);
+  const status = $('heroStatus');
+  status.classList.remove('pass', 'fail', 'warn');
+  if (g.pass) {
+    status.textContent = 'PASS';
+    status.classList.add('pass');
+    $('heroHeadline').innerHTML = `Wall <strong>adequate</strong> for governing case`;
+  } else {
+    status.textContent = 'FAIL';
+    status.classList.add('fail');
+    $('heroHeadline').innerHTML = `Wall <strong>INADEQUATE</strong> — review governing case`;
+  }
+  let governingMode = 'compression';
+  let umax = g.compression.utilisation;
+  if (g.tension.utilisation > umax) { umax = g.tension.utilisation; governingMode = 'tension'; }
+  if (g.shear.utilisation > umax)   { umax = g.shear.utilisation;   governingMode = 'shear'; }
+  if (g.flexure_inplane && g.flexure_inplane.utilisation > umax) { governingMode = 'flexure'; }
+  if (g.flexure_oop && g.flexure_oop.utilisation > umax) { governingMode = 'OOP flex'; }
+  $('heroMeta').innerHTML =
+    `<span><strong>${g.lc_name}</strong></span>` +
+    `<span><strong>N*:</strong> ${g.Nc_kN.toFixed(0)} kN</span>` +
+    `<span><strong>M*:</strong> ${g.M_inplane_kNm.toFixed(0)} kNm</span>` +
+    `<span><strong>V*:</strong> ${g.V_inplane_kN.toFixed(0)} kN</span>` +
+    `<span><strong>Gov:</strong> ${governingMode}</span>`;
+
+  // Three core check tiles
+  setCheck('Comp', g.compression.utilisation, g.compression.pass,
+    `φNu = ${g.compression.phi_Nuc_total_kN.toFixed(0)} kN — Cl 8.5.1`);
+  setCheck('Tens', g.tension.utilisation, g.tension.pass,
+    g.tension.verdict === 'n/a' ? 'N/A — no tension' : `φNt = ${g.tension.phi_Nt_total_kN.toFixed(0)} kN`);
+  setCheck('Shear', g.shear.utilisation, g.shear.pass,
+    `φVu = ${g.shear.phi_Vu_kN.toFixed(0)} kN — ${g.shear.branch_used}`);
+
+  // 4th tile rotates: priority Flex > OOP > Stability > "—"
+  const extra = $('extraTile');
+  const extraLabel = $('extraLabel');
+  if (g.flexure_inplane) {
+    extra.style.display = '';
+    extraLabel.textContent = 'Flexure';
+    extra.dataset.subkind = 'flex';
+    setCheck('Extra', g.flexure_inplane.utilisation, g.flexure_inplane.pass,
+      `φMu = ${g.flexure_inplane.phi_Mu_kNm.toFixed(0)} kNm — Cl 8.6`);
+  } else if (g.flexure_oop) {
+    extra.style.display = '';
+    extraLabel.textContent = 'OOP Flex';
+    extra.dataset.subkind = 'oop';
+    setCheck('Extra', g.flexure_oop.utilisation, g.flexure_oop.pass,
+      `φMu = ${g.flexure_oop.phi_Mu_kNm.toFixed(0)} kNm — Cl 8.6 OOP`);
+  } else if (g.stability && g.stability.applies) {
+    extra.style.display = '';
+    extraLabel.textContent = 'Stability';
+    extra.dataset.subkind = 'stab';
+    setCheck('Extra', g.stability.utilisation, g.stability.pass,
+      `Vd,stab = ${g.stability.Vd_stab_kN.toFixed(0)} kN — Cl 8.7.4`);
+  } else {
+    extra.style.display = 'none';
+    extra.dataset.subkind = '';
+  }
+
+  // Detailing
+  renderDetailing(g.detailing);
+
+  // LC table
+  if (res.load_cases.length > 1) {
+    $('lcSection').style.display = '';
+    renderLcTable(res);
+  } else {
+    $('lcSection').style.display = 'none';
+  }
+  if (STATE.walls && Object.keys(STATE.walls).length > 1) {
+    $('projectSection').style.display = '';
+    renderProjectTable(inputs);
+  } else {
+    $('projectSection').style.display = 'none';
+  }
+
+  // Method banner
+  const bm = inputs.method.bending_method.replace(/_/g, '-');
+  $('methodBanner').textContent =
+    `Method: ${bm} · αr=${inputs.method.alphar} · Cl 8.8 cap ${inputs.method.enforce_cl_8_8_cap ? 'on' : 'off'}` +
+    (inputs.method.enforce_eq_detailing ? ' · EQ detailing on' : '') +
+    (inputs.method.enforce_stability_check ? ' · Cl 8.7.4 on' : '') +
+    (inputs.method.include_oop_bending ? ' · OOP on' : '');
+
+  // Inputs panel derived banners
+  $('dispFm').textContent = computeFm(inputs.material).toFixed(2);
+  $('dispKc').textContent = getKc(inputs.material).toFixed(1);
+  $('dispSr1').textContent = g.compression.Sr1.toFixed(2);
+  $('dispSr2').textContent = g.compression.Sr2.toFixed(2);
+  $('dispSr').textContent = g.compression.Sr_governing.toFixed(2);
+  $('dispKes').textContent = g.compression.kes.toFixed(3);
+  $('dispEt').textContent = (inputs.eccentricity.e / inputs.geometry.t).toFixed(3);
+  $('dispEMN').textContent = g.Nc_kN > 0 ? Math.round(g.M_inplane_kNm * 1000 / g.Nc_kN) : '—';
+  $('dispAsv').textContent = AsvPerM(inputs.reinforcement).toFixed(0);
+  $('dispAsh').textContent = AshPerM(inputs.reinforcement).toFixed(0);
+}
+
+function setCheck(suffix, util, pass, detail) {
+  const valEl = $('val' + suffix);
+  const dotEl = $('dot' + suffix);
+  const barEl = $('bar' + suffix);
+  const detEl = $('detail' + suffix);
+  valEl.textContent = isFinite(util) ? util.toFixed(2) : '∞';
+  valEl.classList.toggle('fail', !pass && util > 0);
+  dotEl.classList.remove('fail', 'na');
+  if (util === 0) dotEl.classList.add('na');
+  else if (!pass) dotEl.classList.add('fail');
+  barEl.classList.toggle('fail', !pass);
+  barEl.style.width = Math.min(util, 1.5) / 1.5 * 100 + '%';
+  if (detEl) detEl.textContent = detail;
+}
+
+function renderDetailing(checks) {
+  const tb = $('detailingTable').querySelector('tbody');
+  tb.innerHTML = '';
+  for (const c of checks) {
+    const cls = c.status === 'PASS' ? 'status-pass' : c.status === 'FAIL' ? 'status-fail' : 'status-na';
+    tb.insertAdjacentHTML('beforeend',
+      `<tr><td>${c.ref}</td><td>${c.rule}</td><td class="${cls}" style="text-align:right;">${c.status}</td></tr>`);
+  }
+}
+
+function renderLcTable(res) {
+  const tb = $('lcTable').querySelector('tbody');
+  tb.innerHTML = '';
+  res.load_cases.forEach((lc, i) => {
+    const tr = document.createElement('tr');
+    if (i === res.governing_lc_index) tr.classList.add('governing');
+    if (!lc.pass) tr.classList.add('fail-row');
+    tr.innerHTML = `<td>${lc.lc_name}</td><td>${lc.Nc_kN.toFixed(0)}</td><td>${lc.M_inplane_kNm.toFixed(0)}</td>` +
+                   `<td>${lc.V_inplane_kN.toFixed(0)}</td><td>${lc.max_utilisation.toFixed(2)}</td>`;
+    tr.addEventListener('click', () => {
+      STATE.activeLcIndex = i;
+      const newRes = { load_cases: res.load_cases, governing: lc, governing_lc_index: i };
+      renderResults(newRes, STATE.lastInputs);
+      renderModelViews(newRes, STATE.lastInputs);
+    });
+    tb.appendChild(tr);
+  });
+}
+
+function renderProjectTable(inputs) {
+  const tb = $('projTable').querySelector('tbody');
+  tb.innerHTML = '';
+  for (const [wallId, lcs] of Object.entries(STATE.walls)) {
+    const w0 = lcs[0];
+    const wInputs = JSON.parse(JSON.stringify(inputs));
+    if (w0.t) wInputs.geometry.t = w0.t * 1000;
+    if (w0.L) wInputs.geometry.L = w0.L * 1000;
+    if (w0.H) wInputs.geometry.H = w0.H * 1000;
+    const res = checkMany(wInputs, lcs);
+    const g = res.governing;
+    const tr = document.createElement('tr');
+    if (wallId === STATE.activeWallId) tr.classList.add('governing');
+    if (!g.pass) tr.classList.add('fail-row');
+    tr.innerHTML = `<td>${wallId}</td><td>${lcs.length}</td><td>${g.lc_name}</td>` +
+                   `<td>${g.compression.utilisation.toFixed(2)}</td><td>${g.tension.utilisation.toFixed(2)}</td>` +
+                   `<td>${g.shear.utilisation.toFixed(2)}</td><td><strong>${g.max_utilisation.toFixed(2)}</strong></td>`;
+    tr.addEventListener('click', () => {
+      $('wallPicker').value = wallId;
+      $('wallPicker').dispatchEvent(new Event('change'));
+    });
+    tb.appendChild(tr);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// 3D RENDERING (Three.js)
+// ════════════════════════════════════════════════════════════════════════
+let three = null;
+
+function init3D() {
+  if (typeof THREE === 'undefined') { console.warn('THREE not loaded'); return; }
+  const container = $('canvas3d');
+  if (!container) return;
+  const w = Math.max(100, container.clientWidth || 600);
+  const h = Math.max(100, container.clientHeight || 380);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xfaf9f5);
+  const camera = new THREE.PerspectiveCamera(35, w/h, 1, 50000);
+  camera.position.set(3500, 2800, 3500);
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(window.devicePixelRatio || 1);
+  container.appendChild(renderer.domElement);
+  let controls = null;
+  if (typeof THREE.OrbitControls === 'function') {
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 1500, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+  } else {
+    camera.lookAt(0, 1500, 0);
+  }
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+  dir.position.set(2000, 4000, 2000); scene.add(dir);
+  const dir2 = new THREE.DirectionalLight(0xfff3e0, 0.4);
+  dir2.position.set(-2000, 3000, -1000); scene.add(dir2);
+  const wallGroup = new THREE.Group();
+  scene.add(wallGroup);
+  three = { scene, camera, renderer, controls, wallGroup, container };
+  function animate() {
+    requestAnimationFrame(animate);
+    if (controls && controls.update) controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+  const ro = new ResizeObserver(() => {
+    const w = container.clientWidth, h = container.clientHeight;
+    if (w === 0 || h === 0) return;
+    camera.aspect = w/h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  });
+  ro.observe(container);
+}
+
+function render3D(inputs) {
+  if (!three || typeof THREE === 'undefined') return;
+  const g = three.wallGroup;
+  while (g.children.length) g.remove(g.children[0]);
+  const L = inputs.geometry.L, t = inputs.geometry.t, H = inputs.geometry.H, tfs = inputs.geometry.tfs;
+
+  // Wall body (semi-transparent grey block)
+  const wallMat = new THREE.MeshLambertMaterial({ color: 0xe8e6dc, transparent: true, opacity: 0.5 });
+  const wallEdge = new THREE.LineBasicMaterial({ color: 0x141413, transparent: true, opacity: 0.4 });
+  const wallGeom = new THREE.BoxGeometry(L, H, t);
+  const wall = new THREE.Mesh(wallGeom, wallMat);
+  wall.position.set(0, H/2, 0);
+  g.add(wall);
+  // Edges — must position the LineSegments BEFORE adding to the group;
+  // Group.add() returns the group, so chaining .position.set onto it would move the whole group.
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(wallGeom), wallEdge);
+  edges.position.set(0, H/2, 0);
+  g.add(edges);
+
+  // Block course wireframe (every 200 mm horizontal lines for typical block)
+  const courseHt = 200;
+  const courseMat = new THREE.LineBasicMaterial({ color: 0x4a4a47, transparent: true, opacity: 0.18 });
+  for (let y = courseHt; y < H; y += courseHt) {
+    const pts = [
+      new THREE.Vector3(-L/2, y, t/2 + 0.5),
+      new THREE.Vector3( L/2, y, t/2 + 0.5),
+    ];
+    g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), courseMat));
+    const pts2 = [
+      new THREE.Vector3(-L/2, y, -t/2 - 0.5),
+      new THREE.Vector3( L/2, y, -t/2 - 0.5),
+    ];
+    g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts2), courseMat));
+  }
+
+  // Grout core (translucent blue, only when fully grouted)
+  if (inputs.geometry.grouting === 'full') {
+    const groutMat = new THREE.MeshLambertMaterial({
+      color: 0x6a9bcc, transparent: true, opacity: 0.18
+    });
+    const groutGeom = new THREE.BoxGeometry(L - 4, H - 4, Math.max(0, t - 2*tfs));
+    const grout = new THREE.Mesh(groutGeom, groutMat);
+    grout.position.set(0, H/2, 0); g.add(grout);
+  }
+
+  // Vertical bars
+  const reo = inputs.reinforcement;
+  const barMatV = new THREE.MeshLambertMaterial({ color: 0xc15a3e });
+  const vertEf = isPair(reo.vert_primary_code) || isPair(reo.vert_additional_code);
+  // Vert face offset: when EF/mesh, place bars near each face (between face shell and grout)
+  const zOffsets = vertEf ? [-(t/2 - tfs - 8), (t/2 - tfs - 8)] : [0];
+  function drawVertLayer(code, sv) {
+    if (!code || code === '-') return;
+    const dv = barDiaFromCode(code) || 12;
+    const barGeomV = new THREE.CylinderGeometry(dv/2, dv/2, H, 12);
+    const stepCount = Math.floor(L / sv);
+    for (let i = 0; i <= stepCount; i++) {
+      const x = -L/2 + (i + 0.5) * sv;
+      if (Math.abs(x) > L/2) continue;
+      for (const z of zOffsets) {
+        const bar = new THREE.Mesh(barGeomV, barMatV);
+        bar.position.set(x, H/2, z);
+        g.add(bar);
+      }
+    }
+  }
+  drawVertLayer(reo.vert_primary_code,    reo.vert_primary_spacing);
+  drawVertLayer(reo.vert_additional_code, reo.vert_additional_spacing);
+
+  // Horizontal bars
+  const barMatH = new THREE.MeshLambertMaterial({ color: 0xd97757 });
+  const horizEf = isPair(reo.horiz_primary_code) || isPair(reo.horiz_additional_code);
+  const zOffsetsH = horizEf ? [-(t/2 - tfs - 8), (t/2 - tfs - 8)] : [0];
+  function drawHorizLayer(code, sh) {
+    if (!code || code === '-') return;
+    const dh = barDiaFromCode(code) || 10;
+    const barGeomH = new THREE.CylinderGeometry(dh/2, dh/2, L, 12);
+    const nH = Math.floor(H / sh);
+    for (let i = 1; i <= nH; i++) {
+      const y = i * sh;
+      if (y > H) break;
+      for (const z of zOffsetsH) {
+        const bar = new THREE.Mesh(barGeomH, barMatH);
+        bar.rotation.z = Math.PI / 2;
+        bar.position.set(0, y, z);
+        g.add(bar);
+      }
+    }
+  }
+  drawHorizLayer(reo.horiz_primary_code,    reo.horiz_primary_spacing);
+  drawHorizLayer(reo.horiz_additional_code, reo.horiz_additional_spacing);
+
+  // Floor slab indicator (top + bottom)
+  const slabT = 200;
+  const slabMat = new THREE.MeshLambertMaterial({ color: 0xd4cfc0, transparent: true, opacity: 0.5 });
+  const slabSize = Math.max(L, t) * 1.4;
+  const slabGeom = new THREE.BoxGeometry(slabSize, slabT, slabSize);
+  const slabBot = new THREE.Mesh(slabGeom, slabMat);
+  slabBot.position.set(0, -slabT/2, 0); g.add(slabBot);
+  const slabTop = new THREE.Mesh(slabGeom, slabMat);
+  slabTop.position.set(0, H + slabT/2, 0); g.add(slabTop);
+
+  // Eccentricity arrow (orange, on top of wall)
+  const e = inputs.eccentricity.e;
+  if (Math.abs(e) > 0) {
+    const arrowDir = new THREE.Vector3(0, 0, 1).normalize();
+    const arrow = new THREE.ArrowHelper(arrowDir,
+      new THREE.Vector3(0, H + slabT + 50, -e * 0.5),
+      Math.abs(e) * 1.5,
+      0xd97757, Math.abs(e) * 0.4, Math.abs(e) * 0.3);
+    g.add(arrow);
+  }
+
+  // Re-aim camera target
+  if (three.controls && three.controls.target) three.controls.target.set(0, H/2, 0);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// 2D VISUALISATIONS
+// ════════════════════════════════════════════════════════════════════════
+function renderModelViews(res, inputs) {
+  render3D(inputs);
+  drawSection(inputs);
+  drawElevation(inputs);
+  drawCapacityBars(res.governing);
+  drawNM(res, inputs);
+  drawStress(res.governing, inputs);
+}
+
+function drawSection(inputs) {
+  const svg = $('svgPlan');
+  const W = 600, H = 380, pad = 50;
+  const L = inputs.geometry.L, t = inputs.geometry.t, tfs = inputs.geometry.tfs;
+  const sx = (W - 2*pad) / L;
+  const sy = Math.min((H - 2*pad - 60) / t, sx * 4);
+  const wW = L * sx, wH = t * sy;
+  const x0 = (W - wW) / 2, y0 = (H - wH) / 2 + 10;
+  let s = `<rect width="${W}" height="${H}" fill="#faf9f5"/>`;
+  // Wall outer (face shells)
+  s += `<rect x="${x0}" y="${y0}" width="${wW}" height="${wH}" fill="#e8e6dc" stroke="#141413" stroke-opacity="0.5" stroke-width="1.2"/>`;
+  // Grout core
+  if (inputs.geometry.grouting === 'full') {
+    s += `<rect x="${x0}" y="${y0 + tfs*sy}" width="${wW}" height="${wH - 2*tfs*sy}" fill="#6a9bcc" fill-opacity="0.18" stroke="#6a9bcc" stroke-dasharray="3 2"/>`;
+  }
+  // Vertical bars (red dots — single line or two lines for EF/mesh)
+  const reo = inputs.reinforcement;
+  const vertEf = isPair(reo.vert_primary_code) || isPair(reo.vert_additional_code);
+  const yOffsets = vertEf ? [y0 + tfs*sy*0.6, y0 + wH - tfs*sy*0.6] : [y0 + wH/2];
+  function plotVertLayer(code, sv) {
+    if (!code || code === '-') return;
+    const n = Math.floor(L / sv) + 1;
+    for (let i = 0; i < n; i++) {
+      const xb = x0 + (i*sv + sv/2) * sx;
+      if (xb >= x0 + wW - 2) continue;
+      for (const yb of yOffsets) {
+        s += `<circle cx="${xb}" cy="${yb}" r="3.5" fill="#c15a3e"/>`;
+      }
+    }
+  }
+  plotVertLayer(reo.vert_primary_code,    reo.vert_primary_spacing);
+  plotVertLayer(reo.vert_additional_code, reo.vert_additional_spacing);
+  // Eccentricity arrow
+  const e = inputs.eccentricity.e;
+  const xCent = x0 + wW/2;
+  const yE = y0 - 18;
+  const eX = xCent + e * sy;
+  s += `<line x1="${xCent}" y1="${yE}" x2="${eX}" y2="${yE}" stroke="#d97757" stroke-width="1.5"/>`;
+  s += `<polygon points="${eX-5},${yE-3} ${eX+3},${yE} ${eX-5},${yE+3}" fill="#d97757"/>`;
+  s += `<text x="${(xCent+eX)/2}" y="${yE - 5}" text-anchor="middle" font-size="10" fill="#d97757" font-weight="600">e=${e}</text>`;
+  // Annotations
+  s += `<text x="${W/2}" y="${y0 + wH + 24}" text-anchor="middle" font-size="11" fill="#141413">L = ${L} mm</text>`;
+  s += `<text x="${x0 - 12}" y="${y0 + wH/2 + 4}" text-anchor="end" font-size="11" fill="#141413">t = ${t}</text>`;
+  s += `<text x="${x0 + wW + 8}" y="${y0 + tfs*sy/2 + 3}" font-size="9" fill="#4a4a47">tfs=${tfs}</text>`;
+  s += `<text x="${pad}" y="${pad/2 + 6}" font-size="11" fill="#b0aea5" font-weight="600" letter-spacing="0.5">PLAN — looking down</text>`;
+  svg.innerHTML = s;
+}
+
+function drawElevation(inputs) {
+  const svg = $('svgElevation');
+  const W = 600, H = 380, pad = 50;
+  const L = inputs.geometry.L, hh = inputs.geometry.H;
+  const sx = (W - 2*pad) / L;
+  const sy = (H - 2*pad - 30) / hh;
+  const wW = L * sx, wH = hh * sy;
+  const x0 = (W - wW) / 2, y0 = pad + 10;
+  let s = `<rect width="${W}" height="${H}" fill="#faf9f5"/>`;
+  s += `<rect x="${x0}" y="${y0}" width="${wW}" height="${wH}" fill="#f3f1e8" stroke="#141413" stroke-opacity="0.5"/>`;
+  // Vertical bars (primary + additional, with EF noted in detail)
+  const reo = inputs.reinforcement;
+  function elevVertLayer(code, sv) {
+    if (!code || code === '-') return;
+    const n = Math.floor(L / sv);
+    const isEfLayer = isPair(code);
+    const sw = isEfLayer ? 1.6 : 1.2;
+    for (let i = 0; i <= n; i++) {
+      const xb = x0 + (i*sv + sv/2) * sx;
+      if (xb >= x0 + wW - 1) continue;
+      s += `<line x1="${xb}" y1="${y0}" x2="${xb}" y2="${y0+wH}" stroke="#c15a3e" stroke-width="${sw}"/>`;
+    }
+  }
+  elevVertLayer(reo.vert_primary_code,    reo.vert_primary_spacing);
+  elevVertLayer(reo.vert_additional_code, reo.vert_additional_spacing);
+  // Horizontal bars
+  function elevHorizLayer(code, sh) {
+    if (!code || code === '-') return;
+    const n = Math.floor(hh / sh);
+    for (let i = 1; i <= n; i++) {
+      const yb = y0 + i * sh * sy;
+      if (yb < y0 + wH - 1) s += `<line x1="${x0}" y1="${yb}" x2="${x0+wW}" y2="${yb}" stroke="#d97757" stroke-width="1"/>`;
+    }
+  }
+  elevHorizLayer(reo.horiz_primary_code,    reo.horiz_primary_spacing);
+  elevHorizLayer(reo.horiz_additional_code, reo.horiz_additional_spacing);
+  // Top support (hatching)
+  const hatchT = `<g stroke="#141413" stroke-opacity="0.6" stroke-width="1">`;
+  let topHatch = hatchT;
+  topHatch += `<line x1="${x0-15}" y1="${y0}" x2="${x0+wW+15}" y2="${y0}" stroke-width="1.6"/>`;
+  for (let xs = x0 - 10; xs < x0 + wW + 15; xs += 10) {
+    topHatch += `<line x1="${xs}" y1="${y0}" x2="${xs - 8}" y2="${y0 - 10}"/>`;
+  }
+  s += topHatch + `</g>`;
+  // Bottom support
+  let botHatch = `<g stroke="#141413" stroke-opacity="0.6" stroke-width="1">`;
+  botHatch += `<line x1="${x0-15}" y1="${y0+wH}" x2="${x0+wW+15}" y2="${y0+wH}" stroke-width="1.6"/>`;
+  for (let xs = x0 - 10; xs < x0 + wW + 15; xs += 10) {
+    botHatch += `<line x1="${xs}" y1="${y0+wH}" x2="${xs - 8}" y2="${y0+wH+10}"/>`;
+  }
+  s += botHatch + `</g>`;
+  // Annotations
+  s += `<text x="${W/2}" y="${y0 + wH + 30}" text-anchor="middle" font-size="11" fill="#141413">L = ${L} mm</text>`;
+  s += `<text x="${x0 - 30}" y="${y0 + wH/2}" text-anchor="middle" font-size="11" fill="#141413" transform="rotate(-90 ${x0-30} ${y0+wH/2})">H = ${hh} mm</text>`;
+  s += `<text x="${x0 + wW + 14}" y="${y0 - 6}" font-size="9" fill="#4a4a47">av=${inputs.slenderness.av} · ah=${inputs.slenderness.ah}</text>`;
+  s += `<text x="${pad}" y="${pad/2 + 6}" font-size="11" fill="#b0aea5" font-weight="600" letter-spacing="0.5">ELEVATION</text>`;
+  svg.innerHTML = s;
+}
+
+function drawCapacityBars(g) {
+  const svg = $('svgBars');
+  const W = 600, H = 380;
+  const items = [
+    { name: 'Compression', util: g.compression.utilisation, dem: g.Nc_kN, cap: g.compression.phi_Nuc_total_kN, unit: 'kN', ref: 'Cl 8.5.1' },
+    { name: 'Tension',     util: g.tension.utilisation,     dem: g.Nt_kN, cap: g.tension.phi_Nt_total_kN, unit: 'kN', ref: 'Cl 8.10' },
+    { name: 'Shear',       util: g.shear.utilisation,       dem: g.V_inplane_kN, cap: g.shear.phi_Vu_kN, unit: 'kN', ref: 'Cl 8.7/8.8' },
+  ];
+  if (g.flexure_inplane) items.push({ name: 'Flexure',  util: g.flexure_inplane.utilisation, dem: g.M_inplane_kNm, cap: g.flexure_inplane.phi_Mu_kNm, unit: 'kNm', ref: 'Cl 8.6' });
+  if (g.flexure_oop)     items.push({ name: 'OOP Flex', util: g.flexure_oop.utilisation,     dem: g.M_oop_kNm, cap: g.flexure_oop.phi_Mu_kNm, unit: 'kNm', ref: 'Cl 8.6 OOP' });
+  if (g.stability && g.stability.applies) items.push({ name: 'Stability', util: g.stability.utilisation, dem: g.V_inplane_kN, cap: g.stability.Vd_stab_kN, unit: 'kN', ref: 'Cl 8.7.4' });
+  const N = items.length;
+  const padX = 130, padY = 50, gap = 12;
+  const barH = (H - 2*padY) / N - gap;
+  const barW = W - padX - 60;
+  let s = `<rect width="${W}" height="${H}" fill="#faf9f5"/>`;
+  s += `<text x="${padX-10}" y="${padY-20}" text-anchor="end" font-size="11" fill="#b0aea5" font-weight="600" letter-spacing="0.5">CHECK</text>`;
+  s += `<text x="${padX + 10}" y="${padY-20}" font-size="11" fill="#b0aea5" font-weight="600" letter-spacing="0.5">UTILISATION</text>`;
+  items.forEach((it, i) => {
+    const y = padY + i * (barH + gap);
+    const u = Math.min(it.util, 1.5);
+    const fill = u <= 0.7 ? '#788c5d' : u <= 1.0 ? '#d97757' : '#c15a3e';
+    s += `<text x="${padX-10}" y="${y + barH/2 + 2}" text-anchor="end" font-size="11.5" fill="#141413" font-weight="600">${it.name}</text>`;
+    s += `<text x="${padX-10}" y="${y + barH/2 + 14}" text-anchor="end" font-size="9" fill="#b0aea5">${it.ref}</text>`;
+    s += `<rect x="${padX}" y="${y}" width="${barW}" height="${barH}" fill="#e8e6dc" rx="3"/>`;
+    s += `<rect x="${padX}" y="${y}" width="${(u/1.5)*barW}" height="${barH}" fill="${fill}" rx="3"/>`;
+    // η=1 marker
+    const x1 = padX + barW * (1.0/1.5);
+    s += `<line x1="${x1}" y1="${y - 4}" x2="${x1}" y2="${y + barH + 4}" stroke="#4a4a47" stroke-width="1" stroke-dasharray="2 2"/>`;
+    s += `<text x="${x1}" y="${y - 6}" text-anchor="middle" font-size="9" fill="#4a4a47">η=1</text>`;
+    // Inside-bar text
+    s += `<text x="${padX + 10}" y="${y + barH/2 + 4}" font-size="11" fill="#fff" font-weight="600">η = ${it.util.toFixed(2)}</text>`;
+    // Right-side dem/cap
+    s += `<text x="${padX + barW + 8}" y="${y + barH/2 + 4}" font-size="10" fill="#4a4a47">${it.dem.toFixed(0)} / ${it.cap.toFixed(0)} ${it.unit}</text>`;
+  });
+  svg.innerHTML = s;
+}
+
+function drawNM(res, inputs) {
+  const svg = $('svgNM');
+  const W = 600, H = 380, pad = 50;
+  const m = inputs.material, geom = inputs.geometry, reo = inputs.reinforcement;
+  const slend = inputs.slenderness, method = inputs.method;
+  const fm = computeFm(m), kc = getKc(m);
+  const Ab_m = AbPerM(geom), Ag_m = AgPerM(geom), As_m = AsvPerM(reo);
+  const grout = groutEffectiveStress(m.fcg);
+  const phi = phiAxial(method);
+  const Sr1 = SrEq1(slend, geom);
+  const env = [];
+  for (let er = 0; er <= 0.5; er += 0.01) {
+    const e = er * geom.t;
+    const k = Math.max(0, Math.min(1, (1 - 0.025 * Sr1) * (1 - 2 * er)));
+    const NuPerM = phi * k * (fm * Ab_m + kc * grout * Ag_m + method.alphar * m.fsy * As_m) / 1000;
+    const Nu = NuPerM * geom.L / 1000;
+    const Mu = Nu * e / 1000;
+    env.push({ M: Mu, N: Nu });
+  }
+  const maxN = Math.max(...env.map(p => p.N), ...res.load_cases.map(lc => lc.Nc_kN));
+  const maxM = Math.max(...env.map(p => p.M), ...res.load_cases.map(lc => lc.M_inplane_kNm));
+  const sxN = (W - 2*pad) / (maxM * 1.1 + 0.001);
+  const syN = (H - 2*pad) / (maxN * 1.1 + 0.001);
+  const x0 = pad, y0 = H - pad;
+  let s = `<rect width="${W}" height="${H}" fill="#faf9f5"/>`;
+  s += `<text x="${pad}" y="${pad/2 + 6}" font-size="11" fill="#b0aea5" font-weight="600" letter-spacing="0.5">N–M ENVELOPE — kes-based, Cl 8.5.1</text>`;
+  // Axes
+  s += `<line x1="${pad}" y1="${y0}" x2="${W-pad}" y2="${y0}" stroke="#141413" stroke-opacity="0.6"/>`;
+  s += `<line x1="${pad}" y1="${y0}" x2="${pad}" y2="${pad}" stroke="#141413" stroke-opacity="0.6"/>`;
+  s += `<text x="${W/2}" y="${H - 14}" text-anchor="middle" font-size="11" fill="#4a4a47">M* (kNm)</text>`;
+  s += `<text x="${15}" y="${H/2}" text-anchor="middle" font-size="11" fill="#4a4a47" transform="rotate(-90 15 ${H/2})">N* (kN)</text>`;
+  // Envelope
+  let path = '';
+  env.forEach((p, i) => {
+    const x = x0 + p.M * sxN, y = y0 - p.N * syN;
+    path += (i === 0 ? 'M' : 'L') + ` ${x} ${y} `;
+  });
+  s += `<path d="${path}" stroke="#d97757" stroke-width="2" fill="none"/>`;
+  // LC dots
+  res.load_cases.forEach((lc, i) => {
+    const x = x0 + lc.M_inplane_kNm * sxN, y = y0 - lc.Nc_kN * syN;
+    const isGov = i === res.governing_lc_index;
+    const fill = lc.pass ? '#788c5d' : '#c15a3e';
+    s += `<circle cx="${x}" cy="${y}" r="${isGov ? 7 : 4.5}" fill="${fill}" stroke="${isGov ? '#d97757' : '#fff'}" stroke-width="${isGov ? 2 : 1}"/>`;
+  });
+  svg.innerHTML = s;
+}
+
+function drawStress(g, inputs) {
+  const svg = $('svgStress');
+  const W = 600, H = 380, pad = 50;
+  const N = g.Nc_kN, M = g.M_inplane_kNm, L = inputs.geometry.L, t = inputs.geometry.t;
+  const A = L * t, Z = t * L * L / 6;
+  const sigAvg = N * 1000 / A, sigBend = M * 1e6 / Z;
+  const sigMax = sigAvg + sigBend, sigMin = sigAvg - sigBend;
+  let lc, lt;
+  if (sigMin >= 0) { lc = L; lt = 0; }
+  else { lc = sigMax * L / (Math.abs(sigMin) + sigMax); lt = L - lc; }
+  const sx = (W - 2*pad) / L;
+  const wallY = H - 90;
+  const x0 = pad;
+  let s = `<rect width="${W}" height="${H}" fill="#faf9f5"/>`;
+  s += `<text x="${pad}" y="${pad/2 + 6}" font-size="11" fill="#b0aea5" font-weight="600" letter-spacing="0.5">STRESS BLOCK — N*=${N.toFixed(0)} kN  M*=${M.toFixed(0)} kNm</text>`;
+  // Compression length
+  s += `<rect x="${x0}" y="${wallY}" width="${lc*sx}" height="26" fill="#c4dfa4" stroke="#788c5d"/>`;
+  if (lt > 0) {
+    s += `<rect x="${x0 + lc*sx}" y="${wallY}" width="${lt*sx}" height="26" fill="#f4cbb7" stroke="#c15a3e"/>`;
+  }
+  s += `<text x="${x0 + lc*sx/2}" y="${wallY + 17}" text-anchor="middle" font-size="11" fill="#3d4f2c" font-weight="600">lc = ${lc.toFixed(0)} mm</text>`;
+  if (lt > 0) {
+    s += `<text x="${x0 + lc*sx + lt*sx/2}" y="${wallY + 17}" text-anchor="middle" font-size="11" fill="#7a2f1c" font-weight="600">lt = ${lt.toFixed(0)}</text>`;
+  }
+  // Stress diagram
+  const stressTop = pad + 30;
+  const stressBot = wallY - 14;
+  const stressH = stressBot - stressTop;
+  const sigScale = stressH / Math.max(Math.abs(sigMax), Math.abs(sigMin), 0.001);
+  const yLeft = stressBot - sigMax * sigScale;
+  const yRight = stressBot - sigMin * sigScale;
+  s += `<line x1="${x0}" y1="${stressBot}" x2="${x0 + L*sx}" y2="${stressBot}" stroke="#b0aea5" stroke-dasharray="3 3"/>`;
+  s += `<polygon points="${x0},${stressBot} ${x0},${yLeft} ${x0+L*sx},${yRight} ${x0+L*sx},${stressBot}" fill="#d97757" fill-opacity="0.18" stroke="#d97757" stroke-width="1.6"/>`;
+  s += `<text x="${x0}" y="${yLeft - 6}" text-anchor="middle" font-size="11" fill="#141413" font-weight="600">σmax = ${sigMax.toFixed(2)} MPa</text>`;
+  s += `<text x="${x0 + L*sx}" y="${yRight - 6}" text-anchor="middle" font-size="11" fill="#141413" font-weight="600">σmin = ${sigMin.toFixed(2)} MPa</text>`;
+  s += `<text x="${W/2}" y="${H - 14}" text-anchor="middle" font-size="11" fill="#4a4a47">L = ${L} mm</text>`;
+  svg.innerHTML = s;
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// VISUAL TABS
+// ════════════════════════════════════════════════════════════════════════
+$('geomTabs').addEventListener('click', e => {
+  if (!e.target.classList.contains('tab')) return;
+  document.querySelectorAll('#geomTabs .tab').forEach(t => t.classList.remove('active'));
+  e.target.classList.add('active');
+  const view = e.target.dataset.geom;
+  $('canvas3d').style.display = view === '3d' ? '' : 'none';
+  $('canvasSection').style.display = view === 'section' ? '' : 'none';
+  $('canvasElevation').style.display = view === 'elevation' ? '' : 'none';
+  if (view === '3d' && three) {
+    // Trigger resize to ensure renderer fits
+    setTimeout(() => {
+      const c = $('canvas3d');
+      if (c.clientWidth && c.clientHeight && three.renderer) {
+        three.camera.aspect = c.clientWidth / c.clientHeight;
+        three.camera.updateProjectionMatrix();
+        three.renderer.setSize(c.clientWidth, c.clientHeight);
+      }
+    }, 50);
+  }
+});
+
+$('capTabs').addEventListener('click', e => {
+  if (!e.target.classList.contains('tab')) return;
+  document.querySelectorAll('#capTabs .tab').forEach(t => t.classList.remove('active'));
+  e.target.classList.add('active');
+  const view = e.target.dataset.cap;
+  $('capBars').style.display = view === 'bars' ? '' : 'none';
+  $('capNM').style.display = view === 'nm' ? '' : 'none';
+  $('capStress').style.display = view === 'stress' ? '' : 'none';
+});
+
+// ════════════════════════════════════════════════════════════════════════
+// CHIP HANDLERS
+// ════════════════════════════════════════════════════════════════════════
+function chipGroupHandler(groupId, callback) {
+  document.getElementById(groupId).addEventListener('click', e => {
+    if (!e.target.classList.contains('chip')) return;
+    const group = e.currentTarget;
+    group.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    e.target.classList.add('active');
+    if (callback) callback(e.target);
+    recompute();
+  });
+}
+chipGroupHandler('seriesChips', el => {
+  const series = parseInt(el.dataset.series);
+  $('inT').value = series;
+  $('inTfs').value = series === 110 ? 22 : series === 140 ? 25 : 30;
+});
+chipGroupHandler('groutChips');
+chipGroupHandler('fucChips');
+chipGroupHandler('fcgChips');
+chipGroupHandler('bedChips');
+chipGroupHandler('mortarChips');
+chipGroupHandler('reinfChips');
+chipGroupHandler('alpharChips');
+chipGroupHandler('oopChips', el => {
+  $('oopLoadRow').style.display = el.dataset.oop === 'true' ? '' : 'none';
+});
+chipGroupHandler('eqChips');
+chipGroupHandler('stabChips');
+chipGroupHandler('capChips');
+chipGroupHandler('loadModeChips', el => {
+  const mode = el.dataset.mode;
+  $('manualLoads').style.display = mode === 'manual' ? '' : 'none';
+  $('uploadLoads').style.display = mode === 'upload' ? '' : 'none';
+});
+
+$('inEMethod').addEventListener('change', e => {
+  const m = e.target.value;
+  const t = +$('inT').value;
+  if (m === 'single') $('inE').value = Math.round(t / 6);
+  else if (m === 'continuous') $('inE').value = Math.round(0.05 * t);
+  else if (m === 'm_over_n') {
+    const M = +$('inM').value, N = +$('inNc').value;
+    if (N > 0) $('inE').value = Math.round(M * 1000 / N);
+  }
+  recompute();
+});
+
+['inL','inT','inH','inTfs','inAv','inAh','inE',
+ 'inVertPrimary','inVertPrimarySp','inVertAdd','inVertAddSp',
+ 'inHorizPrimary','inHorizPrimarySp','inHorizAdd','inHorizAddSp',
+ 'inNc','inNt','inM','inV','inMy','inVy','inBendMethod','inSrRule'].forEach(id => {
+  const el = $(id);
+  if (el) el.addEventListener('input', recompute);
+});
+
+// Populate reo dropdowns from REO_TABLE
+function populateReoSelects() {
+  const all = Object.keys(REO_TABLE).filter(c => c !== "user defined");
+  const fillSelect = (id, defaultCode) => {
+    const sel = $(id);
+    sel.innerHTML = all.map(c => `<option value="${c}"${c === defaultCode ? ' selected' : ''}>${c === '-' ? '— none —' : c}</option>`).join('');
+  };
+  fillSelect('inVertPrimary',  'N16');
+  fillSelect('inVertAdd',      '-');
+  fillSelect('inHorizPrimary', 'N12');
+  fillSelect('inHorizAdd',     '-');
+}
+populateReoSelects();
+
+// ════════════════════════════════════════════════════════════════════════
+// XLSX UPLOAD
+// ════════════════════════════════════════════════════════════════════════
+$('dropZone').addEventListener('click', () => $('xlsxLoader').click());
+$('dropZone').addEventListener('dragover', e => { e.preventDefault(); $('dropZone').classList.add('dragover'); });
+$('dropZone').addEventListener('dragleave', () => $('dropZone').classList.remove('dragover'));
+$('dropZone').addEventListener('drop', e => {
+  e.preventDefault(); $('dropZone').classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleXlsx(e.dataTransfer.files[0]);
+});
+$('xlsxLoader').addEventListener('change', e => {
+  if (e.target.files.length) handleXlsx(e.target.files[0]);
+});
+
+function handleXlsx(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const wb = XLSX.read(ev.target.result, { type: 'array' });
+      let sheetName = wb.SheetNames[0];
+      if (wb.SheetNames.includes('Input')) sheetName = 'Input';
+      const sheet = wb.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true });
+      const data = parseLcRows(rows);
+      if (!data.length) {
+        $('uploadStatus').innerHTML = '<span style="color:var(--rust);">No load cases found. Check L7 column order.</span>';
+        return;
+      }
+      const byWall = {};
+      for (const lc of data) {
+        const id = lc.wall_id || 'default';
+        if (!byWall[id]) byWall[id] = [];
+        byWall[id].push(lc);
+      }
+      STATE.walls = byWall;
+      const wallIds = Object.keys(byWall);
+      STATE.activeWallId = wallIds[0];
+      STATE.lcs = byWall[STATE.activeWallId];
+      if (wallIds.length > 1) {
+        $('wallPickerRow').style.display = '';
+        const sel = $('wallPicker');
+        sel.innerHTML = wallIds.map(id => `<option value="${id}">${id} (${byWall[id].length} LCs)</option>`).join('');
+        sel.onchange = () => {
+          STATE.activeWallId = sel.value;
+          STATE.lcs = byWall[sel.value];
+          const first = STATE.lcs[0];
+          if (first.t) $('inT').value = first.t * 1000;
+          if (first.L) $('inL').value = first.L * 1000;
+          if (first.H) $('inH').value = first.H * 1000;
+          recompute();
+        };
+      } else {
+        $('wallPickerRow').style.display = 'none';
+      }
+      const first = STATE.lcs[0];
+      if (first.t) $('inT').value = first.t * 1000;
+      if (first.L) $('inL').value = first.L * 1000;
+      if (first.H) $('inH').value = first.H * 1000;
+      $('uploadStatus').innerHTML =
+        `<span style="color:var(--green);">✓ Loaded ${data.length} LCs across ${wallIds.length} wall${wallIds.length>1?'s':''}.</span>`;
+      recompute();
+    } catch (err) {
+      $('uploadStatus').innerHTML = `<span style="color:var(--rust);">Parse error: ${err.message}</span>`;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function parseLcRows(rows) {
+  const lcs = [];
+  for (const row of rows) {
+    if (!row || row.length < 9) continue;
+    const wallNo = row[2];
+    const t = parseFloat(row[4]);
+    const L = parseFloat(row[5]);
+    const Nc_static = parseFloat(row[8]);
+    const Nc_area = parseFloat(row[9]);
+    if (isNaN(t) || isNaN(L) || (isNaN(Nc_static) && isNaN(Nc_area))) continue;
+    lcs.push({
+      name: row[20] != null ? String(row[20]) : `LC${lcs.length+1}`,
+      wall_id: wallNo != null ? String(wallNo) : 'default',
+      level: row[1], label: row[3],
+      t, L, H: parseFloat(row[6]), fc: parseFloat(row[7]),
+      Nc_static: isNaN(Nc_static) ? 0 : Nc_static,
+      Nc_area: isNaN(Nc_area) ? 0 : Nc_area,
+      Nt: 0,
+      Mx_top: parseFloat(row[10]) || 0, Mx_btm: parseFloat(row[11]) || 0,
+      My_top: parseFloat(row[12]) || 0, My_btm: parseFloat(row[13]) || 0,
+      Vx_top: parseFloat(row[14]) || 0, Vx_btm: parseFloat(row[15]) || 0,
+      Vy_top: parseFloat(row[16]) || 0, Vy_btm: parseFloat(row[17]) || 0,
+    });
+  }
+  return lcs;
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// SAVE / LOAD
+// ════════════════════════════════════════════════════════════════════════
+function exportState() {
+  return {
+    version: ENGINE_VERSION,
+    project: $('projectName').value,
+    inputs: getInputs(),
+    load_mode: document.querySelector('#loadModeChips .chip.active')?.dataset.mode,
+    manual: { Nc: +$('inNc').value, Nt: +$('inNt').value, M: +$('inM').value, V: +$('inV').value,
+              My: +($('inMy')?.value || 0), Vy: +($('inVy')?.value || 0) },
+    lcs: STATE.lcs,
+  };
+}
+$('btnSave').addEventListener('click', () => {
+  const data = JSON.stringify(exportState(), null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = ($('projectName').value || 'wall').replace(/[^\w-]+/g, '_') + '.json';
+  a.click();
+});
+$('btnLoad').addEventListener('click', () => $('fileLoader').click());
+$('fileLoader').addEventListener('change', e => {
+  const f = e.target.files[0];
+  const r = new FileReader();
+  r.onload = ev => {
+    try {
+      const d = JSON.parse(ev.target.result);
+      $('projectName').value = d.project || '';
+      const i = d.inputs;
+      $('inL').value = i.geometry.L; $('inT').value = i.geometry.t; $('inH').value = i.geometry.H; $('inTfs').value = i.geometry.tfs;
+      $('inAv').value = i.slenderness.av; $('inAh').value = i.slenderness.ah;
+      $('inE').value = i.eccentricity.e;
+      // New schema fields, with legacy fallback
+      $('inVertPrimary').value = i.reinforcement.vert_primary_code || `N${i.reinforcement.vert_bar_dia || 16}`;
+      $('inVertPrimarySp').value = i.reinforcement.vert_primary_spacing || i.reinforcement.vert_spacing || 200;
+      $('inVertAdd').value = i.reinforcement.vert_additional_code || '-';
+      $('inVertAddSp').value = i.reinforcement.vert_additional_spacing || 400;
+      $('inHorizPrimary').value = i.reinforcement.horiz_primary_code || `N${i.reinforcement.horiz_bar_dia || 12}`;
+      $('inHorizPrimarySp').value = i.reinforcement.horiz_primary_spacing || i.reinforcement.horiz_spacing || 600;
+      $('inHorizAdd').value = i.reinforcement.horiz_additional_code || '-';
+      $('inHorizAddSp').value = i.reinforcement.horiz_additional_spacing || 600;
+      $('inNc').value = d.manual.Nc; $('inNt').value = d.manual.Nt; $('inM').value = d.manual.M; $('inV').value = d.manual.V;
+      setChip('fucChips', String(i.material.fuc));
+      setChip('fcgChips', String(i.material.fcg));
+      setChip('bedChips', i.material.bedding);
+      setChip('mortarChips', i.material.mortar);
+      setChip('groutChips', i.geometry.grouting);
+      setChip('reinfChips', String(i.method.reinforced));
+      setChip('alpharChips', String(i.method.alphar));
+      setChip('oopChips', String(i.method.include_oop_bending));
+      setChip('eqChips', String(i.method.enforce_eq_detailing));
+      setChip('stabChips', String(i.method.enforce_stability_check));
+      setChip('capChips', String(i.method.enforce_cl_8_8_cap));
+      $('inBendMethod').value = i.method.bending_method; $('inSrRule').value = i.method.sr_rule;
+      STATE.lcs = d.lcs;
+      recompute();
+    } catch (err) { showError('Load failed', err.message); }
+  };
+  r.readAsText(f);
+});
+function setChip(groupId, value) {
+  const group = $(groupId);
+  group.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  const target = Array.from(group.querySelectorAll('.chip')).find(c =>
+    c.dataset.fuc === value || c.dataset.fcg === value || c.dataset.bed === value ||
+    c.dataset.mortar === value || c.dataset.grout === value || c.dataset.reinf === value ||
+    c.dataset.alphar === value || c.dataset.oop === value || c.dataset.eq === value ||
+    c.dataset.stab === value || c.dataset.cap === value || c.dataset.series === value
+  );
+  if (target) target.classList.add('active');
+}
+$('btnExample').addEventListener('click', () => {
+  $('projectName').value = 'L7 W239 — example wall';
+  $('inL').value = 2000; $('inT').value = 190; $('inH').value = 5000; $('inTfs').value = 30;
+  $('inAv').value = 0.85; $('inAh').value = 2.5; $('inE').value = 32;
+  $('inVertPrimary').value = 'N16'; $('inVertPrimarySp').value = 200;
+  $('inVertAdd').value = '-';      $('inVertAddSp').value = 400;
+  $('inHorizPrimary').value = 'N12'; $('inHorizPrimarySp').value = 600;
+  $('inHorizAdd').value = '-';      $('inHorizAddSp').value = 600;
+  $('inNc').value = 600; $('inNt').value = 0; $('inM').value = 50; $('inV').value = 80;
+  recompute();
+});
+
+// ════════════════════════════════════════════════════════════════════════
+// CHECK TILE EXPANSION
+// ════════════════════════════════════════════════════════════════════════
+$('checksGrid').addEventListener('click', e => {
+  const tile = e.target.closest('.check-tile');
+  if (!tile) return;
+  const which = tile.dataset.check;
+  const sub = tile.dataset.subkind;
+  const g = STATE.lastResult?.governing;
+  if (!g) return;
+  let html = '', title = '';
+  if (which === 'comp')  { title = 'Compression — Cl 8.5.1'; html = compressionDetailHtml(g.compression); }
+  else if (which === 'tens')  { title = 'Tension — Cl 8.10'; html = tensionDetailHtml(g.tension); }
+  else if (which === 'shear') { title = 'Shear — Cl 8.7 / 8.8'; html = shearDetailHtml(g.shear); }
+  else if (which === 'extra') {
+    if (sub === 'flex' && g.flexure_inplane) { title = 'In-plane flexure — Cl 8.6'; html = flexureDetailHtml(g.flexure_inplane); }
+    else if (sub === 'oop' && g.flexure_oop) { title = 'Out-of-plane flexure — Cl 8.6'; html = flexureDetailHtml(g.flexure_oop); }
+    else if (sub === 'stab' && g.stability)  { title = 'Stability — Cl 8.7.4'; html = stabilityDetailHtml(g.stability); }
+    else return;
+  }
+  $('detailTitle').textContent = title;
+  $('detailBody').innerHTML = html;
+  $('detailPanel').classList.add('open');
+  document.querySelectorAll('.check-tile').forEach(t => t.classList.remove('expanded'));
+  tile.classList.add('expanded');
+});
+
+function detailRow(label, value, ref) {
+  return `<tr><td>${label}</td><td class="num">${value}</td><td class="ref">${ref || ''}</td></tr>`;
+}
+function compressionDetailHtml(c) {
+  return `<table>` +
+    detailRow('Sr1 (av·H/(kt·t))', c.Sr1.toFixed(2), 'Cl 7.3.4.3(1)') +
+    detailRow('Sr2 (lateral edges)', c.Sr2.toFixed(2), 'Cl 7.3.4.3(2)') +
+    detailRow('Fo basic per m', c.Fo_basic_per_m_kN.toFixed(1) + ' kN/m', 'no φ no kes no αr') +
+    detailRow('Fd/Fo', c.Fd_over_Fo.toFixed(3), 'Cl 7.3.4.3(a)') +
+    detailRow('Sr governing', c.Sr_governing.toFixed(2), '—') +
+    detailRow('kes', c.kes.toFixed(3), 'Cl 8.5.1') +
+    detailRow('Masonry term f\'m·Ab', (c.masonry_term_N_per_m/1000).toFixed(1) + ' kN/m', '—') +
+    detailRow('Grout term', (c.grout_term_N_per_m/1000).toFixed(1) + ' kN/m', '—') +
+    detailRow('Steel term αr·fsy·As', (c.steel_term_N_per_m/1000).toFixed(1) + ' kN/m', '—') +
+    detailRow('Bracket total', c.bracket_total_kN_per_m.toFixed(1) + ' kN/m', '—') +
+    detailRow('φ', c.phi.toFixed(2), 'Table 4.1') +
+    detailRow('φNu.c per m', c.phi_Nuc_per_m_kN.toFixed(1) + ' kN/m', 'Eq 8.5.1') +
+    detailRow('φNu.c total', c.phi_Nuc_total_kN.toFixed(1) + ' kN', '—') +
+    detailRow('Demand N*c', c.demand_Nc_kN.toFixed(1) + ' kN', '—') +
+    detailRow('Utilisation', c.utilisation.toFixed(3), '—') +
+    `</table>`;
+}
+function tensionDetailHtml(t) {
+  return `<table>` +
+    detailRow('As/m', t.As_per_m.toFixed(0) + ' mm²/m', '—') +
+    detailRow('As total', t.As_total.toFixed(0) + ' mm²', '—') +
+    detailRow('φ', t.phi.toFixed(2), 'Table 4.1') +
+    detailRow('φNt per m', t.phi_Nt_per_m_kN.toFixed(1) + ' kN/m', 'Eq 8.10') +
+    detailRow('φNt total', t.phi_Nt_total_kN.toFixed(1) + ' kN', '—') +
+    detailRow('Demand N*t', t.demand_Nt_kN.toFixed(1) + ' kN', '—') +
+    detailRow('Utilisation', t.utilisation.toFixed(3), '—') +
+    `</table>`;
+}
+function shearDetailHtml(s) {
+  let html = `<table>` + detailRow('H/L', s.H_over_L.toFixed(2), '—') +
+    detailRow('Branch', s.branch_used, '—');
+  if (s.is_long_wall) {
+    html += detailRow('fvr', s.long_branch.fvr.toFixed(3) + ' MPa', 'Cl 8.7.2') +
+      detailRow('As (eff horiz)', s.long_branch.As_for_shear.toFixed(0) + ' mm²', '—') +
+      detailRow('Vu (long)', s.long_branch.Vu_kN.toFixed(1) + ' kN', 'Eq 8.7.2');
+  } else {
+    html += detailRow('Masonry term', s.short_branch.masonry_term_kN.toFixed(1) + ' kN', 'Cl 8.8') +
+      detailRow('fvs·Ast (dowel)', s.short_branch.fvs_term_kN.toFixed(1) + ' kN', '—') +
+      detailRow('Horiz reo term', s.short_branch.horiz_reo_term_kN.toFixed(1) + ' kN', '—') +
+      detailRow('Vu raw (sum)', s.short_branch.Vu_raw_kN.toFixed(1) + ' kN', '—') +
+      detailRow('Cap (4·φ·f\'vm·bw·d)', s.short_branch.cap_kN.toFixed(1) + ' kN', 'Cl 8.8 cap') +
+      detailRow('Vu (after cap)', s.short_branch.Vu_kN.toFixed(1) + ' kN', '—');
+  }
+  html += detailRow('φVu', s.phi_Vu_kN.toFixed(1) + ' kN', 'Eq 8.7.2 / 8.8') +
+    detailRow('Demand V*', s.demand_V_kN.toFixed(1) + ' kN', '—') +
+    detailRow('Utilisation', s.utilisation.toFixed(3), '—') + `</table>`;
+  return html;
+}
+function flexureDetailHtml(f) {
+  return `<table>` +
+    detailRow('Axis', f.axis, '—') +
+    detailRow('b', f.b.toFixed(0) + ' mm', '—') +
+    detailRow('d effective', f.d_eff.toFixed(0) + ' mm', '—') +
+    detailRow('Asd provided', f.Asd_provided.toFixed(0) + ' mm²', '—') +
+    detailRow('Asd limit (kud≤0.4d)', f.Asd_limit.toFixed(0) + ' mm²', 'Cl 8.3(c)') +
+    detailRow('Asd used', f.Asd_used.toFixed(0) + ' mm²', '—') +
+    detailRow('Mu', f.Mu_kNm.toFixed(1) + ' kNm', 'Eq 8.6') +
+    detailRow('φMu', f.phi_Mu_kNm.toFixed(1) + ' kNm', '—') +
+    detailRow('Demand M*', f.demand_M_kNm.toFixed(1) + ' kNm', '—') +
+    detailRow('Utilisation', f.utilisation.toFixed(3), '—') +
+    `</table>`;
+}
+function stabilityDetailHtml(s) {
+  return `<table>` +
+    detailRow('ksw', s.ksw.toFixed(3), 'Cl 8.7.4') +
+    detailRow('Pv', s.Pv_kN.toFixed(0) + ' kN', '—') +
+    detailRow('Asv (vertical)', s.Asv.toFixed(0) + ' mm²', '—') +
+    detailRow('φ', s.phi.toFixed(2), '—') +
+    detailRow('Vd,stab', s.Vd_stab_kN.toFixed(1) + ' kN', 'Eq 8.7.4') +
+    detailRow('Applies?', s.applies ? 'YES' : 'No (informational)', 'Cl 8.7.4') +
+    detailRow('Utilisation', s.utilisation.toFixed(3), '—') + `</table>`;
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// KEYBOARD + HELP
+// ════════════════════════════════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+  switch (e.key) {
+    case '1': document.querySelector('#geomTabs .tab[data-geom="3d"]').click(); break;
+    case '2': document.querySelector('#geomTabs .tab[data-geom="section"]').click(); break;
+    case '3': document.querySelector('#geomTabs .tab[data-geom="elevation"]').click(); break;
+    case 's': case 'S': if (e.metaKey || e.ctrlKey) { e.preventDefault(); $('btnSave').click(); } break;
+    case 'p': case 'P': if (e.metaKey || e.ctrlKey) { e.preventDefault(); $('btnPdf').click(); } break;
+    case 'e': case 'E': $('btnExample').click(); break;
+    case '?': showHelpOverlay(); break;
+    case 'Escape':
+      $('detailPanel').classList.remove('open');
+      const ov = document.getElementById('helpOverlay');
+      if (ov) ov.style.display = 'none';
+      break;
+  }
+});
+function showHelpOverlay() {
+  let ov = document.getElementById('helpOverlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'helpOverlay';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(20,20,19,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;';
+    ov.innerHTML = `<div style="background:#fff;color:#141413;padding:30px 40px;border-radius:10px;max-width:480px;font-family:'Poppins',sans-serif;box-shadow:0 12px 28px rgba(0,0,0,0.2);">
+      <h2 style="margin:0 0 14px;font-family:'Lora',serif;font-weight:600;">Keyboard shortcuts</h2>
+      <table style="border-collapse:collapse;font-size:12px;">
+        <tr><td style="padding:5px 14px 5px 0;"><kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd></td><td>3D / Section / Elevation</td></tr>
+        <tr><td style="padding:5px 14px 5px 0;"><kbd>E</kbd></td><td>Load Example wall</td></tr>
+        <tr><td style="padding:5px 14px 5px 0;"><kbd>⌘/Ctrl + S</kbd></td><td>Save inputs (JSON)</td></tr>
+        <tr><td style="padding:5px 14px 5px 0;"><kbd>⌘/Ctrl + P</kbd></td><td>Print calculations PDF</td></tr>
+        <tr><td style="padding:5px 14px 5px 0;"><kbd>?</kbd></td><td>Show this help</td></tr>
+        <tr><td style="padding:5px 14px 5px 0;"><kbd>Esc</kbd></td><td>Close detail / help</td></tr>
+      </table>
+      <div style="margin-top:14px;font-size:11px;color:#b0aea5;">Click anywhere to dismiss</div>
+    </div>`;
+    ov.addEventListener('click', () => ov.style.display = 'none');
+    document.body.appendChild(ov);
+  }
+  ov.style.display = 'flex';
+}
+$('btnHelp').addEventListener('click', () => showHelpOverlay());
+
+function showError(title, msg) {
+  const c = document.getElementById('globalErrors');
+  const div = document.createElement('div');
+  div.className = 'err-banner';
+  div.innerHTML = `<strong>${title}</strong>${msg}`;
+  c.appendChild(div);
+  setTimeout(() => div.remove(), 6000);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// PRINT PDF
+// ════════════════════════════════════════════════════════════════════════
+$('btnPdf').addEventListener('click', async () => {
+  if (!STATE.lastResult) return;
+  await generatePDF(STATE.lastResult, STATE.lastInputs);
+});
+
+async function generatePDF(res, inputs) {
+  const root = $('pdfRoot');
+  root.innerHTML = buildPdfHtml(res, inputs);
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
+  const pages = root.querySelectorAll('.pdf-page');
+  for (let i = 0; i < pages.length; i++) {
+    const canvas = await html2canvas(pages[i], { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const img = canvas.toDataURL('image/png');
+    if (i > 0) pdf.addPage();
+    pdf.addImage(img, 'PNG', 0, 0, 595, 842);
+  }
+  const name = ($('projectName').value || 'Blockwork_Wall').replace(/[^\w-]+/g, '_');
+  pdf.save(`${name}_AS3700_calc.pdf`);
+}
+
+function inputsHash(inputs, lcs) {
+  const str = JSON.stringify({ inputs, lcs });
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(16).padStart(8, '0');
+}
+
+function buildPdfHtml(res, inputs) {
+  const proj = $('projectName').value || 'Untitled wall';
+  const date = new Date().toLocaleDateString('en-AU', { year: 'numeric', month: 'short', day: 'numeric' });
+  const hash = inputsHash(inputs, STATE.lcs);
+  const g = res.governing;
+
+  function header(pageNum, totalPages) {
+    return `<div class="pdf-header">
+      <div class="pdf-header-l">
+        <div class="pdf-mark">BT</div>
+        <div>
+          <h1>Blockwork Wall Design — AS 3700:2018</h1>
+          <div style="font-size:8px;color:#4a4a47;">Engine v${ENGINE_VERSION} · validated against Blockwork_Wall_Check.xlsx + edge cases</div>
+        </div>
+      </div>
+      <div class="pdf-header-r">
+        <strong>${proj}</strong><br>Date: ${date}<br>Hash: ${hash}<br>Page ${pageNum} of ${totalPages}
+      </div>
+    </div>`;
+  }
+  function footer() {
+    return `<div class="pdf-footer"><span>Blockwork Wall Designer · Bligh Tanner</span><span>AS 3700:2018</span></div>`;
+  }
+
+  const pages = [];
+  // Page 1
+  let p1 = header(1, 7);
+  p1 += `<h2>1. Result Summary</h2>
+    <p style="font-size:9px;">For the governing case <strong>${g.lc_name}</strong> with N* = ${g.Nc_kN.toFixed(0)} kN, M* = ${g.M_inplane_kNm.toFixed(0)} kNm, V* = ${g.V_inplane_kN.toFixed(0)} kN,
+    the wall is <strong class="${g.pass ? 'pdf-pass' : 'pdf-fail'}">${g.pass ? 'ADEQUATE' : 'INADEQUATE'}</strong> with maximum utilisation <strong>${g.max_utilisation.toFixed(3)}</strong>.</p>
+    <table>
+      <thead><tr><th>Action</th><th>Demand</th><th>Capacity</th><th>η</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td>Compression (Cl 8.5.1)</td><td class="num">${g.Nc_kN.toFixed(0)} kN</td><td class="num">${g.compression.phi_Nuc_total_kN.toFixed(0)} kN</td><td class="num">${g.compression.utilisation.toFixed(3)}</td><td class="${g.compression.pass?'pdf-pass':'pdf-fail'}">${g.compression.pass?'PASS':'FAIL'}</td></tr>
+        <tr><td>Tension (Cl 8.10)</td><td class="num">${g.Nt_kN.toFixed(0)} kN</td><td class="num">${g.tension.phi_Nt_total_kN.toFixed(0)} kN</td><td class="num">${g.tension.utilisation.toFixed(3)}</td><td class="${g.tension.pass?'pdf-pass':'pdf-fail'}">${g.tension.utilisation === 0 ? 'N/A' : (g.tension.pass?'PASS':'FAIL')}</td></tr>
+        <tr><td>Shear (${g.shear.branch_used})</td><td class="num">${g.V_inplane_kN.toFixed(0)} kN</td><td class="num">${g.shear.phi_Vu_kN.toFixed(0)} kN</td><td class="num">${g.shear.utilisation.toFixed(3)}</td><td class="${g.shear.pass?'pdf-pass':'pdf-fail'}">${g.shear.pass?'PASS':'FAIL'}</td></tr>
+      </tbody>
+    </table>
+    <h2>2. Method Assumptions</h2>
+    <ul style="font-size:9px;line-height:1.6;">
+      <li>Reinforced check: <strong>${inputs.method.reinforced ? 'YES (Section 8, φ=0.75)' : 'NO (Section 7 grouted URM, φ=0.60)'}</strong></li>
+      <li>Steel contribution to axial: αr = <strong>${inputs.method.alphar}</strong> ${inputs.method.alphar === 0 ? '(L7-conservative)' : inputs.method.alphar === 0.4 ? '(walls per Cl 8.5.1)' : '(piers)'}</li>
+      <li>Bending method: <strong>${inputs.method.bending_method.replace(/_/g,'-')}</strong></li>
+      <li>Sr selection rule: <strong>${inputs.method.sr_rule}</strong></li>
+      <li>Cl 8.8 cap: <strong>${inputs.method.enforce_cl_8_8_cap ? 'enforced' : 'OFF (caution)'}</strong></li>
+      <li>Cl 8.7.4 stability: <strong>${inputs.method.enforce_stability_check ? 'enforced' : 'off'}</strong></li>
+      <li>EQ detailing (Cl 8.4.5): <strong>${inputs.method.enforce_eq_detailing ? 'enforced' : 'off'}</strong></li>
+      <li>OOP bending: <strong>${inputs.method.include_oop_bending ? 'on' : 'off'}</strong></li>
+    </ul>` + footer();
+  pages.push(p1);
+
+  // Page 2
+  let p2 = header(2, 7) + `<h2>3. Inputs</h2>
+    <h3>Wall geometry &amp; materials</h3>
+    <table>${kvRow('Length L', inputs.geometry.L + ' mm', 'Cl 7.3.4.3')}
+      ${kvRow('Thickness t', inputs.geometry.t + ' mm', 'Cl 7.3.4.3')}
+      ${kvRow('Height H', inputs.geometry.H + ' mm', 'Cl 7.3.4.3')}
+      ${kvRow('Face shell tfs', inputs.geometry.tfs + ' mm', 'Cl 4.5.4(b)')}
+      ${kvRow('Grouting', inputs.geometry.grouting, 'Cl 4.5.5')}
+      ${kvRow('f\'uc', inputs.material.fuc + ' MPa', 'Cl 3.3.2')}
+      ${kvRow('Bedding', inputs.material.bedding, 'Cl 3.3.2 / Table 3.1')}
+      ${kvRow('Mortar', inputs.material.mortar, 'Cl 3.3.2 / Table 3.1')}
+      ${kvRow('km (Table 3.1)', KM_TABLE[`${inputs.material.unit_type}|${inputs.material.bedding}|${inputs.material.mortar}`], 'Table 3.1')}
+      ${kvRow('kh', inputs.material.kh, 'Table 3.2')}
+      ${kvRow('f\'m = kh·km·√f\'uc', computeFm(inputs.material).toFixed(2) + ' MPa', 'Cl 3.3.2')}
+      ${kvRow('f\'cg', inputs.material.fcg + ' MPa', 'Cl 3.5')}
+      ${kvRow('kc', getKc(inputs.material), 'Cl 8.5.1')}
+      ${kvRow('fsy', inputs.material.fsy + ' MPa', 'Cl 3.6.1')}
+    </table>
+    <h3>Slenderness, eccentricity, reinforcement</h3>
+    <table>${kvRow('av', inputs.slenderness.av, 'Cl 7.3.4.3 / Fig 7.1')}
+      ${kvRow('ah', inputs.slenderness.ah, 'Cl 7.3.4.3 / Fig 7.2')}
+      ${kvRow('kt', inputs.slenderness.kt, 'Cl 7.3.4.3 / Table 7.2')}
+      ${kvRow('e', inputs.eccentricity.e + ' mm', 'Cl 7.3.4.4')}
+      ${kvRow('e/t', (inputs.eccentricity.e / inputs.geometry.t).toFixed(3), '—')}
+      ${kvRow('Vert reo (primary)', `${inputs.reinforcement.vert_primary_code} @ ${inputs.reinforcement.vert_primary_spacing} c/c`, '—')}
+      ${kvRow('Vert reo (additional)', inputs.reinforcement.vert_additional_code === '-' ? 'none' : `${inputs.reinforcement.vert_additional_code} @ ${inputs.reinforcement.vert_additional_spacing} c/c`, '—')}
+      ${kvRow('Asv per m', AsvPerM(inputs.reinforcement).toFixed(0) + ' mm²/m', '—')}
+      ${kvRow('Horiz reo (primary)', `${inputs.reinforcement.horiz_primary_code} @ ${inputs.reinforcement.horiz_primary_spacing} c/c`, '—')}
+      ${kvRow('Horiz reo (additional)', inputs.reinforcement.horiz_additional_code === '-' ? 'none' : `${inputs.reinforcement.horiz_additional_code} @ ${inputs.reinforcement.horiz_additional_spacing} c/c`, '—')}
+      ${kvRow('Ash per m', AshPerM(inputs.reinforcement).toFixed(0) + ' mm²/m', '—')}
+      ${kvRow('Ab per m', AbPerM(inputs.geometry).toFixed(0) + ' mm²/m', 'Cl 4.5.4')}
+      ${kvRow('Ag per m', AgPerM(inputs.geometry).toFixed(0) + ' mm²/m', 'Cl 4.5.7')}
+      ${kvRow('Ad total', AdTotal(inputs.geometry).toFixed(0) + ' mm²', 'Cl 4.5.6')}
+    </table>
+    <h3>Demands (governing case: ${g.lc_name})</h3>
+    <table>${kvRow('N*c', g.Nc_kN.toFixed(1) + ' kN', '—')}
+      ${kvRow('N*t', g.Nt_kN.toFixed(1) + ' kN', '—')}
+      ${kvRow('M*', g.M_inplane_kNm.toFixed(1) + ' kNm', '—')}
+      ${kvRow('V*', g.V_inplane_kN.toFixed(1) + ' kN', '—')}
+    </table>` + footer();
+  pages.push(p2);
+
+  // Page 3 — Compression
+  const c = g.compression;
+  let p3 = header(3, 7) + `<h2>4. Compression Check (Cl 8.5.1)</h2>
+    <table><thead><tr><th>#</th><th>Quantity</th><th>Calculation</th><th>Value</th><th>Description</th><th>Ref</th></tr></thead><tbody>` +
+    stepRow(1, 'Sr1', 'av·H/(kt·t)', `${c.Sr1.toFixed(2)}`,
+            'Slenderness for walls supported only top/bottom or "all other cases".', 'Cl 7.3.4.3(1)/(c)') +
+    stepRow(2, 'Sr2', '(0.7/t)·√(av·H·ah·L)', `${c.Sr2.toFixed(2)}`,
+            'Smaller-Sr alternative — vertical edge support, low axial.', 'Cl 7.3.4.3(2)') +
+    stepRow(3, 'Fo basic per m', '(f\'m·Ab + kc·grout·Ag)/1000', `${c.Fo_basic_per_m_kN.toFixed(1)} kN/m`,
+            'Basic capacity (no φ, no kes, no αr·fsy·As) — Sr selection reference.', 'Cl 7.3.4.3(a)') +
+    stepRow(4, 'Fd/Fo', `${c.demand_Nc_per_m_kN.toFixed(1)} / ${c.Fo_basic_per_m_kN.toFixed(1)}`, `${c.Fd_over_Fo.toFixed(3)}`,
+            'If ≤ 0.20, use lesser of Sr1, Sr2 (lateral edge case).', 'Cl 7.3.4.3(a)') +
+    stepRow(5, 'Sr governing', c.Fd_over_Fo <= 0.20 ? 'MIN(Sr1, Sr2)' : 'Sr1', `${c.Sr_governing.toFixed(2)}`,
+            'Slenderness used in kes.', 'Cl 7.3.4.3') +
+    stepRow(6, 'kes', '(1−0.025·Sr)·(1−2·e/t)', `${c.kes.toFixed(3)}`,
+            'Slenderness/eccentricity factor. Bounded [0,1].', 'Cl 8.5.1') +
+    stepRow(7, 'f\'m·Ab/m', `${c.fm.toFixed(2)} × ${c.Ab_per_m.toFixed(0)}`, `${(c.masonry_term_N_per_m/1000).toFixed(1)} kN/m`,
+            'Face-shell masonry contribution.', 'Cl 8.5.1 (1st)') +
+    stepRow(8, 'kc·(f\'cg/1.3)^x · Ag/m', `${c.kc} × ${c.grout_effective_stress.toFixed(2)} × ${c.Ag_per_m.toFixed(0)}`, `${(c.grout_term_N_per_m/1000).toFixed(1)} kN/m`,
+            'Grout core contribution. Exponent (0.55+0.005·f\'cg) reduces grout effective stress.', 'Cl 8.5.1 (2nd)') +
+    stepRow(9, 'αr·fsy·As/m', `${inputs.method.alphar} × ${c.fsy || 500} × ${c.As_per_m.toFixed(0)}`, `${(c.steel_term_N_per_m/1000).toFixed(1)} kN/m`,
+            `Steel contribution. αr = ${inputs.method.alphar}.`, 'Cl 8.5.1 (3rd)') +
+    stepRow(10, 'Bracket total', 'masonry + grout + steel', `${c.bracket_total_kN_per_m.toFixed(1)} kN/m`,
+            'Sum of three contributions.', 'Cl 8.5.1') +
+    stepRow(11, 'φNu.c per m', `${c.phi} × ${c.kes.toFixed(3)} × ${c.bracket_total_kN_per_m.toFixed(1)}`, `${c.phi_Nuc_per_m_kN.toFixed(1)} kN/m`,
+            'Design capacity per metre.', 'Eq 8.5.1') +
+    stepRow(12, 'φNu.c total', `${c.phi_Nuc_per_m_kN.toFixed(1)} × ${(inputs.geometry.L/1000).toFixed(2)}`, `${c.phi_Nuc_total_kN.toFixed(1)} kN`,
+            'Capacity over wall length.', '—') +
+    stepRow(13, 'Utilisation η', `${g.Nc_kN.toFixed(0)} / ${c.phi_Nuc_total_kN.toFixed(1)}`, `${c.utilisation.toFixed(3)}`,
+            `<strong class="${c.pass?'pdf-pass':'pdf-fail'}">${c.pass?'PASS':'FAIL'}</strong>`, '—') +
+    `</tbody></table>` + footer();
+  pages.push(p3);
+
+  // Page 4 — Tension
+  const t = g.tension;
+  let p4 = header(4, 7) + `<h2>5. Tension Check (Cl 8.10)</h2>
+    <table><thead><tr><th>#</th><th>Quantity</th><th>Calculation</th><th>Value</th><th>Description</th><th>Ref</th></tr></thead><tbody>` +
+    stepRow(1, 'As/m vertical', `π·d²/4 × 1000/sv`, `${t.As_per_m.toFixed(0)} mm²/m`, 'Steel area per m — only contributor.', 'Cl 8.3(e)') +
+    stepRow(2, 'As total', `${t.As_per_m.toFixed(0)} × ${(inputs.geometry.L/1000).toFixed(2)}`, `${t.As_total.toFixed(0)} mm²`, 'Total steel across length.', '—') +
+    stepRow(3, 'Spacing check (sv ≤ 2000)', `${t.spacing_value} mm`, t.spacing_check_ok ? '<strong class="pdf-pass">PASS</strong>' : '<strong class="pdf-fail">FAIL</strong>', 'Main reo spacing limit.', 'Cl 8.10(c)') +
+    stepRow(4, 'Edge bar (≥100 mm²)', `${t.edge_bar_area.toFixed(1)} mm²`, t.edge_bar_check_ok ? '<strong class="pdf-pass">PASS</strong>' : '<strong class="pdf-fail">FAIL</strong>', 'Min reo within 300 mm of edge.', 'Cl 8.10(b)') +
+    stepRow(5, 'φNt total', `${t.phi} × ${t.fsy} × ${t.As_total.toFixed(0)} / 1000`, `${t.phi_Nt_total_kN.toFixed(1)} kN`, 'Design tension capacity.', 'Eq 8.10') +
+    stepRow(6, 'Utilisation η', `${t.demand_Nt_kN.toFixed(0)} / ${t.phi_Nt_total_kN.toFixed(1)}`, `${t.utilisation.toFixed(3)}`,
+            `<strong class="${t.pass?'pdf-pass':'pdf-fail'}">${t.utilisation === 0 ? 'N/A' : (t.pass?'PASS':'FAIL')}</strong>`, '—') +
+    `</tbody></table>` + footer();
+  pages.push(p4);
+
+  // Page 5 — Shear
+  const sh = g.shear;
+  let p5 = header(5, 7) + `<h2>6. Shear Check (Cl 8.7 / 8.8)</h2>
+    <table><thead><tr><th>#</th><th>Quantity</th><th>Calculation</th><th>Value</th><th>Description</th><th>Ref</th></tr></thead><tbody>` +
+    stepRow(1, 'H/L', `${inputs.geometry.H} / ${inputs.geometry.L}`, sh.H_over_L.toFixed(2), 'Long vs short branch.', 'Cl 8.7.2/3') +
+    stepRow(2, 'Branch', sh.is_long_wall ? 'LONG (Cl 8.7.2)' : 'SHORT (Cl 8.7.3 → 8.8)', sh.branch_used, 'Long if H/L ≤ 2.3.', 'Cl 8.7.3');
+  if (sh.is_long_wall) {
+    const lb = sh.long_branch;
+    p5 += stepRow(3, 'fvr', '1.5−0.5·H/L', `${lb.fvr.toFixed(3)} MPa`, 'Effective shear strength of masonry.', 'Cl 8.7.2') +
+      stepRow(4, 'As (eff horiz)', sh.H_over_L > 1.0 ? 'Aoh·L/H' : 'min(Aoh, Aov)', `${lb.As_for_shear.toFixed(0)} mm²`, 'Effective horizontal reo.', 'Cl 8.7.2') +
+      stepRow(5, 'Vu', `${lb.fvr.toFixed(3)} × ${lb.Ad.toFixed(0)} + 0.8 × ${inputs.material.fsy} × ${lb.As_for_shear.toFixed(0)}`, `${lb.Vu_kN.toFixed(1)} kN`, 'Long-wall shear capacity. Uses Ad (full t·L for fully grouted).', 'Eq 8.7.2');
+  } else {
+    const sb = sh.short_branch;
+    p5 += stepRow(3, 'f\'vm·bw·d', `0.35 × ${sb.bw} × ${sb.d}`, `${sb.masonry_term_kN.toFixed(1)} kN`, 'Masonry contribution. f\'vm = 0.35 MPa.', 'Cl 8.8') +
+      stepRow(4, 'fvs·Ast (dowel)', `17.5 × ${sb.Ast_long.toFixed(0)}`, `${sb.fvs_term_kN.toFixed(1)} kN`, 'Vertical reo dowel-action. fvs = 17.5 MPa.', 'Cl 8.8') +
+      stepRow(5, 'fsy·Asv·d/s', `500 × Asv·${sb.d}/sh`, `${sb.horiz_reo_term_kN.toFixed(1)} kN`, 'Horizontal shear reo (truss).', 'Cl 8.8') +
+      stepRow(6, 'Vu raw', '— sum —', `${sb.Vu_raw_kN.toFixed(1)} kN`, 'Sum of three contributions.', '—') +
+      stepRow(7, 'Cap', `4 × 0.35 × ${sb.bw} × ${sb.d}`, `${sb.cap_kN.toFixed(1)} kN`, 'Code-required upper cap (4·φ·f\'vm·bw·d).', 'Cl 8.8') +
+      stepRow(8, 'Vu (after cap)', sb.cap_governs ? 'cap governs' : 'raw < cap', `${sb.Vu_kN.toFixed(1)} kN`, 'Final un-φ\'d capacity.', '—');
+  }
+  p5 += stepRow(99, 'φVu', `${sh.phi} × ${sh.Vu_governing_kN.toFixed(1)}`, `${sh.phi_Vu_kN.toFixed(1)} kN`, 'Design shear capacity.', '—') +
+    stepRow(100, 'Utilisation η', `${sh.demand_V_kN.toFixed(0)} / ${sh.phi_Vu_kN.toFixed(1)}`, `${sh.utilisation.toFixed(3)}`,
+            `<strong class="${sh.pass?'pdf-pass':'pdf-fail'}">${sh.pass?'PASS':'FAIL'}</strong>`, '—') +
+    `</tbody></table>` + footer();
+  pages.push(p5);
+
+  // Page 6 — LCs
+  let p6 = header(6, 7) + `<h2>7. Per Load Case</h2>`;
+  if (res.load_cases.length > 1) {
+    p6 += `<table>
+      <thead><tr><th>LC</th><th>N* (kN)</th><th>M* (kNm)</th><th>V* (kN)</th><th>η comp</th><th>η tens</th><th>η shear</th><th>η max</th><th>Verdict</th></tr></thead>
+      <tbody>` + res.load_cases.map((lc, i) =>
+      `<tr style="${i === res.governing_lc_index ? 'background:#fdf0e3;font-weight:600;' : ''}">
+        <td>${lc.lc_name}</td><td class="num">${lc.Nc_kN.toFixed(0)}</td><td class="num">${lc.M_inplane_kNm.toFixed(0)}</td>
+        <td class="num">${lc.V_inplane_kN.toFixed(0)}</td><td class="num">${lc.compression.utilisation.toFixed(2)}</td>
+        <td class="num">${lc.tension.utilisation.toFixed(2)}</td><td class="num">${lc.shear.utilisation.toFixed(2)}</td>
+        <td class="num">${lc.max_utilisation.toFixed(2)}</td>
+        <td class="${lc.pass?'pdf-pass':'pdf-fail'}">${lc.pass?'PASS':'FAIL'}</td></tr>`).join('') + `</tbody></table>`;
+  } else {
+    p6 += `<p>Single load case (Manual quick-check mode).</p>`;
+  }
+  p6 += footer();
+  pages.push(p6);
+
+  // Page 7 — detailing + sign-off
+  let p7 = header(7, 7) + `<h2>8. Detailing Checks</h2>
+    <table><thead><tr><th>Clause</th><th>Rule</th><th>Limit</th><th>Actual</th><th>Status</th></tr></thead><tbody>` +
+    g.detailing.map(c =>
+      `<tr><td>${c.ref}</td><td>${c.rule}</td><td class="num">${typeof c.limit === 'number' ? c.limit.toFixed(0) : c.limit}</td>
+       <td class="num">${typeof c.actual === 'number' ? c.actual.toFixed(0) : c.actual}</td>
+       <td class="${c.status==='PASS'?'pdf-pass':'pdf-fail'}">${c.status}</td></tr>`).join('') +
+    `</tbody></table>
+    <h2>9. Notes &amp; Sign-off</h2>
+    <p style="font-size:9px;line-height:1.55;">This calculation has been performed using the Bligh Tanner Blockwork Wall Designer engine
+    v${ENGINE_VERSION}, validated against the master spreadsheet <em>Blockwork_Wall_Check.xlsx</em> and 13 hand-derived edge cases.
+    All formulas implement AS 3700:2018 Section 8 strictly. Method assumptions are listed on Page 1 §2 above.</p>
+    <table style="margin-top: 30px;">
+      <tr><td style="border-top:1px solid #000;width:50%;padding-top:6px;"><strong>Designer:</strong> ____________________</td>
+          <td style="border-top:1px solid #000;width:50%;padding-top:6px;"><strong>Date:</strong> ____________________</td></tr>
+      <tr><td style="padding-top:30px;border-top:1px solid #000;"><strong>Reviewer:</strong> ____________________</td>
+          <td style="padding-top:30px;border-top:1px solid #000;"><strong>Date:</strong> ____________________</td></tr>
+    </table>` + footer();
+  pages.push(p7);
+
+  return pages.map(html => `<div class="pdf-page">${html}</div>`).join('');
+}
+
+function kvRow(k, v, ref) {
+  return `<tr><td style="font-weight:600;width:35%;">${k}</td><td class="num">${v}</td><td class="ref" style="width:30%;">${ref || ''}</td></tr>`;
+}
+function stepRow(n, qty, calc, val, desc, ref) {
+  return `<tr><td>${n}</td><td><strong>${qty}</strong></td><td class="calc">${calc}</td><td class="num"><strong>${val}</strong></td><td class="desc">${desc}</td><td class="ref">${ref || ''}</td></tr>`;
+}
+
+// Batch PDF (Phase 7)
+$('btnBatchPdf').addEventListener('click', async () => {
+  if (!STATE.walls || !STATE.lastInputs) return;
+  const baseInputs = STATE.lastInputs;
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
+  const root = $('pdfRoot');
+  const projName = ($('projectName').value || 'Project') + ' — ALL WALLS';
+  const date = new Date().toLocaleDateString('en-AU', { year: 'numeric', month: 'short', day: 'numeric' });
+  let coverHtml = `<div class="pdf-page">
+    <div class="pdf-header"><div class="pdf-header-l"><div class="pdf-mark">BT</div>
+      <div><h1>Blockwork Walls — Project Summary</h1>
+      <div style="font-size:8px;color:#4a4a47;">Engine v${ENGINE_VERSION}</div></div></div>
+      <div class="pdf-header-r"><strong>${projName}</strong><br>${date}</div></div>
+    <h2>Wall summary</h2>
+    <table><thead><tr><th>Wall</th><th>LCs</th><th>Worst LC</th><th>η max</th><th>Verdict</th></tr></thead><tbody>`;
+  for (const [wallId, lcs] of Object.entries(STATE.walls)) {
+    const w0 = lcs[0];
+    const wInputs = JSON.parse(JSON.stringify(baseInputs));
+    if (w0.t) wInputs.geometry.t = w0.t * 1000;
+    if (w0.L) wInputs.geometry.L = w0.L * 1000;
+    if (w0.H) wInputs.geometry.H = w0.H * 1000;
+    const res = checkMany(wInputs, lcs);
+    const g = res.governing;
+    coverHtml += `<tr><td>${wallId}</td><td>${lcs.length}</td><td>${g.lc_name}</td>
+      <td class="num">${g.max_utilisation.toFixed(2)}</td>
+      <td class="${g.pass?'pdf-pass':'pdf-fail'}">${g.pass?'PASS':'FAIL'}</td></tr>`;
+  }
+  coverHtml += `</tbody></table>
+    <p style="margin-top: 18px; font-size: 9px;">Detailed per-wall calculations follow.</p>
+    <div class="pdf-footer"><span>Bligh Tanner</span><span>Project summary</span></div></div>`;
+  root.innerHTML = coverHtml;
+  let coverCanvas = await html2canvas(root.querySelector('.pdf-page'), { scale: 2, backgroundColor: '#ffffff' });
+  pdf.addImage(coverCanvas.toDataURL('image/png'), 'PNG', 0, 0, 595, 842);
+
+  for (const [wallId, lcs] of Object.entries(STATE.walls)) {
+    const w0 = lcs[0];
+    const wInputs = JSON.parse(JSON.stringify(baseInputs));
+    if (w0.t) wInputs.geometry.t = w0.t * 1000;
+    if (w0.L) wInputs.geometry.L = w0.L * 1000;
+    if (w0.H) wInputs.geometry.H = w0.H * 1000;
+    const res = checkMany(wInputs, lcs);
+    const origName = $('projectName').value;
+    $('projectName').value = `${origName || 'Project'} — Wall ${wallId}`;
+    root.innerHTML = buildPdfHtml(res, wInputs);
+    const pages = root.querySelectorAll('.pdf-page');
+    for (let i = 0; i < pages.length; i++) {
+      const canvas = await html2canvas(pages[i], { scale: 2, backgroundColor: '#ffffff' });
+      pdf.addPage();
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 595, 842);
+    }
+    $('projectName').value = origName;
+  }
+  pdf.save(`${(projName).replace(/[^\w-]+/g, '_')}.pdf`);
+});
+
+// ════════════════════════════════════════════════════════════════════════
+// INITIAL
+// ════════════════════════════════════════════════════════════════════════
+window.addEventListener('load', () => {
+  init3D();
+  recompute();
+});
+
+</script>
+</body>
+</html>

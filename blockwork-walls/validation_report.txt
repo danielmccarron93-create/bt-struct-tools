@@ -1,0 +1,243 @@
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  TEST 1 — Example wall: 190·2000·5000, f'uc=15, f'cg=20, αr=0.40
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  [PASS] f'm (MPa)                                               actual=        7.0488  expected=        7.0488  diff= 0.000%
+  [PASS] Ab/m (mm²/m)                                            actual=    60000.0000  expected=    60000.0000  diff= 0.000%
+  [PASS] Ag/m (mm²/m)                                            actual=   130000.0000  expected=   130000.0000  diff= 0.000%
+  [PASS] Ad total (mm²)                                          actual=   380000.0000  expected=   380000.0000  diff= 0.000%
+  [PASS] Sr1                                                     actual=       22.3684  expected=       22.3684  diff= 0.000%
+  [PASS] Sr2                                                     actual=       16.9834  expected=       16.9834  diff= 0.000%
+  [PASS] Fo basic per m (kN/m)                                   actual=     1498.5964  expected=     1498.6000  diff= 0.000%
+  [PASS] Fd/Fo                                                   actual=        0.2002  expected=        0.2002  diff= 0.006%
+  [PASS] Sr governing                                            actual=       22.3684  expected=       22.3684  diff= 0.000%
+  [PASS] kes                                                     actual=        0.2923  expected=        0.2924  diff= 0.030%
+  [PASS] As/m vert (mm²/m)                                       actual=     1000.0000  expected=     1000.0000  diff= 0.000%
+  [PASS] φNu.c per m (kN/m)                                      actual=      372.3914  expected=      371.5500  diff= 0.226%
+  [PASS] φNu.c total (kN)                                        actual=      744.7828  expected=      743.1000  diff= 0.226%
+  [PASS] Compression utilisation                                 actual=        0.8056  expected=        0.8070  diff= 0.173%
+  [PASS] φNt total (kN)                                          actual=      750.0000  expected=      750.0000  diff= 0.000%
+  [PASS] H/L                                                     actual=        2.5000  expected=        2.5000  diff= 0.000%
+  [PASS] Long-wall fvr (MPa)                                     actual=        0.2500  expected=        0.2500  diff= 0.000%
+  [PASS] Long-wall As (mm²)                                      actual=      366.6667  expected=      366.6700  diff= 0.001%
+  [PASS] Long-wall Vu (kN)                                       actual=      241.6667  expected=      241.6700  diff= 0.001%
+  [PASS] Short-wall masonry term (kN)                            actual=      133.0000  expected=      133.0000  diff= 0.000%
+  [PASS] Short-wall fvs term (kN)                                actual=       35.0000  expected=       35.0000  diff= 0.000%
+  [PASS] Short-wall horiz reo term (kN)                          actual=      183.3333  expected=      183.3300  diff= 0.002%
+  [PASS] Short-wall Vu raw (kN)                                  actual=      351.3333  expected=      351.3300  diff= 0.001%
+  [PASS] Cl 8.8 cap (kN)                                         actual=      532.0000  expected=      532.0000  diff= 0.000%
+  [PASS] Vu governing (kN)                                       actual=      351.3333  expected=      351.3300  diff= 0.001%
+  [PASS] φVu (kN)                                                actual=      263.5000  expected=      263.5000  diff= 0.000%
+  [PASS] Shear utilisation                                       actual=        0.3036  expected=        0.3040  diff= 0.130%
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  TEST 2 — kes formula bounds
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  [PASS] kes(Sr=0, e=0)                                          actual=        1.0000  expected=        1.0000  diff= 0.000%
+  [PASS] kes(Sr=40, e=0)                                         actual=        0.0000  expected=        0.0000  diff= 0.000%
+  [PASS] kes(Sr=0, e/t=0.5)                                      actual=        0.0000  expected=        0.0000  diff= 0.000%
+  [PASS] kes(Sr=50, e=0) [clamped]                               actual=        0.0000  expected=        0.0000  diff= 0.000%
+  [PASS] kes(Sr=0, e/t=0.6) [clamped]                            actual=        0.0000  expected=        0.0000  diff= 0.000%
+  [PASS] kes(Sr=20, e=19, t=190)                                 actual=        0.4000  expected=        0.4000  diff= 0.000%
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  TEST 3 — Pure tension wall
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  [PASS] φNt total (kN)                                          actual=      750.0000  expected=      750.0000  diff= 0.000%
+  [PASS] Tension utilisation                                     actual=        0.4000  expected=        0.4000  diff= 0.000%
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  TEST 4 — Long-wall shear (H/L < 2.3)
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  [PASS] H/L                                                     actual=        0.7500  expected=        0.7500  diff= 0.000%
+  [PASS] is long?                                                actual=        1.0000  expected=        1.0000  diff= 0.000%
+  [PASS] fvr                                                     actual=        1.1250  expected=        1.1250  diff= 0.000%
+  [PASS] As for shear (mm²)                                      actual=      550.0000  expected=      550.0000  diff= 0.000%
+  [PASS] Vu (long, kN)                                           actual=     1075.0000  expected=     1075.0000  diff= 0.000%
+  [PASS] φVu (kN)                                                actual=      806.2500  expected=      806.2500  diff= 0.000%
+  [PASS] Shear utilisation                                       actual=        0.2481  expected=        0.2481  diff= 0.015%
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  TEST 5 — Cl 8.8 cap actively governing (short wall, heavy shear reo)
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  [PASS] H/L                                                     actual=        3.0000  expected=        3.0000  diff= 0.000%
+  [PASS] is long?                                                actual=        0.0000  expected=        0.0000  diff= 0.000%
+  [PASS] Cap (kN)                                                actual=      399.0000  expected=      399.0000  diff= 0.000%
+  [PASS] Vu raw > Cap (cap governs)                              actual=        1.0000  expected=        1.0000  diff= 0.000%
+  [PASS] Vu (after cap, kN)                                      actual=      399.0000  expected=      399.0000  diff= 0.000%
+  [PASS] cap_governs flag                                        actual=        1.0000  expected=        1.0000  diff= 0.000%
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  TEST 6 — Sr selection rule (Cl 7.3.4.3(a) Fd/Fo ≤ 0.20)
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  [PASS] Low N, Sr governing = MIN                               actual=       16.9834  expected=       16.9834  diff= 0.000%
+  [PASS] High N, Sr governing = Sr1                              actual=       22.3684  expected=       22.3684  diff= 0.000%
+  [PASS] No edge support, Sr governing = Sr1                     actual=       22.3684  expected=       22.3684  diff= 0.000%
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  TEST 7 — αr (steel contribution to axial)
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  [PASS] Steel term @ αr=0   (kN/m)                              actual=        0.0000  expected=        0.0000  diff= 0.000%
+  [PASS] Steel term @ αr=0.4 (kN/m)                              actual=      200.0000  expected=      200.0000  diff= 0.000%
+  [INFO] Capacity uplift from αr=0 → αr=0.4: 13.3%
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  TEST 8 — Multi-LC: pick worst utilisation
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  Governing LC: LC2 1.2G+1.5Q+W  η = 0.806
+  [PASS] Number of LCs                                           actual=        4.0000  expected=        4.0000  diff= 0.000%
+  [PASS] Governing util = max across LCs                         actual=        0.8056  expected=        0.8056  diff= 0.000%
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  TEST 9 — RCB Static vs Area: worst-case selection
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  [PASS] worst(static=300, area=500)                             actual=      500.0000  expected=      500.0000  diff= 0.000%
+  [PASS] worst(static=600, area=400)                             actual=      600.0000  expected=      600.0000  diff= 0.000%
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  TEST 10 — Detailing checks
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  8 detailing checks run, 0 failures.
+    [PASS] Cl 8.5.1(f): Vertical reo As ≥ 0.002·Ad (min for axial)
+    [PASS] Cl 8.7.2(ii): Vertical reo spacing ≤ min(0.75·H, 3000)
+    [PASS] Cl 8.7.2(ii): Horizontal reo spacing ≤ min(0.75·L, 3000)
+    [PASS] Cl 8.7.2(iii): Vertical reo ratio ≥ 0.0013·Ad (full wall length)
+    [PASS] Cl 8.7.2(iii): Horizontal reo ratio ≥ 0.0007·Ad (full wall height)
+    [PASS] Cl 8.7.2(iv) / 8.10(b): Edge reo: ≥ 100 mm² within 300 mm of each edge
+    [PASS] Cl 8.10(c): Main reo spacing ≤ 2000 mm (tension)
+    [PASS] Cl 8.6(a): Bending reo spacing ≤ 2000 mm
+  [PASS] All detailing checks pass                               actual=        1.0000  expected=        1.0000  diff= 0.000%
+  With EQ toggle on: 5 EQ checks added.
+  [PASS] EQ checks were added                                    actual=        1.0000  expected=        1.0000  diff= 0.000%
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  TEST 11 — Cl 8.7.4 stability check
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  [PASS] ksw                                                     actual=        0.9253  expected=        0.9253  diff= 0.004%
+  [PASS] Vd,stab (kN)                                            actual=     1185.0666  expected=     1185.0600  diff= 0.001%
+  [PASS] stability check applies                                 actual=        1.0000  expected=        1.0000  diff= 0.000%
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  TEST 12 — Cl 8.6 explicit reinforced flexure (in-plane)
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  Asd_provided = 2000.0, Asd_limit = 1817.7, used = 1817.7
+  Mu = 1351.3 kNm, φMu = 1013.4 kNm
+  [PASS] Asd_used (mm²)                                          actual=     1817.6676  expected=     1817.2700  diff= 0.022%
+  [PASS] Mu (kNm)                                                actual=     1351.2541  expected=     1351.4000  diff= 0.011%
+  [PASS] φMu (kNm)                                               actual=     1013.4406  expected=     1013.5000  diff= 0.006%
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  TEST 13 — Very slender wall (kes near zero)
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  Sr1 = 57.14, Sr2 = 38.73
+  Sr governing = 38.73, kes = 0.0213
+  [PASS] Sr1 > 40 (Eq 1 alone fails)                             actual=        1.0000  expected=        1.0000  diff= 0.000%
+  [PASS] Sr2 < 40 (Eq 2 saves it)                                actual=        1.0000  expected=        1.0000  diff= 0.000%
+  [PASS] Sr governing = MIN(Sr1, Sr2)                            actual=       38.7298  expected=       38.7298  diff= 0.000%
+  [PASS] kes very low but positive                               actual=        0.0213  expected=        0.0213  diff= 0.097%
+  [PASS] kes = 0 when no edge support and Sr1 > 40               actual=        0.0000  expected=        0.0000  diff= 0.000%
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  TEST 14 — REO_TABLE: EF, additional bars, mesh
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  [PASS] Asv N16 @200                                            actual=     1000.0000  expected=     1000.0000  diff= 0.000%
+  [PASS] Asv N16 EF @200                                         actual=     2000.0000  expected=     2000.0000  diff= 0.000%
+  [PASS] EF doubles N16                                          actual=        2.0000  expected=        2.0000  diff= 0.000%
+  [PASS] Asv primary+additional                                  actual=      775.0000  expected=      775.0000  diff= 0.000%
+  [PASS] Asv SL82 (mesh, ignores spacing)                        actual=      227.0000  expected=      227.0000  diff= 0.000%
+  [PASS] Ash SL82 (mesh)                                         actual=      227.0000  expected=      227.0000  diff= 0.000%
+  [PASS] Asv SL82 EF (corrected from L7 typo)                    actual=      454.0000  expected=      454.0000  diff= 0.000%
+  [PASS] Asv with '-' code                                       actual=        0.0000  expected=        0.0000  diff= 0.000%
+  [PASS] Asv N32 @400 (= 800·1000/400)                           actual=     2000.0000  expected=     2000.0000  diff= 0.000%
+  [PASS] Legacy schema vert_bar_dia=16 → N16                     actual=     1000.0000  expected=     1000.0000  diff= 0.000%
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  SUMMARY: 80 PASSED, 0 FAILED
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+===== JS PORT VALIDATION =====
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  JS TEST 1 — Example wall: 190·2000·5000
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  [PASS] f'm                                                     actual=        7.0488  expected=        7.0488  diff=0.000%
+  [PASS] Sr1                                                     actual=       22.3684  expected=       22.3684  diff=0.000%
+  [PASS] Sr2                                                     actual=       16.9834  expected=       16.9834  diff=0.000%
+  [PASS] Fo basic per m                                          actual=     1498.5964  expected=     1498.6000  diff=0.000%
+  [PASS] kes                                                     actual=        0.2923  expected=        0.2924  diff=0.030%
+  [PASS] φNu.c per m                                             actual=      372.3914  expected=      371.5500  diff=0.226%
+  [PASS] φNu.c total                                             actual=      744.7828  expected=      743.1000  diff=0.226%
+  [PASS] Compression η                                           actual=        0.8056  expected=        0.8070  diff=0.173%
+  [PASS] φNt total                                               actual=      750.0000  expected=      750.0000  diff=0.000%
+  [PASS] Long Vu                                                 actual=      241.6667  expected=      241.6700  diff=0.001%
+  [PASS] Short Vu raw                                            actual=      351.3333  expected=      351.3300  diff=0.001%
+  [PASS] φVu                                                     actual=      263.5000  expected=      263.5000  diff=0.000%
+  [PASS] Shear η                                                 actual=        0.3036  expected=        0.3040  diff=0.130%
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  JS TEST 2 — Long wall (H/L < 2.3)
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  [PASS] H/L                                                     actual=        0.7500  expected=        0.7500  diff=0.000%
+  [PASS] fvr                                                     actual=        1.1250  expected=        1.1250  diff=0.000%
+  [PASS] As (mm²)                                                actual=      550.0000  expected=      550.0000  diff=0.000%
+  [PASS] Vu (long)                                               actual=     1075.0000  expected=     1075.0000  diff=0.000%
+  [PASS] φVu                                                     actual=      806.2500  expected=      806.2500  diff=0.000%
+  [PASS] Shear η                                                 actual=        0.2481  expected=        0.2481  diff=0.015%
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  JS TEST 3 — Cl 8.8 cap actively governing
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  [PASS] H/L                                                     actual=        3.0000  expected=        3.0000  diff=0.000%
+  [PASS] Cap                                                     actual=      399.0000  expected=      399.0000  diff=0.000%
+  [PASS] cap governs?                                            actual=        1.0000  expected=        1.0000  diff=0.000%
+  [PASS] Vu after cap                                            actual=      399.0000  expected=      399.0000  diff=0.000%
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  JS TEST 4 — kes bounds
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  [PASS] kes(0,0)                                                actual=        1.0000  expected=        1.0000  diff=0.000%
+  [PASS] kes(40,0)                                               actual=        0.0000  expected=        0.0000  diff=0.000%
+  [PASS] kes(0,e/t=0.5)                                          actual=        0.0000  expected=        0.0000  diff=0.000%
+  [PASS] kes(20,e=19,t=190)                                      actual=        0.4000  expected=        0.4000  diff=0.000%
+  [PASS] kes negative clamped                                    actual=        0.0000  expected=        0.0000  diff=0.000%
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  JS TEST 5 — αr=0 vs αr=0.40 capacity uplift
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  [PASS] Steel term @ αr=0                                       actual=        0.0000  expected=        0.0000  diff=0.000%
+  [PASS] Steel term @ αr=0.4                                     actual=      200.0000  expected=      200.0000  diff=0.000%
+  [INFO] Uplift αr=0 → αr=0.4: 13.3%
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  JS TEST 6 — Multi-LC governing pick
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  Governing: LC2  η = 0.806
+  [PASS] Number of LCs                                           actual=        4.0000  expected=        4.0000  diff=0.000%
+  [PASS] Governing util = max                                    actual=        0.8056  expected=        0.8056  diff=0.000%
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  JS TEST 7 — Static vs Area worst-case
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  [PASS] Nc_worst when Area > Static                             actual=      500.0000  expected=      500.0000  diff=0.000%
+  [PASS] Nc_worst when Static > Area                             actual=      600.0000  expected=      600.0000  diff=0.000%
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  JS TEST 8 — Cl 8.6 explicit flexure
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  [PASS] Asd_used                                                actual=     1817.6676  expected=     1817.2700  diff=0.022%
+  [PASS] Mu                                                      actual=     1351.2541  expected=     1351.4000  diff=0.011%
+  [PASS] φMu                                                     actual=     1013.4406  expected=     1013.5000  diff=0.006%
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  JS TEST 9 — REO_TABLE: EF, additional bars, mesh
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  [PASS] Asv N16@200                                             actual=     1000.0000  expected=     1000.0000  diff=0.000%
+  [PASS] Asv N16 EF doubles                                      actual=     2000.0000  expected=     2000.0000  diff=0.000%
+  [PASS] Asv primary+additional                                  actual=      775.0000  expected=      775.0000  diff=0.000%
+  [PASS] Asv SL82 (mesh, ignores spacing)                        actual=      227.0000  expected=      227.0000  diff=0.000%
+  [PASS] Asv SL82 EF (corrected)                                 actual=      454.0000  expected=      454.0000  diff=0.000%
+  [PASS] Asv "-"                                                 actual=        0.0000  expected=        0.0000  diff=0.000%
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  JS PORT VALIDATION SUMMARY: 43 PASSED, 0 FAILED
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
