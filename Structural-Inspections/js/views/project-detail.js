@@ -18,7 +18,8 @@ import {
   listDrawingsForProject, addDrawingsFromSource, updateDrawing, deleteDrawing,
   getDrawing, getDrawingBlob,
   listInspectionsForProject,
-  startInspectionFromPlanEntry, skipPlanEntry, resetPlanEntry
+  startInspectionFromPlanEntry, skipPlanEntry, resetPlanEntry,
+  getProjectProgress, markForm12Issued, unmarkForm12Issued
 } from '../db.js';
 import { openModal, confirmDialog } from '../components/modal.js';
 import { toast } from '../components/toast.js';
@@ -30,6 +31,9 @@ import {
   extractRevisionFromFilename
 } from '../lib/pdf.js';
 import { openNewInspection } from './new-inspection.js';
+import { openPreInspectionBrief } from '../components/pre-inspection-brief.js';
+import { openImportRevision } from '../components/import-revision.js';
+import { acknowledgeRevisionChange } from '../db.js';
 
 export async function render(root, params) {
   const id = Number(params[0]);
@@ -48,22 +52,29 @@ export async function render(root, params) {
     return;
   }
 
-  const [drawings, inspections] = await Promise.all([
+  const [drawings, inspections, progress] = await Promise.all([
     listDrawingsForProject(id),
-    listInspectionsForProject(id)
+    listInspectionsForProject(id),
+    getProjectProgress(id).catch(() => null)   // graceful: legacy projects without a plan still render
   ]);
 
   const hasProjectMap = !!project.projectMap;
   const generalNotes  = project.projectMap?.generalNotes || null;
   const warnings      = project.projectMap?.warnings || [];
   const plan          = Array.isArray(project.inspectionPlan) ? project.inspectionPlan : [];
+  const excludedFromBT = project.excludedFromBT || project.projectMap?.project?.excludedFromBT || [];
+
+  const pendingRevisions = Array.isArray(project.pendingRevisions) ? project.pendingRevisions : [];
 
   root.innerHTML = `
     <nav class="breadcrumb"><a href="#/projects">&lsaquo; Projects</a></nav>
 
     ${warnings.length ? renderWarningsBanner(warnings) : ''}
+    ${pendingRevisions.length ? renderPendingRevisionsBanner(pendingRevisions, plan) : ''}
     ${renderProjectHeader(project)}
+    ${plan.length && progress ? renderProgressStrip(progress, project) : ''}
     ${hasProjectMap && generalNotes ? renderGeneralNotesCard(generalNotes) : ''}
+    ${excludedFromBT.length ? renderExcludedFromBT(excludedFromBT) : ''}
     ${plan.length ? renderInspectionPlan(plan, inspections) : ''}
 
     <section class="project-section">
@@ -101,6 +112,19 @@ export async function render(root, params) {
   /* ---- Wire handlers ---- */
   root.querySelector('#btn-edit-project').addEventListener('click', () => onEditProject(project));
   root.querySelector('#btn-delete-project').addEventListener('click', () => onDeleteProject(project));
+  const importRevBtn = root.querySelector('#btn-import-revision');
+  if (importRevBtn) importRevBtn.addEventListener('click', () => openImportRevision(project.id));
+
+  // Acknowledge revision-changed badge on a plan entry
+  root.querySelectorAll('[data-plan-action="ack-revision"]').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const idx = Number(btn.closest('[data-plan-index]').dataset.planIndex);
+      await acknowledgeRevisionChange(project.id, idx);
+      toast('Revision acknowledged', { kind: 'info' });
+      go('project', project.id);
+    });
+  });
   root.querySelector('#input-drawings').addEventListener('change', (e) => onUploadDrawings(e, project.id));
   root.querySelector('#btn-new-inspection').addEventListener('click', () => onNewInspection(project.id));
 
@@ -133,6 +157,38 @@ export async function render(root, params) {
       go('project', project.id);
     });
   });
+
+  // Form 12 issue / unissue
+  const issueBtn = root.querySelector('[data-action="form12-issue"]');
+  if (issueBtn) {
+    issueBtn.addEventListener('click', async () => {
+      const ok = await confirmDialog({
+        title: 'Issue Form 12 / RPEQ certification?',
+        message: 'This marks the project as Form 12 issued (status only — PDF generation comes in v2.3). You can undo this from the same place.',
+        confirmLabel: 'Mark issued',
+        cancelLabel:  'Cancel'
+      });
+      if (!ok) return;
+      await markForm12Issued(project.id);
+      toast('Form 12 marked issued', { kind: 'success' });
+      go('project', project.id);
+    });
+  }
+  const unissueBtn = root.querySelector('[data-action="form12-unissue"]');
+  if (unissueBtn) {
+    unissueBtn.addEventListener('click', async () => {
+      const ok = await confirmDialog({
+        title: 'Undo Form 12 issuance?',
+        message: 'This clears the issued timestamp. The project goes back to "ready to issue" if criteria still met.',
+        confirmLabel: 'Undo',
+        cancelLabel:  'Cancel'
+      });
+      if (!ok) return;
+      await unmarkForm12Issued(project.id);
+      toast('Form 12 issuance cleared', { kind: 'info' });
+      go('project', project.id);
+    });
+  }
 
   // Drawing filter chips
   const chipBar = root.querySelector('#dwg-filter-chips');
@@ -202,6 +258,44 @@ function renderWarningsBanner(warnings) {
   `;
 }
 
+/**
+ * Pending revisions banner — shown after applyRevisionDiff stamps the project.
+ * Lists each revision import and how many plan entries still need acknowledgement.
+ */
+function renderPendingRevisionsBanner(pendingRevisions, plan) {
+  if (!pendingRevisions.length) return '';
+  const unacknowledged = (plan || []).filter(
+    (e) => e.revisionChangedAt && !e.revisionAcknowledgedAt
+  ).length;
+  return `
+    <div class="rev-banner" role="alert">
+      <details ${unacknowledged > 0 ? 'open' : ''}>
+        <summary>
+          <strong>Revision${pendingRevisions.length === 1 ? '' : 's'} imported</strong>
+          ${unacknowledged > 0
+            ? ` — <span class="rev-banner__pending">${unacknowledged} plan entr${unacknowledged === 1 ? 'y' : 'ies'} need review</span>`
+            : ' — all changes acknowledged'}
+        </summary>
+        <ul>
+          ${pendingRevisions.map((r) => `
+            <li>
+              <strong>${escapeHtml(r.newPdf || 'revision')}</strong>
+              <span class="muted small"> · imported ${formatRelativeDate(r.importedAt)}</span>
+              <div class="muted small">${escapeHtml(r.summary || '')}</div>
+            </li>
+          `).join('')}
+        </ul>
+      </details>
+    </div>
+  `;
+}
+
+function formatRelativeDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleString('en-AU', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
 function renderProjectHeader(p) {
   const issue       = p.issueStatus || '';
   const discipline  = p.discipline || '';
@@ -224,9 +318,106 @@ function renderProjectHeader(p) {
       </dl>
       <div class="cluster">
         <button class="btn btn--secondary btn--sm" id="btn-edit-project">Edit project</button>
+        <button class="btn btn--ghost btn--sm" id="btn-import-revision" title="Import a revision diff JSON produced by tools/diff_revision.py">Import revision</button>
         <button class="btn btn--ghost btn--sm" id="btn-delete-project" style="color: var(--color-danger);">Delete project</button>
       </div>
     </header>
+  `;
+}
+
+/**
+ * Form 12 / RPEQ progress strip — top of project view.
+ * Shows: total inspections, % complete, hold-points outstanding,
+ * rectifications outstanding, "Form 12 ready" status, "Issue Form 12" button.
+ */
+function renderProgressStrip(progress, project) {
+  const { plan, rectifications, form12Ready, form12IssuedAt } = progress;
+  const pct = plan.total > 0
+    ? Math.round((plan.complete + plan.skipped) / plan.total * 100)
+    : 0;
+  const issued = !!form12IssuedAt;
+
+  let statusBadge, action;
+  if (issued) {
+    const dt = new Date(form12IssuedAt);
+    const dateLabel = dt.toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' });
+    statusBadge = `<span class="badge badge--complete">Form 12 issued · ${dateLabel}</span>`;
+    action = `<button class="btn btn--ghost btn--sm" data-action="form12-unissue">Undo</button>`;
+  } else if (form12Ready) {
+    statusBadge = `<span class="badge badge--ready">Form 12 ready to issue</span>`;
+    action = `<button class="btn btn--primary btn--sm" data-action="form12-issue">Issue Form 12</button>`;
+  } else {
+    const blockers = [];
+    if (plan.complete + plan.skipped < plan.total) {
+      const left = plan.total - plan.complete - plan.skipped;
+      blockers.push(`${left} inspection${left === 1 ? '' : 's'} pending`);
+    }
+    if (rectifications.outstanding > 0) {
+      blockers.push(`${rectifications.outstanding} rectification${rectifications.outstanding === 1 ? '' : 's'} outstanding`);
+    }
+    statusBadge = `<span class="muted small">Form 12 ready when: ${blockers.join(' · ')}</span>`;
+    action = '';
+  }
+
+  return `
+    <section class="form12-strip">
+      <div class="form12-strip__bar">
+        <div class="form12-strip__bar-track">
+          <div class="form12-strip__bar-fill" style="width: ${pct}%;"></div>
+        </div>
+        <div class="form12-strip__pct">${pct}%</div>
+      </div>
+      <div class="form12-strip__stats">
+        <div class="form12-stat">
+          <span class="form12-stat__num">${plan.complete}<span class="form12-stat__sub">/${plan.total}</span></span>
+          <span class="form12-stat__lbl">Complete</span>
+        </div>
+        <div class="form12-stat">
+          <span class="form12-stat__num ${plan.holdsOutstanding > 0 ? 'form12-stat__num--accent' : ''}">${plan.holdsOutstanding}</span>
+          <span class="form12-stat__lbl">Hold points open</span>
+        </div>
+        <div class="form12-stat">
+          <span class="form12-stat__num ${rectifications.outstanding > 0 ? 'form12-stat__num--accent' : ''}">${rectifications.outstanding}</span>
+          <span class="form12-stat__lbl">Rectifications</span>
+        </div>
+        <div class="form12-stat">
+          <span class="form12-stat__num">${plan.skipped}</span>
+          <span class="form12-stat__lbl">Skipped</span>
+        </div>
+      </div>
+      <div class="form12-strip__action">
+        ${statusBadge}
+        ${action}
+      </div>
+    </section>
+  `;
+}
+
+/**
+ * Excluded from BT — shows the certified-by-others summary so engineer is
+ * aware of what they're NOT inspecting (precast lifting, steel temp props,
+ * stud framing, roof safety systems).
+ */
+function renderExcludedFromBT(excluded) {
+  return `
+    <section class="excluded-from-bt card">
+      <details>
+        <summary>
+          <strong>Not in BT scope (${excluded.length})</strong>
+          <span class="muted small">— certified by other parties; do not inspect</span>
+        </summary>
+        <ul class="excluded-list">
+          ${excluded.map((e) => `
+            <li>
+              <strong>${escapeHtml(e.element)}</strong>
+              ${e.responsibility ? `<div class="muted small">Responsibility: ${escapeHtml(e.responsibility)}</div>` : ''}
+              ${e.scope ? `<div class="muted small">Scope: ${escapeHtml(e.scope)}</div>` : ''}
+              ${e.noteRef ? `<div class="muted small">Ref: <code>${escapeHtml(e.noteRef)}</code></div>` : ''}
+            </li>
+          `).join('')}
+        </ul>
+      </details>
+    </section>
   `;
 }
 
@@ -372,8 +563,12 @@ function renderPlanEntry(entry, index, inspById) {
   const refsLabel = refs.length === 0 ? '' :
     refs.length <= 3 ? refs.join(' · ') : `${refs.slice(0, 3).join(' · ')} +${refs.length - 3}`;
 
+  // Revision-changed badge — set when applyRevisionDiff stamps this entry
+  // and not yet acknowledged by the engineer.
+  const revPending = !!entry.revisionChangedAt && !entry.revisionAcknowledgedAt;
+
   return `
-    <li class="plan-entry plan-entry--${effectiveStatus}"
+    <li class="plan-entry plan-entry--${effectiveStatus} ${revPending ? 'plan-entry--rev-pending' : ''}"
         data-plan-index="${index}"
         data-plan-status="${effectiveStatus}"
         data-linked-inspection-id="${linkedInspId}"
@@ -385,6 +580,7 @@ function renderPlanEntry(entry, index, inspById) {
           <span class="plan-entry__title">${escapeHtml(entry.title || entry.type || '')}</span>
           ${entry.holdPoint ? `<span class="badge badge--hold">hold point</span>` : ''}
           ${statusBadge}
+          ${revPending ? `<span class="badge badge--rev-pending" title="A drawing referenced by this inspection has been revised — review and acknowledge.">revision changed</span>` : ''}
         </div>
         <div class="plan-entry__meta muted small">
           ${entry.level ? escapeHtml(entry.level) : ''}${entry.building && entry.building !== 'Main' ? ' · ' + escapeHtml(entry.building) : ''}
@@ -395,6 +591,9 @@ function renderPlanEntry(entry, index, inspById) {
         ${entry.skippedReason ? `<div class="plan-entry__skipped muted small">Skipped: ${escapeHtml(entry.skippedReason)}</div>` : ''}
       </div>
       <div class="plan-entry__actions">
+        ${revPending
+          ? `<button class="icon-btn icon-btn--accent" data-plan-action="ack-revision" aria-label="Acknowledge revision" title="Mark this revision change as reviewed">✓</button>`
+          : ''}
         ${effectiveStatus === 'pending'
           ? `<button class="icon-btn" data-plan-action="skip" aria-label="Skip" title="Skip this inspection">⊘</button>`
           : ''}
@@ -585,26 +784,10 @@ function renderInspectionList(inspections) {
 
 async function onStartPlanEntry(projectId, planIndex) {
   const project = await getProject(projectId);
-  const entry = project?.inspectionPlan?.[planIndex];
-  if (!entry) return;
-
-  const ok = await confirmDialog({
-    title: `Start: ${entry.title || entry.type}?`,
-    message: entry.rationale
-      ? `${entry.rationale}\n\n${entry.expectedChecklist?.length ? entry.expectedChecklist.length + ' checklist items will be ready to tick on the drawing.' : ''}`
-      : 'Pre-fills the inspection type and the relevant drawings from the project plan.',
-    confirmLabel: 'Start inspection',
-    danger: false
-  });
-  if (!ok) return;
-
-  try {
-    const inspection = await startInspectionFromPlanEntry(projectId, planIndex);
-    toast(`Started: ${inspection.inspectionTypeName}`, { kind: 'success' });
-    go('inspection', inspection.id);
-  } catch (err) {
-    toast(err.message || 'Couldn\u2019t start inspection', { kind: 'error', duration: 6000 });
-  }
+  if (!project) return;
+  // Open the rich pre-inspection brief modal (Phase C2 — v2.2). It handles the
+  // confirmation flow + creates the inspection on confirm + navigates.
+  await openPreInspectionBrief(project, planIndex);
 }
 
 async function onSkipPlanEntry(projectId, planIndex) {

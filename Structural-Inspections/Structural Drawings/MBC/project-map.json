@@ -1,0 +1,2568 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-04-28T21:48:14.937977+00:00",
+  "generator": "cowork-btinspect/2.2",
+  "sourceFolder": "MBC",
+  "project": {
+    "name": "MBC Creativity & Arts Centre",
+    "siteAddress": "Moreton Bay College, 450 Wondall Road, Manly West, QLD 4179",
+    "jobNumber": "2024.0230",
+    "client": "Moreton Bay College",
+    "issueStatus": "TENDER NOT FOR CONSTRUCTION",
+    "engineerOfRecord": "Bligh Tanner",
+    "discipline": "structural",
+    "builder": null,
+    "architect": null,
+    "rpeqSignatory": null,
+    "excludedFromBT": [
+      {
+        "element": "Structural steelwork — temporary propping & bracing",
+        "responsibility": "Contractor RPEQ (temporary works engineer)",
+        "noteRef": "S18 & G2",
+        "scope": "Temporary works during erection"
+      },
+      {
+        "element": "Light-gauge steel stud framing",
+        "responsibility": "Manufacturer RPEQ (Form 16 on completion)",
+        "noteRef": "ST1",
+        "scope": "Sizing, spacing, and ALL connections to permanent structure"
+      },
+      {
+        "element": "Roof safety systems",
+        "responsibility": "Manufacturer / supplier",
+        "noteRef": "(general note table)",
+        "scope": "System and connections to roof, including verification of load paths to permanent bracing"
+      }
+    ]
+  },
+  "sourceFiles": [
+    {
+      "filename": "MBC.pdf",
+      "pageCount": 62,
+      "sizeBytes": 99113288,
+      "sha256": null
+    }
+  ],
+  "drawings": [
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 1,
+      "sheetNumber": "S000",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "COVER SHEET",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "kind:cover",
+        "level:na"
+      ],
+      "applicableInspectionTypes": [],
+      "elements": [],
+      "confidence": 1.0
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 2,
+      "sheetNumber": "S001",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "GENERAL NOTES - SHEET 1",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "kind:notes",
+        "level:na"
+      ],
+      "applicableInspectionTypes": [],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 3,
+      "sheetNumber": "S002",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "GENERAL NOTES - SHEET 2",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "kind:notes",
+        "level:na"
+      ],
+      "applicableInspectionTypes": [],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 4,
+      "sheetNumber": null,
+      "revision": null,
+      "revisionDate": null,
+      "description": null,
+      "scale": null,
+      "drawnBy": null,
+      "checkedBy": null,
+      "approvedBy": null,
+      "tags": [
+        "kind:plan",
+        "level:multi"
+      ],
+      "applicableInspectionTypes": [],
+      "elements": [],
+      "confidence": 0.3
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 5,
+      "sheetNumber": "S010",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FOOTING PLAN NOTES, LEGENDS, & SCHEDULES",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:pad-footing",
+        "kind:notes",
+        "level:ground"
+      ],
+      "applicableInspectionTypes": [
+        "pad-footing-prepour",
+        "pile-bored-install",
+        "subgrade"
+      ],
+      "elements": [],
+      "confidence": 1.0
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 6,
+      "sheetNumber": "S011",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FOOTING AND PLANT SLAB PLAN",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:pad-footing",
+        "element:slab-on-ground",
+        "kind:plan",
+        "level:ground"
+      ],
+      "applicableInspectionTypes": [
+        "pad-footing-prepour",
+        "pile-bored-install",
+        "slab-prepour-ground",
+        "subgrade"
+      ],
+      "elements": [],
+      "confidence": 1.0
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 7,
+      "sheetNumber": "S015",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FOOTING DETAILS - SHEET 1",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:pad-footing",
+        "kind:detail",
+        "level:ground"
+      ],
+      "applicableInspectionTypes": [
+        "pad-footing-prepour",
+        "pile-bored-install",
+        "subgrade"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 8,
+      "sheetNumber": "S016",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FOOTING DETAILS - SHEET 2",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:pad-footing",
+        "kind:detail",
+        "level:ground"
+      ],
+      "applicableInspectionTypes": [
+        "pad-footing-prepour",
+        "pile-bored-install",
+        "subgrade"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 9,
+      "sheetNumber": "S020",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "TYPICAL CONCRETE WALL DETAILS - SHEET 1",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:concrete-wall",
+        "kind:typical-detail",
+        "level:na"
+      ],
+      "applicableInspectionTypes": [
+        "concrete-wall-prepour"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 10,
+      "sheetNumber": "S025",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "TYPICAL BLOCK WALL DETAILS",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:block-wall",
+        "kind:typical-detail",
+        "level:na"
+      ],
+      "applicableInspectionTypes": [
+        "blockwork-core-fill",
+        "blockwork-wall-reinf"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 11,
+      "sheetNumber": "S026",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "TYPICAL BLOCK RETAINING WALL",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "kind:plan",
+        "level:multi"
+      ],
+      "applicableInspectionTypes": [
+        "blockwork-core-fill",
+        "blockwork-wall-reinf"
+      ],
+      "elements": [],
+      "confidence": 1.0
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 12,
+      "sheetNumber": "S027",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "TYPICAL BLOCK RETAINING WALL",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "kind:plan",
+        "level:multi"
+      ],
+      "applicableInspectionTypes": [
+        "blockwork-core-fill",
+        "blockwork-wall-reinf"
+      ],
+      "elements": [],
+      "confidence": 1.0
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 13,
+      "sheetNumber": "S035",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "CONCRETE COLUMN DETAILS - SHEET 1",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:concrete-column",
+        "kind:detail",
+        "level:multi"
+      ],
+      "applicableInspectionTypes": [
+        "column-prepour"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 14,
+      "sheetNumber": "S040",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "ATRIUM STAIRS FRAMING LAYOUT",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:stair",
+        "element:steel-beam",
+        "kind:plan",
+        "level:multi"
+      ],
+      "applicableInspectionTypes": [
+        "stair-prepour"
+      ],
+      "elements": [],
+      "confidence": 1.0
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 15,
+      "sheetNumber": "S041",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "ATRIUM STAIRS FRAMING SECTIONS",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:stair",
+        "element:steel-beam",
+        "kind:section",
+        "level:multi"
+      ],
+      "applicableInspectionTypes": [
+        "stair-prepour"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 16,
+      "sheetNumber": "S045",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "STAIR DETAILS - SHEET 1",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:stair",
+        "kind:detail",
+        "level:multi"
+      ],
+      "applicableInspectionTypes": [
+        "stair-prepour"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 17,
+      "sheetNumber": "S050",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "TYPICAL SUSPENDED SLAB DETAILS - SHEET 1",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "kind:typical-detail",
+        "level:na"
+      ],
+      "applicableInspectionTypes": [
+        "slab-prepour-ground",
+        "slab-prepour-suspended"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 18,
+      "sheetNumber": "S055",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "TYPICAL POST TENSIONING DETAILS - SHEET 1",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:post-tension",
+        "kind:typical-detail",
+        "level:na"
+      ],
+      "applicableInspectionTypes": [
+        "post-tension-strand"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 19,
+      "sheetNumber": "S056",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "TYPICAL POST TENSIONING DETAILS - SHEET 2",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:post-tension",
+        "kind:typical-detail",
+        "level:na"
+      ],
+      "applicableInspectionTypes": [
+        "post-tension-strand"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 20,
+      "sheetNumber": "S100",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "GROUND FLOOR PLAN NOTES, LEGENDS, & SCHEDULES",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "kind:notes",
+        "level:ground"
+      ],
+      "applicableInspectionTypes": [
+        "slab-prepour-ground"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 21,
+      "sheetNumber": "S101",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "GROUND FLOOR GENERAL ARRANGEMENT PLAN",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:slab-on-ground",
+        "kind:plan",
+        "level:ground"
+      ],
+      "applicableInspectionTypes": [
+        "column-prepour",
+        "concrete-wall-prepour",
+        "slab-prepour-ground"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 22,
+      "sheetNumber": "S121",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "GROUND FLOOR BOTTOM REINFORCEMENT PLAN",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:slab-on-ground",
+        "kind:plan",
+        "level:ground"
+      ],
+      "applicableInspectionTypes": [
+        "slab-prepour-ground"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 23,
+      "sheetNumber": "S131",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "GROUND FLOOR TOP REINFORCEMENT PLAN",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:slab-on-ground",
+        "kind:plan",
+        "level:ground"
+      ],
+      "applicableInspectionTypes": [
+        "slab-prepour-ground"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 24,
+      "sheetNumber": "S140",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "GROUND FLOOR POST TENSIONING PLAN",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:post-tension",
+        "kind:plan",
+        "level:ground"
+      ],
+      "applicableInspectionTypes": [
+        "post-tension-strand",
+        "slab-prepour-ground"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 25,
+      "sheetNumber": "S151",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "GROUND FLOOR SLAB SECTIONS -",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "kind:section",
+        "level:ground"
+      ],
+      "applicableInspectionTypes": [
+        "slab-prepour-ground"
+      ],
+      "elements": [],
+      "confidence": 1.0
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 26,
+      "sheetNumber": "S152",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "GROUND FLOOR SLAB SECTIONS -",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "kind:section",
+        "level:ground"
+      ],
+      "applicableInspectionTypes": [
+        "slab-prepour-ground"
+      ],
+      "elements": [],
+      "confidence": 1.0
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 27,
+      "sheetNumber": "S153",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "GROUND FLOOR SLAB SECTIONS -",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "kind:section",
+        "level:ground"
+      ],
+      "applicableInspectionTypes": [
+        "slab-prepour-ground"
+      ],
+      "elements": [],
+      "confidence": 1.0
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 28,
+      "sheetNumber": "S171",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "GROUND FLOOR LOADING PLAN",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "kind:loading-plan",
+        "level:ground"
+      ],
+      "applicableInspectionTypes": [
+        "slab-prepour-ground"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 29,
+      "sheetNumber": "S200",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FIRST FLOOR PLAN NOTES, LEGENDS, & SCHEDULES",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "kind:notes",
+        "level:l1"
+      ],
+      "applicableInspectionTypes": [
+        "slab-prepour-suspended"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 30,
+      "sheetNumber": "S201",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FIRST FLOOR GENERAL ARRANGEMENT PLAN",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:slab-suspended",
+        "kind:plan",
+        "level:l1"
+      ],
+      "applicableInspectionTypes": [
+        "column-prepour",
+        "concrete-wall-prepour",
+        "slab-prepour-suspended"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 31,
+      "sheetNumber": "S221",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FIRST FLOOR BOTTOM REINFORCEMENT PLAN",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:slab-suspended",
+        "kind:plan",
+        "level:l1"
+      ],
+      "applicableInspectionTypes": [
+        "slab-prepour-suspended"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 32,
+      "sheetNumber": "S231",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FIRST FLOOR TOP REINFORCEMENT PLAN",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:slab-suspended",
+        "kind:plan",
+        "level:l1"
+      ],
+      "applicableInspectionTypes": [
+        "slab-prepour-suspended"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 33,
+      "sheetNumber": "S241",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FIRST FLOOR POST TENSIONING",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:post-tension",
+        "kind:plan",
+        "level:l1"
+      ],
+      "applicableInspectionTypes": [
+        "post-tension-strand"
+      ],
+      "elements": [],
+      "confidence": 1.0
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 34,
+      "sheetNumber": "S251",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FIRST FLOOR  SLAB SECTIONS - SHEET 1",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "kind:section",
+        "level:l1"
+      ],
+      "applicableInspectionTypes": [
+        "slab-prepour-suspended"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 35,
+      "sheetNumber": "S271",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FIRST FLOOR LOADING PLAN",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "kind:loading-plan",
+        "level:l1"
+      ],
+      "applicableInspectionTypes": [
+        "slab-prepour-suspended"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 36,
+      "sheetNumber": "S400",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FRAMING NOTES, LEGENDS, & SCHEDULES",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:steel-beam",
+        "kind:notes",
+        "level:na"
+      ],
+      "applicableInspectionTypes": [
+        "baseplate-anchor",
+        "steel-frame-erection"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 37,
+      "sheetNumber": "S401",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "LOWER ROOF FRAMING PLAN",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:connection",
+        "element:roof-framing",
+        "element:steel-beam",
+        "kind:plan",
+        "level:roof"
+      ],
+      "applicableInspectionTypes": [
+        "steel-connection",
+        "steel-frame-erection"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 38,
+      "sheetNumber": "S402",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "LOWER ROOF PURLIN PLAN",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:steel-beam",
+        "kind:plan",
+        "level:roof"
+      ],
+      "applicableInspectionTypes": [
+        "steel-frame-erection"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 39,
+      "sheetNumber": "S405",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "MAIN ROOF FRAMING PLAN",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:connection",
+        "element:roof-framing",
+        "element:steel-beam",
+        "kind:plan",
+        "level:roof"
+      ],
+      "applicableInspectionTypes": [
+        "steel-connection",
+        "steel-frame-erection"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 40,
+      "sheetNumber": "S406",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "MAIN ROOF PURLIN PLAN",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:steel-beam",
+        "kind:plan",
+        "level:roof"
+      ],
+      "applicableInspectionTypes": [
+        "steel-frame-erection"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 41,
+      "sheetNumber": "S411",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "UPPER ROOF FRAMING PLAN",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:connection",
+        "element:roof-framing",
+        "element:steel-beam",
+        "kind:plan",
+        "level:roof"
+      ],
+      "applicableInspectionTypes": [
+        "steel-connection",
+        "steel-frame-erection"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 42,
+      "sheetNumber": "S412",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "UPPER ROOF PURLIN PLAN",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:steel-beam",
+        "kind:plan",
+        "level:roof"
+      ],
+      "applicableInspectionTypes": [
+        "steel-frame-erection"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 43,
+      "sheetNumber": "S421",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FRAMING ELEVATIONS - SHEET 1",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:steel-beam",
+        "kind:elevation",
+        "level:multi"
+      ],
+      "applicableInspectionTypes": [
+        "steel-frame-erection"
+      ],
+      "elements": [],
+      "confidence": 1.0
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 44,
+      "sheetNumber": "S422",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FRAMING ELEVATIONS - SHEET 2",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:steel-beam",
+        "kind:elevation",
+        "level:multi"
+      ],
+      "applicableInspectionTypes": [
+        "steel-frame-erection"
+      ],
+      "elements": [],
+      "confidence": 1.0
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 45,
+      "sheetNumber": "S423",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FRAMING ELEVATIONS - SHEET 3",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:steel-beam",
+        "kind:elevation",
+        "level:multi"
+      ],
+      "applicableInspectionTypes": [
+        "steel-frame-erection"
+      ],
+      "elements": [],
+      "confidence": 1.0
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 46,
+      "sheetNumber": "S424",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FRAMING ELEVATIONS - SHEET 4",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:steel-beam",
+        "kind:elevation",
+        "level:multi"
+      ],
+      "applicableInspectionTypes": [
+        "steel-frame-erection"
+      ],
+      "elements": [],
+      "confidence": 1.0
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 47,
+      "sheetNumber": "S425",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FRAMING ELEVATIONS - SHEET 5",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:steel-beam",
+        "kind:elevation",
+        "level:multi"
+      ],
+      "applicableInspectionTypes": [
+        "steel-frame-erection"
+      ],
+      "elements": [],
+      "confidence": 1.0
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 48,
+      "sheetNumber": "S426",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FRAMING ELEVATIONS - SHEET 6",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:steel-beam",
+        "kind:elevation",
+        "level:multi"
+      ],
+      "applicableInspectionTypes": [
+        "steel-frame-erection"
+      ],
+      "elements": [],
+      "confidence": 1.0
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 49,
+      "sheetNumber": "S427",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FRAMING ELEVATIONS - SHEET 7",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:steel-beam",
+        "kind:elevation",
+        "level:multi"
+      ],
+      "applicableInspectionTypes": [
+        "steel-frame-erection"
+      ],
+      "elements": [],
+      "confidence": 1.0
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 50,
+      "sheetNumber": "S428",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FRAMING ELEVATIONS - SHEET 8",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:steel-beam",
+        "kind:elevation",
+        "level:multi"
+      ],
+      "applicableInspectionTypes": [
+        "steel-frame-erection"
+      ],
+      "elements": [],
+      "confidence": 1.0
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 51,
+      "sheetNumber": "S440",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "TYPICAL FRAMING DETAILS - SHEET 1",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:connection",
+        "element:steel-beam",
+        "element:steel-column",
+        "kind:typical-detail",
+        "level:na"
+      ],
+      "applicableInspectionTypes": [
+        "baseplate-anchor",
+        "steel-connection",
+        "steel-frame-erection"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 52,
+      "sheetNumber": "S441",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "TYPICAL FRAMING DETAILS - SHEET 2",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:connection",
+        "element:steel-beam",
+        "element:steel-column",
+        "kind:typical-detail",
+        "level:na"
+      ],
+      "applicableInspectionTypes": [
+        "steel-connection"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 53,
+      "sheetNumber": "S442",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "TYPICAL FRAMING DETAILS - SHEET 3",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:connection",
+        "element:steel-beam",
+        "element:steel-column",
+        "kind:typical-detail",
+        "level:na"
+      ],
+      "applicableInspectionTypes": [
+        "steel-connection"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 54,
+      "sheetNumber": "S451",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FRAMING DETAILS - SHEET 1",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:connection",
+        "element:steel-beam",
+        "element:steel-column",
+        "kind:detail",
+        "level:multi"
+      ],
+      "applicableInspectionTypes": [
+        "steel-connection",
+        "steel-frame-erection"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 55,
+      "sheetNumber": "S452",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FRAMING DETAILS - SHEET 2",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:connection",
+        "element:steel-beam",
+        "element:steel-column",
+        "kind:detail",
+        "level:multi"
+      ],
+      "applicableInspectionTypes": [
+        "steel-connection",
+        "steel-frame-erection"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 56,
+      "sheetNumber": "S453",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FRAMING DETAILS - SHEET 3",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:connection",
+        "element:steel-beam",
+        "element:steel-column",
+        "kind:detail",
+        "level:multi"
+      ],
+      "applicableInspectionTypes": [
+        "steel-connection",
+        "steel-frame-erection"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 57,
+      "sheetNumber": "S454",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FRAMING DETAILS - SHEET 4",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:connection",
+        "element:steel-beam",
+        "element:steel-column",
+        "kind:detail",
+        "level:multi"
+      ],
+      "applicableInspectionTypes": [
+        "steel-connection"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 58,
+      "sheetNumber": "S455",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FRAMING DETAILS - SHEET 5",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:connection",
+        "element:steel-beam",
+        "element:steel-column",
+        "kind:detail",
+        "level:multi"
+      ],
+      "applicableInspectionTypes": [
+        "steel-connection",
+        "steel-frame-erection"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 59,
+      "sheetNumber": "S456",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FRAMING DETAILS - SHEET 6",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:connection",
+        "element:steel-beam",
+        "element:steel-column",
+        "kind:detail",
+        "level:multi"
+      ],
+      "applicableInspectionTypes": [
+        "steel-connection",
+        "steel-frame-erection"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 60,
+      "sheetNumber": "S457",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FRAMING DETAILS - SHEET 7",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:connection",
+        "element:steel-beam",
+        "element:steel-column",
+        "kind:detail",
+        "level:multi"
+      ],
+      "applicableInspectionTypes": [
+        "steel-connection"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 61,
+      "sheetNumber": "S458",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FRAMING DETAILS - SHEET 8",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:connection",
+        "element:steel-beam",
+        "element:steel-column",
+        "kind:detail",
+        "level:multi"
+      ],
+      "applicableInspectionTypes": [
+        "steel-connection"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    },
+    {
+      "sourceFile": "MBC.pdf",
+      "pageNumber": 62,
+      "sheetNumber": "S459",
+      "revision": "T2",
+      "revisionDate": null,
+      "description": "FRAMING DETAILS - SHEET 9",
+      "scale": null,
+      "drawnBy": "SN",
+      "checkedBy": null,
+      "approvedBy": "DM",
+      "tags": [
+        "element:connection",
+        "element:steel-beam",
+        "element:steel-column",
+        "kind:detail",
+        "level:multi"
+      ],
+      "applicableInspectionTypes": [
+        "steel-connection"
+      ],
+      "elements": [],
+      "confidence": 0.85
+    }
+  ],
+  "generalNotes": {
+    "designCodes": [
+      "AS 1720",
+      "AS 2159",
+      "AS 3600",
+      "AS 3610",
+      "AS 3700",
+      "AS 4100",
+      "AS 2269",
+      "NCC",
+      "AS 5216:2018",
+      "AS 1554",
+      "AS 1252",
+      "AS/NZS 3679.1",
+      "AS/NZS 3679.2",
+      "AS/NZS 1163",
+      "AS/NZS 5131",
+      "AS/NZS 4680",
+      "AS 1170.4",
+      "AS 4671",
+      "AS 2870"
+    ],
+    "exposureClass": null,
+    "concreteCover": {
+      "boredPiers": {
+        "bottom": 50,
+        "top": null,
+        "sides": 65
+      },
+      "footings": {
+        "bottom": 50,
+        "top": 50,
+        "sides": 50
+      },
+      "slabOnGroundInternal": {
+        "bottom": 40,
+        "top": 30,
+        "sides": 40
+      },
+      "slabOnGroundExternal": {
+        "bottom": 40,
+        "top": 40,
+        "sides": 40
+      },
+      "columns": {
+        "bottom": 40,
+        "top": 40,
+        "sides": 40
+      },
+      "walls": {
+        "bottom": null,
+        "top": 40,
+        "sides": 40
+      },
+      "stairs": {
+        "bottom": 40,
+        "top": 30,
+        "sides": 40
+      },
+      "suspendedSlab": {
+        "bottom": 30,
+        "top": 30,
+        "sides": 30
+      },
+      "suspendedSlabPT": {
+        "bottom": 30,
+        "top": 30,
+        "sides": 30
+      }
+    },
+    "concreteStrengths": {
+      "unit": "MPa",
+      "boredPiers": 32,
+      "footings": 32,
+      "slabOnGround": 32,
+      "columns": 40,
+      "walls": 40,
+      "stairs": 40,
+      "suspendedSlab": 40,
+      "suspendedSlabPT": 40
+    },
+    "bearingCapacity": {
+      "unit": "kPa",
+      "padFootings": 300,
+      "stripFootings": 300,
+      "boredPiers": null,
+      "shaftAdhesion": null
+    },
+    "windRegion": "B",
+    "windVelocity": {
+      "ultimate": 60,
+      "serviceability": 39,
+      "unit": "m/s"
+    },
+    "terrainCategory": 3,
+    "importanceLevel": 3,
+    "earthquake": {
+      "hazardZ": 0.08,
+      "category": "II",
+      "probabilityKp": 1.3,
+      "subSoilClass": "Ce"
+    },
+    "geotechReport": {
+      "consultant": "PTG Consulting",
+      "reportNumber": "PTG/00371",
+      "date": "2024-07"
+    },
+    "specialNotes": [
+      "Form 12 certification: Builder must give 24h notice for inspections; failure to notify excludes works from certification.",
+      "Pad & strip footings to be founded min 500 mm below FGL, at least 300 mm into duricrust @ 300 kPa allowable bearing (note F5).",
+      "Provisionally allow 25 MPa mass concrete under footings to reach bearing material (note F5).",
+      "Raft slabs designed for Class M reactive soil per AS 2870 (note F6).",
+      "Bored piers: 3000 mm min depth, 450 mm dia (per S010 footing schedule).",
+      "10% of all chemical anchors into core-filled blockwork load-tested to 1.5 × SWL (note CM15).",
+      "Curing: keep concrete surfaces continuously wet for 3 days, prevent moisture loss for 7 days (note C5).",
+      "Trimmer bars at re-entrant corners and penetrations >200 sq: 2-N12 × 1200 long @ 100 ctrs, top & bottom (note C6).",
+      "Pour temperature 5–35 °C (note C19).",
+      "Block walls: vertical control joints @ 8 m max, 5 m max from corners, not within 1.2 m of corners (note CM6).",
+      "Block walls: no back filling behind retaining walls until 14 days after core fill (note CM10).",
+      "ACRS certification required for all structural steel (note S15)."
+    ]
+  },
+  "inspectionPlan": [
+    {
+      "sequence": 1,
+      "type": "pile-bored-install",
+      "title": "Bored Pier Installation — Founding Depth & Shaft",
+      "level": "ground",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S010",
+          "reason": "Footing Plan Notes, Legends, & Schedules"
+        },
+        {
+          "sheetNumber": "S011",
+          "reason": "Footing and Plant Slab Plan"
+        },
+        {
+          "sheetNumber": "S015",
+          "reason": "Footing Details — Sheet 1"
+        },
+        {
+          "sheetNumber": "S016",
+          "reason": "Footing Details — Sheet 2"
+        }
+      ],
+      "rationale": "Bored piers per AS 2159. Founding depth (min 3000 mm), socket depth (min 300 mm) and 450 mm pier diameter confirmed on site by RPEQ-certified geotech (PTG Consulting ref PTG/00371, July 2024). Hold point with the geotech RPEQ; BT advisory.",
+      "stage": "post-install",
+      "holdPoint": true,
+      "defaultSeverity": "hold-point",
+      "expectedChecklist": [
+        "Pile location ≤ 75 mm of designated position (note P3)",
+        "Founding depth recorded per pier; min 3000 mm depth, 300 mm socket into duricrust",
+        "Pier diameter 450 mm; verify reo cage clear of formwork",
+        "Founding material verified by geotech RPEQ on site",
+        "Pier extension ≥ 75 mm into pile cap or ground beam (note P7)",
+        "Piling Contractor RPEQ certificate confirming design loads achieved"
+      ],
+      "scopeNote": "Geotech RPEQ holds the certification hold point. BT advisory only.",
+      "phase": "Substructure"
+    },
+    {
+      "sequence": 2,
+      "type": "subgrade",
+      "title": "Pad & Strip Footing Subgrade — Bearing Verification",
+      "level": "ground",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S010",
+          "reason": "Footing Plan Notes, Legends, & Schedules"
+        },
+        {
+          "sheetNumber": "S011",
+          "reason": "Footing and Plant Slab Plan"
+        },
+        {
+          "sheetNumber": "S015",
+          "reason": "Footing Details — Sheet 1"
+        },
+        {
+          "sheetNumber": "S016",
+          "reason": "Footing Details — Sheet 2"
+        }
+      ],
+      "rationale": "Pad and strip footings to be founded min 500 mm below FGL, at least 300 mm into duricrusted material with 300 kPa allowable bearing (note F5). RPEQ geotech to confirm on site. Provisionally allow for 25 MPa mass concrete under footings to reach bearing.",
+      "stage": "pre-reinforcement",
+      "holdPoint": true,
+      "defaultSeverity": "hold-point",
+      "expectedChecklist": [
+        "Excavation min 500 mm below FGL",
+        "Min 300 mm penetration into duricrusted material",
+        "Allowable bearing 300 kPa confirmed by site geotech (note F5)",
+        "Mass concrete (25 MPa) added if required to reach bearing material",
+        "Excavation maintained firm and dry (note F2)",
+        "Soft ground replaced with mass concrete (note F2)"
+      ],
+      "phase": "Substructure"
+    },
+    {
+      "sequence": 3,
+      "type": "pad-footing-prepour",
+      "title": "Pad & Strip Footings — Pre-Pour Reinforcement",
+      "level": "ground",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S010",
+          "reason": "Footing Plan Notes, Legends, & Schedules"
+        },
+        {
+          "sheetNumber": "S011",
+          "reason": "Footing and Plant Slab Plan"
+        },
+        {
+          "sheetNumber": "S015",
+          "reason": "Footing Details — Sheet 1"
+        },
+        {
+          "sheetNumber": "S016",
+          "reason": "Footing Details — Sheet 2"
+        }
+      ],
+      "rationale": "Pad and strip footings include pile caps over bored piers AND footings on duricrust. Multiple footing types per the schedule on S010. First reinforced cast on site.",
+      "stage": "pre-pour",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "Bottom cover ≥ 50 mm, sides ≥ 50 mm (cover schedule, footings element, N32)",
+        "Pier reo extends ≥ 75 mm into pile cap (note P7)",
+        "Lap lengths at corners and T-junctions per AS 3600 / typical detail",
+        "Trimmer bars at penetrations >200 sq (note C6)",
+        "Concrete grade N32",
+        "Bar chairs and ties — reo securely tied (note C18)",
+        "Foundation excavation maintained firm & dry (note F2)"
+      ],
+      "phase": "Substructure"
+    },
+    {
+      "sequence": 4,
+      "type": "slab-prepour-ground",
+      "title": "Ground Floor Slab on Ground + Plant Slab — Pre-Pour Reinforcement",
+      "level": "ground",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S011",
+          "reason": "Footing and Plant Slab Plan"
+        },
+        {
+          "sheetNumber": "S100",
+          "reason": "GF Plan Notes, Legends, & Schedules"
+        },
+        {
+          "sheetNumber": "S101",
+          "reason": "GF General Arrangement Plan"
+        },
+        {
+          "sheetNumber": "S121",
+          "reason": "GF Bottom Reinforcement Plan"
+        },
+        {
+          "sheetNumber": "S131",
+          "reason": "GF Top Reinforcement Plan"
+        },
+        {
+          "sheetNumber": "S140",
+          "reason": "GF Post Tensioning Plan"
+        },
+        {
+          "sheetNumber": "S151",
+          "reason": "GF Slab Sections — Sheet 1"
+        },
+        {
+          "sheetNumber": "S152",
+          "reason": "GF Slab Sections — Sheet 2"
+        },
+        {
+          "sheetNumber": "S153",
+          "reason": "GF Slab Sections — Sheet 3"
+        },
+        {
+          "sheetNumber": "S171",
+          "reason": "GF Loading Plan"
+        },
+        {
+          "sheetNumber": "S050",
+          "reason": "Typical Suspended Slab Details"
+        }
+      ],
+      "rationale": "Ground floor slab combines slab-on-ground (for most of the building) with the plant slab area. Note: a Post-Tensioning Plan (S140) exists for Ground Floor — verify whether GF has PT regions (raft) or only the L1 slab does.",
+      "stage": "pre-pour",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "Internal SOG: bottom 40, top 30, sides 40 mm cover (cover schedule, N32)",
+        "External SOG: bottom 40, top 40, sides 40 mm cover",
+        "Concrete grade N32",
+        "50 mm bedding sand + DPM (note C16)",
+        "Bottom reo per S121, top reo per S131",
+        "Mesh laps: 2 outer-most cross bars overlap (note C7)",
+        "Trimmer bars at re-entrant corners and penetrations >200 sq",
+        "Bar chairs @ 600 ctrs SL72/82, 800 ctrs SL92+ (note C9)",
+        "Raft slab designed for Class M reactive soil per AS 2870 (note F6)"
+      ],
+      "phase": "Ground Floor"
+    },
+    {
+      "sequence": 5,
+      "type": "post-tension-strand",
+      "title": "Ground Floor Post-Tension Strand Placement (if applicable)",
+      "level": "ground",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S140",
+          "reason": "GF Post Tensioning Plan"
+        },
+        {
+          "sheetNumber": "S055",
+          "reason": "Typical Post Tensioning Details — Sheet 1"
+        },
+        {
+          "sheetNumber": "S056",
+          "reason": "Typical Post Tensioning Details — Sheet 2"
+        }
+      ],
+      "rationale": "S140 indicates a GF post-tensioning plan exists — possibly for a transfer slab or a portion of the GF slab. Inspect strand profile, anchorage zones, dead/live ends before pour.",
+      "stage": "pre-pour",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "Strand profile matches PT designer's layout (S140)",
+        "Anchorage zone reinforcement per typical detail S055/S056",
+        "Tendon spacing verified",
+        "Dead-end / live-end stressing pockets free of obstruction",
+        "PT designer to sign off prior to pour"
+      ],
+      "scopeNote": "Conditional — confirm whether GF actually has PT regions or only L1.",
+      "phase": "Ground Floor"
+    },
+    {
+      "sequence": 6,
+      "type": "concrete-wall-prepour",
+      "title": "Concrete Walls — Ground Pre-Pour Reinforcement",
+      "level": "ground",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S020",
+          "reason": "Typical Concrete Wall Details — Sheet 1"
+        },
+        {
+          "sheetNumber": "S101",
+          "reason": "GF GA — wall locations"
+        }
+      ],
+      "rationale": "In-situ concrete walls at ground (lift core, blade walls, etc.).",
+      "stage": "pre-pour",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "Sides cover ≥ 40 mm; top cover ≥ 40 mm (cover schedule, walls, N40)",
+        "Concrete grade N40",
+        "Vertical and horizontal reinforcement per S020 typical",
+        "Lap lengths per AS 3600",
+        "Starter bars from below securely tied",
+        "Formwork plumb, clean, properly propped"
+      ],
+      "scopeNote": "Catalogue 'retaining-wall-prepour' used as proxy for in-situ concrete wall.",
+      "phase": "Ground Floor"
+    },
+    {
+      "sequence": 7,
+      "type": "blockwork-wall-reinf",
+      "title": "Block Retaining Walls — Vertical Reinforcement (RW2/RW3/RW4)",
+      "level": "ground",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S025",
+          "reason": "Typical Block Wall Details"
+        },
+        {
+          "sheetNumber": "S026",
+          "reason": "Typical Block Retaining Wall Details — Sheet 1"
+        },
+        {
+          "sheetNumber": "S027",
+          "reason": "Typical Block Retaining Wall Details — Sheet 2"
+        }
+      ],
+      "rationale": "Multiple block retaining wall types (RW2/RW3/RW4 per the wall schedule on S010). Vertical reinforcement and starter bars must be inspected before core fill.",
+      "stage": "pre-cover",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "Vert reo size, spacing, position per wall type detail (RW2/RW3/RW4)",
+        "Starter bars securely tied prior to wall footing pour (note CM10)",
+        "Lap lengths to AS 3700",
+        "Mortar mix M3 (general) or M4 (retaining walls) per spec",
+        "Vertical control joints at ≤ 8 m, 5 m max from corners, not within 1.2 m of corners (note CM6)",
+        "Clean-out blocks at all cores to be filled (note CM3)",
+        "No back filling behind retaining walls until 14 days after core fill (note CM10)"
+      ],
+      "phase": "Ground Floor"
+    },
+    {
+      "sequence": 8,
+      "type": "blockwork-core-fill",
+      "title": "Block Retaining Walls — Core Fill Pre-Pour",
+      "level": "ground",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S025",
+          "reason": "Typical Block Wall Details"
+        },
+        {
+          "sheetNumber": "S026",
+          "reason": "Typical Block Retaining Wall — Sheet 1"
+        },
+        {
+          "sheetNumber": "S027",
+          "reason": "Typical Block Retaining Wall — Sheet 2"
+        }
+      ],
+      "rationale": "Core fill of block retaining walls after vert reo inspection.",
+      "stage": "pre-pour",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "Concrete strength f'c = 20 MPa, max slump 230 mm, max aggregate 10 mm",
+        "Lift height ≤ 2400 mm",
+        "All cores swept clean via clean-out blocks ('H' units UNO — note CM4)",
+        "10% of chemical anchors load-tested to 1.5 × SWL (note CM15)",
+        "Propping at top of wall @ 1800 ctrs where slab installed over (note CM12)"
+      ],
+      "phase": "Ground Floor"
+    },
+    {
+      "sequence": 9,
+      "type": "column-prepour",
+      "title": "Concrete Columns — Ground Pre-Pour Reinforcement",
+      "level": "ground",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S035",
+          "reason": "Concrete Column Details — Sheet 1"
+        },
+        {
+          "sheetNumber": "S101",
+          "reason": "GF GA — column locations"
+        }
+      ],
+      "rationale": "Ground floor columns rise from pile caps/footings to support L1 slab.",
+      "stage": "pre-pour",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "Sides cover ≥ 40 mm (cover schedule, columns, N40)",
+        "Concrete grade N40",
+        "Vertical bar count, size, lap length per S035",
+        "Tie/fitment spacing — closer at top & bottom; 135° hooks",
+        "Starter bar projection out of pile cap matches lap",
+        "Formwork plumb, clean, propped"
+      ],
+      "phase": "Ground Floor"
+    },
+    {
+      "sequence": 10,
+      "type": "stair-prepour",
+      "title": "Atrium Stairs — G to L1 Pre-Pour Reinforcement",
+      "level": "ground",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S040",
+          "reason": "Atrium Stairs Framing Layout"
+        },
+        {
+          "sheetNumber": "S041",
+          "reason": "Atrium Stairs Framing Sections"
+        },
+        {
+          "sheetNumber": "S045",
+          "reason": "Stair Details — Sheet 1"
+        }
+      ],
+      "rationale": "Feature atrium stair from ground to L1. Likely a steel-framed stair with concrete treads, or an in-situ concrete stair — verify from S040/S041. May warrant separate framing inspection if steel.",
+      "stage": "pre-pour",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "Cover 40/30/40 mm (cover schedule, stairs, N40)",
+        "Reinforcement matches stair section detail (S041)",
+        "Tread/riser geometry per architect's drawings",
+        "Connection to landing per typ detail",
+        "If steel-framed: separate framing inspection per S041"
+      ],
+      "scopeNote": "Mapped to slab-prepour-suspended (no dedicated 'stair' catalogue key).",
+      "phase": "Ground Floor"
+    },
+    {
+      "sequence": 11,
+      "type": "slab-prepour-suspended",
+      "title": "Suspended Slab — Level 1 Head Framing & Pre-Pour Reinforcement",
+      "level": "l1",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S200",
+          "reason": "FF Plan Notes, Legends, & Schedules"
+        },
+        {
+          "sheetNumber": "S201",
+          "reason": "FF General Arrangement Plan"
+        },
+        {
+          "sheetNumber": "S221",
+          "reason": "FF Bottom Reinforcement Plan"
+        },
+        {
+          "sheetNumber": "S231",
+          "reason": "FF Top Reinforcement Plan"
+        },
+        {
+          "sheetNumber": "S251",
+          "reason": "FF Slab Sections — Sheet 1"
+        },
+        {
+          "sheetNumber": "S271",
+          "reason": "FF Loading Plan"
+        },
+        {
+          "sheetNumber": "S050",
+          "reason": "Typical Suspended Slab Details"
+        }
+      ],
+      "rationale": "L1 suspended slab — pre-pour reo. This slab IS post-tensioned (S241 PT plan exists), so this inspection captures the standard reo PLUS sets the stage for the PT inspection that follows. Includes head framing (formwork + props per AS 3610).",
+      "stage": "pre-pour",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "Bottom/top/sides cover 30 mm; concrete N40 (suspended slab)",
+        "Bottom reo per S221, top reo per S231",
+        "Trimmer bars at penetrations >200 sq, top & bottom",
+        "Formwork properly propped per AS 3610",
+        "Bar chairs per note C9",
+        "All reo securely tied (note C18)",
+        "Cast-in plates / starter bars for steel cols per S400 framing notes"
+      ],
+      "phase": "Level 1"
+    },
+    {
+      "sequence": 12,
+      "type": "post-tension-strand",
+      "title": "Level 1 — Post-Tension Strand Placement — HOLD POINT",
+      "level": "l1",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S241",
+          "reason": "FF Post Tensioning Plan"
+        },
+        {
+          "sheetNumber": "S055",
+          "reason": "Typical Post Tensioning Details — Sheet 1"
+        },
+        {
+          "sheetNumber": "S056",
+          "reason": "Typical Post Tensioning Details — Sheet 2"
+        }
+      ],
+      "rationale": "L1 post-tension strand placement is a hold point — cover-up means destructive remediation. Inspect strand profile, anchorage zones, dead/live ends and stressing pocket setup before any concrete placement. PT designer to sign off.",
+      "stage": "pre-pour",
+      "holdPoint": true,
+      "defaultSeverity": "hold-point",
+      "expectedChecklist": [
+        "Strand profile matches PT designer's layout (S241)",
+        "Anchorage zone reinforcement per typ detail (S055/S056)",
+        "Tendon spacing and centres verified",
+        "Dead-end / live-end stressing pockets free of obstruction",
+        "Sleeves and barriers in place at column heads",
+        "PT designer to sign off prior to pour",
+        "48 hours notice given to BT prior to pour"
+      ],
+      "phase": "Level 1"
+    },
+    {
+      "sequence": 13,
+      "type": "concrete-wall-prepour",
+      "title": "Concrete Walls — Level 1 Pre-Pour Reinforcement",
+      "level": "l1",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S020",
+          "reason": "Typical Concrete Wall Details"
+        },
+        {
+          "sheetNumber": "S201",
+          "reason": "FF GA — wall locations"
+        }
+      ],
+      "rationale": "In-situ concrete walls at L1 (lift core continued, blade walls, parapets).",
+      "stage": "pre-pour",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "Sides/top cover ≥ 40 mm; concrete N40",
+        "Vertical and horizontal reo per S020 typ detail",
+        "Starter bar projection from L1 slab to suit lap",
+        "Formwork plumb, propped"
+      ],
+      "scopeNote": "Catalogue proxy for concrete-wall-prepour.",
+      "phase": "Level 1"
+    },
+    {
+      "sequence": 14,
+      "type": "blockwork-wall-reinf",
+      "title": "Block Walls — Vertical Reinforcement — Level 1",
+      "level": "l1",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S025",
+          "reason": "Typical Block Wall Details"
+        }
+      ],
+      "rationale": "Block walls at L1 — internal partition / fire-rated walls.",
+      "stage": "pre-cover",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "Vert reo per typ detail",
+        "Lap lengths to AS 3700",
+        "Starter bars from L1 slab"
+      ],
+      "phase": "Level 1"
+    },
+    {
+      "sequence": 15,
+      "type": "blockwork-core-fill",
+      "title": "Block Walls — Core Fill Pre-Pour — Level 1",
+      "level": "l1",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S025",
+          "reason": "Typical Block Wall Details"
+        }
+      ],
+      "rationale": "Core fill of L1 block walls after vert reo inspection.",
+      "stage": "pre-pour",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "Cores swept clean via clean-out blocks",
+        "Lift height ≤ 2400 mm",
+        "Concrete f'c = 20 MPa, slump 230 mm, agg 10 mm"
+      ],
+      "phase": "Level 1"
+    },
+    {
+      "sequence": 16,
+      "type": "column-prepour",
+      "title": "Concrete Columns — Level 1 Pre-Pour Reinforcement (where present)",
+      "level": "l1",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S035",
+          "reason": "Concrete Column Details"
+        },
+        {
+          "sheetNumber": "S201",
+          "reason": "FF GA — column locations"
+        }
+      ],
+      "rationale": "L1 columns where concrete cols continue up to roof support level.",
+      "stage": "pre-pour",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "Sides cover ≥ 40 mm; concrete N40",
+        "Vertical bars per S035; ties + 135° hooks",
+        "Starter bar projection from L1 slab"
+      ],
+      "phase": "Level 1"
+    },
+    {
+      "sequence": 17,
+      "type": "baseplate-anchor",
+      "title": "Steel Column Hold-Down Bolts — At L1 Slab",
+      "level": "l1",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S400",
+          "reason": "Framing Notes, Legends, & Schedules"
+        },
+        {
+          "sheetNumber": "S440",
+          "reason": "Typical Framing Details — Sheet 1"
+        }
+      ],
+      "rationale": "Steel roof columns are anchored into the L1 slab. Anchor bolt position, projection and threading must be verified before slab pour AND again before column erection. Non-shrink grout 30 mm @ 40 MPa typical.",
+      "stage": "pre-pour",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "Anchor bolt position matches plan (set-out tolerance ≤ ±5 mm)",
+        "Bolt projection per detail",
+        "Bolts grade 4.6 (foundation) / 8.8 (structural) per spec",
+        "Threads clean, two threads minimum past nut after tightening",
+        "Templates removed; bolts plumb",
+        "Non-shrink grout pad 30 mm @ ≥ 40 MPa for column erection"
+      ],
+      "phase": "Level 1"
+    },
+    {
+      "sequence": 18,
+      "type": "stair-prepour",
+      "title": "Atrium Stairs — L1 to Roof Pre-Pour Reinforcement",
+      "level": "l1",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S040",
+          "reason": "Atrium Stairs Framing Layout"
+        },
+        {
+          "sheetNumber": "S041",
+          "reason": "Atrium Stairs Framing Sections"
+        },
+        {
+          "sheetNumber": "S045",
+          "reason": "Stair Details — Sheet 1"
+        }
+      ],
+      "rationale": "Atrium stair flight from L1 to roof / mezzanine.",
+      "stage": "pre-pour",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "Cover 40/30/40 mm (cover schedule, stairs, N40)",
+        "Reinforcement matches stair section detail",
+        "Tread/riser geometry per arch",
+        "Connection to landing per typ detail"
+      ],
+      "scopeNote": "Mapped to slab-prepour-suspended.",
+      "phase": "Level 1"
+    },
+    {
+      "sequence": 19,
+      "type": "steel-frame-erection",
+      "title": "Lower Roof — Steel Frame Erection",
+      "level": "roof",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S401",
+          "reason": "Lower Roof Framing Plan"
+        },
+        {
+          "sheetNumber": "S400",
+          "reason": "Framing Notes, Legends, & Schedules"
+        },
+        {
+          "sheetNumber": "S421",
+          "reason": "Framing Elevations — Sheet 1"
+        },
+        {
+          "sheetNumber": "S422",
+          "reason": "Framing Elevations — Sheet 2"
+        },
+        {
+          "sheetNumber": "S440",
+          "reason": "Typical Framing Details — Sheet 1"
+        },
+        {
+          "sheetNumber": "S451",
+          "reason": "Framing Details — Sheet 1"
+        }
+      ],
+      "rationale": "Lower roof structure (front/lower portion of building). Steel-framed per AS 4100 / AS/NZS 5131. Construction category CC2.",
+      "stage": "pre-pour",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "Member sizes match S401",
+        "Bolts grade 8.8/S, M16/M20 per section depth (note S6)",
+        "Welds 6 mm SP fillet UNO; AS 1554 procedures",
+        "Hot-dip galvanised exterior; touched up with WATTYL Galvit",
+        "Members in contact with concrete passivated",
+        "ACRS certification on file (note S15)",
+        "FC1 / CC2 per AS/NZS 5131"
+      ],
+      "phase": "Roof"
+    },
+    {
+      "sequence": 20,
+      "type": "steel-connection",
+      "title": "Lower Roof — Connection Inspection",
+      "level": "roof",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S401",
+          "reason": "Lower Roof Framing Plan"
+        },
+        {
+          "sheetNumber": "S440",
+          "reason": "Typ Framing Details — Sheet 1"
+        },
+        {
+          "sheetNumber": "S441",
+          "reason": "Typ Framing Details — Sheet 2"
+        },
+        {
+          "sheetNumber": "S442",
+          "reason": "Typ Framing Details — Sheet 3"
+        },
+        {
+          "sheetNumber": "S451",
+          "reason": "Framing Details — Sheet 1"
+        }
+      ],
+      "rationale": "Bolt-by-bolt and weld-by-weld inspection of lower roof joints.",
+      "stage": "pre-pour",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "All bolts tightened (full bearing) per AS 4100 8.8/S",
+        "Weld lengths and sizes match drawings; visual quality (SP)",
+        "Connection plates ≥ 10 mm thick UNO",
+        "Galvanised cleats: damage touched up"
+      ],
+      "phase": "Roof"
+    },
+    {
+      "sequence": 21,
+      "type": "steel-frame-erection",
+      "title": "Lower Roof — Purlin Install",
+      "level": "roof",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S402",
+          "reason": "Lower Roof Purlin Plan"
+        },
+        {
+          "sheetNumber": "S440",
+          "reason": "Typ Framing Details"
+        }
+      ],
+      "rationale": "Lower roof purlins per S402.",
+      "stage": "pre-pour",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "Purlin sections per S402",
+        "Laps ≥ 15% span or 900 mm (PU2)",
+        "Bolts per series (PU3)",
+        "Bridging per PU6"
+      ],
+      "phase": "Roof"
+    },
+    {
+      "sequence": 22,
+      "type": "steel-frame-erection",
+      "title": "Main Roof — Steel Frame Erection",
+      "level": "roof",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S405",
+          "reason": "Main Roof Framing Plan"
+        },
+        {
+          "sheetNumber": "S400",
+          "reason": "Framing Notes"
+        },
+        {
+          "sheetNumber": "S423",
+          "reason": "Framing Elevations — Sheet 3"
+        },
+        {
+          "sheetNumber": "S424",
+          "reason": "Framing Elevations — Sheet 4"
+        },
+        {
+          "sheetNumber": "S425",
+          "reason": "Framing Elevations — Sheet 5"
+        },
+        {
+          "sheetNumber": "S452",
+          "reason": "Framing Details — Sheet 2"
+        },
+        {
+          "sheetNumber": "S453",
+          "reason": "Framing Details — Sheet 3"
+        }
+      ],
+      "rationale": "Main roof — central long-span steel frame. Per AS 4100 / AS/NZS 5131 CC2.",
+      "stage": "pre-pour",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "Member sizes match S405 + framing elevations",
+        "Bolts grade 8.8/S, M16/M20 per section depth",
+        "Welds 6 mm SP fillet UNO",
+        "HDG external; passivated where in contact with concrete",
+        "Plate washers for oversize/slotted holes per AS 4100 Cl 14.3.5.2",
+        "ACRS cert (S15); FC1/CC2 per AS/NZS 5131"
+      ],
+      "phase": "Roof"
+    },
+    {
+      "sequence": 23,
+      "type": "steel-connection",
+      "title": "Main Roof — Connection Inspection",
+      "level": "roof",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S405",
+          "reason": "Main Roof Framing Plan"
+        },
+        {
+          "sheetNumber": "S440",
+          "reason": "Typ Framing — Sheet 1"
+        },
+        {
+          "sheetNumber": "S441",
+          "reason": "Sheet 2"
+        },
+        {
+          "sheetNumber": "S442",
+          "reason": "Sheet 3"
+        },
+        {
+          "sheetNumber": "S452",
+          "reason": "Framing Details — Sheet 2"
+        },
+        {
+          "sheetNumber": "S453",
+          "reason": "Sheet 3"
+        },
+        {
+          "sheetNumber": "S454",
+          "reason": "Sheet 4"
+        }
+      ],
+      "rationale": "Connection-by-connection inspection of main roof joints.",
+      "stage": "pre-pour",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "All bolts tightened per AS 4100 8.8/S",
+        "Welds match drawings; visual quality (SP)",
+        "Site-weld locations only as specified (W7); independent NATA testing per W-table",
+        "Connection plates ≥ 10 mm thick UNO"
+      ],
+      "phase": "Roof"
+    },
+    {
+      "sequence": 24,
+      "type": "steel-frame-erection",
+      "title": "Main Roof — Purlin Install",
+      "level": "roof",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S406",
+          "reason": "Main Roof Purlin Plan"
+        }
+      ],
+      "rationale": "Main roof purlins per S406.",
+      "stage": "pre-pour",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "Purlin sections per S406",
+        "Laps ≥ 15% span or 900 mm (PU2)",
+        "Bolts per series (PU3)",
+        "Bridging per PU6"
+      ],
+      "phase": "Roof"
+    },
+    {
+      "sequence": 25,
+      "type": "steel-frame-erection",
+      "title": "Upper Roof — Steel Frame Erection",
+      "level": "roof",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S411",
+          "reason": "Upper Roof Framing Plan"
+        },
+        {
+          "sheetNumber": "S426",
+          "reason": "Framing Elevations — Sheet 6"
+        },
+        {
+          "sheetNumber": "S427",
+          "reason": "Framing Elevations — Sheet 7"
+        },
+        {
+          "sheetNumber": "S428",
+          "reason": "Framing Elevations — Sheet 8"
+        },
+        {
+          "sheetNumber": "S455",
+          "reason": "Framing Details — Sheet 5"
+        },
+        {
+          "sheetNumber": "S456",
+          "reason": "Framing Details — Sheet 6"
+        }
+      ],
+      "rationale": "Upper roof — highest tier of the multi-roof system. Steel-framed.",
+      "stage": "pre-pour",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "Member sizes match S411",
+        "Bolts grade 8.8/S, M16/M20 per section depth",
+        "Welds 6 mm SP fillet UNO",
+        "HDG external"
+      ],
+      "phase": "Roof"
+    },
+    {
+      "sequence": 26,
+      "type": "steel-connection",
+      "title": "Upper Roof — Connection Inspection",
+      "level": "roof",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S411",
+          "reason": "Upper Roof Framing Plan"
+        },
+        {
+          "sheetNumber": "S455",
+          "reason": "Framing Details — Sheet 5"
+        },
+        {
+          "sheetNumber": "S456",
+          "reason": "Sheet 6"
+        },
+        {
+          "sheetNumber": "S457",
+          "reason": "Sheet 7"
+        },
+        {
+          "sheetNumber": "S458",
+          "reason": "Sheet 8"
+        },
+        {
+          "sheetNumber": "S459",
+          "reason": "Sheet 9"
+        }
+      ],
+      "rationale": "Upper roof connection inspection.",
+      "stage": "pre-pour",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "All bolts tightened per AS 4100 8.8/S",
+        "Welds match drawings",
+        "Connection plates per typ details"
+      ],
+      "phase": "Roof"
+    },
+    {
+      "sequence": 27,
+      "type": "steel-frame-erection",
+      "title": "Upper Roof — Purlin Install",
+      "level": "roof",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S412",
+          "reason": "Upper Roof Purlin Plan"
+        }
+      ],
+      "rationale": "Upper roof purlins per S412.",
+      "stage": "pre-pour",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "Purlin sections per S412",
+        "Laps ≥ 15% span or 900 mm",
+        "Bolts per series",
+        "Bridging per PU6"
+      ],
+      "phase": "Roof"
+    },
+    {
+      "sequence": 28,
+      "type": "steel-frame-erection",
+      "title": "Miscellaneous Steelwork — Facade Brackets, Balustrades, Screens",
+      "level": "multi",
+      "drawingRefs": [
+        {
+          "sheetNumber": "S400",
+          "reason": "Framing Notes, Legends, & Schedules"
+        },
+        {
+          "sheetNumber": "S440",
+          "reason": "Typ Framing Details — Sheet 1"
+        }
+      ],
+      "rationale": "Misc steelwork — facade brackets, balcony balustrades, sun screens, parapets, atrium balustrades. Often installed late in build. Anchored to concrete via chemical/mechanical anchors.",
+      "stage": "pre-pour",
+      "holdPoint": false,
+      "defaultSeverity": "observation",
+      "expectedChecklist": [
+        "Member sizes per relevant detail",
+        "Anchors per anchor notes (post-installed: 5% load-tested per note A8 if applicable)",
+        "HDG to AS/NZS 4680",
+        "Damage touched up with WATTYL Galvit"
+      ],
+      "phase": "Misc"
+    }
+  ],
+  "warnings": [
+    "TENDER ISSUE — inspection program is provisional pending Construction Issue PDF. Re-run when Construction Issue arrives.",
+    "MBC uses NEWER BT A1 template variant (per skills/reading-bt-drawings/SKILL.md Section 10) — extractor cells differ from older 52SA/Emmanuel template.",
+    "Bored pier bearing capacity not explicitly stated in F1 schedule extracted — verify on site by geotech RPEQ. Pad/strip footing bearing 300 kPa per F5.",
+    "Steel column hold-down bolts: extracted plan shows them at L1 slab level (slab-on-ground supports the steel roof structure). Verify location plan with engineer."
+  ],
+  "metadata": {
+    "drawingsAnalysed": 62,
+    "templatesDetected": [
+      "BT A1 (newer variant, 2024+)"
+    ]
+  }
+}

@@ -178,6 +178,115 @@ HOTSPOTS = {
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# PROJECT METADATA + GENERAL NOTES — MBC Creativity & Arts Centre
+# Module-level constants consumed by tools/build_btproject.py
+# ─────────────────────────────────────────────────────────────────────────────
+
+PROJECT_META = {
+    "name":            "MBC Creativity & Arts Centre",
+    "siteAddress":     "Moreton Bay College, 450 Wondall Road, Manly West, QLD 4179",
+    "jobNumber":       "2024.0230",
+    "client":          "Moreton Bay College",
+    "issueStatus":     "TENDER NOT FOR CONSTRUCTION",
+    "engineerOfRecord": "Bligh Tanner",
+    "discipline":      "structural",
+    "builder":         None,
+    "architect":       None,
+    "rpeqSignatory":   None,
+}
+
+GENERAL_NOTES = {
+    "designCodes": [
+        "AS 1720", "AS 2159", "AS 3600", "AS 3610", "AS 3700", "AS 4100",
+        "AS 2269", "NCC", "AS 5216:2018", "AS 1554", "AS 1252",
+        "AS/NZS 3679.1", "AS/NZS 3679.2", "AS/NZS 1163",
+        "AS/NZS 5131", "AS/NZS 4680", "AS 1170.4", "AS 4671", "AS 2870"
+    ],
+    "exposureClass": None,
+    "concreteCover": {
+        "boredPiers":            {"bottom": 50,   "top": None, "sides": 65},
+        "footings":              {"bottom": 50,   "top": 50,   "sides": 50},
+        "slabOnGroundInternal":  {"bottom": 40,   "top": 30,   "sides": 40},
+        "slabOnGroundExternal":  {"bottom": 40,   "top": 40,   "sides": 40},
+        "columns":               {"bottom": 40,   "top": 40,   "sides": 40},
+        "walls":                 {"bottom": None, "top": 40,   "sides": 40},
+        "stairs":                {"bottom": 40,   "top": 30,   "sides": 40},
+        "suspendedSlab":         {"bottom": 30,   "top": 30,   "sides": 30},
+        "suspendedSlabPT":       {"bottom": 30,   "top": 30,   "sides": 30}
+    },
+    "concreteStrengths": {
+        "unit": "MPa",
+        "boredPiers":   32, "footings": 32, "slabOnGround": 32,
+        "columns":      40, "walls": 40, "stairs": 40,
+        "suspendedSlab": 40, "suspendedSlabPT": 40
+    },
+    "bearingCapacity": {
+        "unit": "kPa",
+        "padFootings":   300,
+        "stripFootings": 300,
+        "boredPiers":    None,    # bored piers per S010 schedule (3000 mm, Ø450)
+        "shaftAdhesion": None
+    },
+    "windRegion":      "B",
+    "windVelocity":    {"ultimate": 60, "serviceability": 39, "unit": "m/s"},
+    "terrainCategory": 3,
+    "importanceLevel": 3,
+    "earthquake": {
+        "hazardZ": 0.08, "category": "II",
+        "probabilityKp": 1.3, "subSoilClass": "Ce"
+    },
+    "geotechReport": {
+        "consultant":   "PTG Consulting",
+        "reportNumber": "PTG/00371",
+        "date":         "2024-07"
+    },
+    "specialNotes": [
+        "Form 12 certification: Builder must give 24h notice for inspections; failure to notify excludes works from certification.",
+        "Pad & strip footings to be founded min 500 mm below FGL, at least 300 mm into duricrust @ 300 kPa allowable bearing (note F5).",
+        "Provisionally allow 25 MPa mass concrete under footings to reach bearing material (note F5).",
+        "Raft slabs designed for Class M reactive soil per AS 2870 (note F6).",
+        "Bored piers: 3000 mm min depth, 450 mm dia (per S010 footing schedule).",
+        "10% of all chemical anchors into core-filled blockwork load-tested to 1.5 × SWL (note CM15).",
+        "Curing: keep concrete surfaces continuously wet for 3 days, prevent moisture loss for 7 days (note C5).",
+        "Trimmer bars at re-entrant corners and penetrations >200 sq: 2-N12 × 1200 long @ 100 ctrs, top & bottom (note C6).",
+        "Pour temperature 5–35 °C (note C19).",
+        "Block walls: vertical control joints @ 8 m max, 5 m max from corners, not within 1.2 m of corners (note CM6).",
+        "Block walls: no back filling behind retaining walls until 14 days after core fill (note CM10).",
+        "ACRS certification required for all structural steel (note S15)."
+    ]
+}
+
+EXCLUDED_FROM_BT = [
+    {
+        "element": "Structural steelwork — temporary propping & bracing",
+        "responsibility": "Contractor RPEQ (temporary works engineer)",
+        "noteRef": "S18 & G2",
+        "scope": "Temporary works during erection"
+    },
+    {
+        "element": "Light-gauge steel stud framing",
+        "responsibility": "Manufacturer RPEQ (Form 16 on completion)",
+        "noteRef": "ST1",
+        "scope": "Sizing, spacing, and ALL connections to permanent structure"
+    },
+    {
+        "element": "Roof safety systems",
+        "responsibility": "Manufacturer / supplier",
+        "noteRef": "(general note table)",
+        "scope": "System and connections to roof, including verification of load paths to permanent bracing"
+    }
+]
+
+WARNINGS = [
+    "TENDER ISSUE — inspection program is provisional pending Construction Issue PDF. Re-run when Construction Issue arrives.",
+    "MBC uses NEWER BT A1 template variant (per skills/reading-bt-drawings/SKILL.md Section 10) — extractor cells differ from older 52SA/Emmanuel template.",
+    "Bored pier bearing capacity not explicitly stated in F1 schedule extracted — verify on site by geotech RPEQ. Pad/strip footing bearing 300 kPa per F5.",
+    "Steel column hold-down bolts: extracted plan shows them at L1 slab level (slab-on-ground supports the steel roof structure). Verify location plan with engineer.",
+]
+
+TEMPLATES_DETECTED = ["BT A1 (newer variant, 2024+)"]
+
+# ─────────────────────────────────────────────────────────────────────────────
 # INSPECTION PLAN — MBC Creativity & Arts Centre
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -192,7 +301,7 @@ def add(**kw):
 
 # ── Phase 1: Substructure ──────────────────────────────────────────────────
 add(
-    type="subgrade",
+    type="pile-bored-install",
     title="Bored Pier Installation — Founding Depth & Shaft",
     phase="Substructure", level="ground",
     hotspots=["footings-bored-piers"],
@@ -335,7 +444,7 @@ add(
 )
 
 add(
-    type="retaining-wall-prepour",
+    type="concrete-wall-prepour",
     title="Concrete Walls — Ground Pre-Pour Reinforcement",
     phase="Ground Floor", level="ground",
     hotspots=["ground-walls-concrete"],
@@ -422,7 +531,7 @@ add(
 )
 
 add(
-    type="slab-prepour-suspended",
+    type="stair-prepour",
     title="Atrium Stairs — G to L1 Pre-Pour Reinforcement",
     phase="Ground Floor", level="ground",
     hotspots=["atrium-stairs"],
@@ -505,7 +614,7 @@ add(
 )
 
 add(
-    type="retaining-wall-prepour",
+    type="concrete-wall-prepour",
     title="Concrete Walls — Level 1 Pre-Pour Reinforcement",
     phase="Level 1", level="l1",
     hotspots=["l1-walls"],
@@ -584,7 +693,7 @@ add(
 )
 
 add(
-    type="slab-prepour-suspended",
+    type="stair-prepour",
     title="Atrium Stairs — L1 to Roof Pre-Pour Reinforcement",
     phase="Level 1", level="l1",
     hotspots=["atrium-stairs"],
@@ -802,463 +911,464 @@ add(
 )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# RENDER HTML
-# ─────────────────────────────────────────────────────────────────────────────
+if __name__ == '__main__':
+    # ─────────────────────────────────────────────────────────────────────────────
+    # RENDER HTML
+    # ─────────────────────────────────────────────────────────────────────────────
 
-img_b64 = base64.b64encode(ISO_PATH.read_bytes()).decode("ascii")
+    img_b64 = base64.b64encode(ISO_PATH.read_bytes()).decode("ascii")
 
-phases = []
-phase_order = ["Substructure", "Ground Floor", "Level 1", "Roof", "Misc"]
-for ph in phase_order:
-    items = [i for i in PLAN if i["phase"] == ph]
-    if items:
-        phases.append((ph, items))
+    phases = []
+    phase_order = ["Substructure", "Ground Floor", "Level 1", "Roof", "Misc"]
+    for ph in phase_order:
+        items = [i for i in PLAN if i["phase"] == ph]
+        if items:
+            phases.append((ph, items))
 
-total = len(PLAN)
-holds = sum(1 for i in PLAN if i.get("holdPoint"))
-drawings_referenced = len({d[0] for i in PLAN for d in i["drawings"]})
+    total = len(PLAN)
+    holds = sum(1 for i in PLAN if i.get("holdPoint"))
+    drawings_referenced = len({d[0] for i in PLAN for d in i["drawings"]})
 
-hotspots_json = json.dumps({
-    h: {"label": v["label"], "polygons": v["polygons"]}
-    for h, v in HOTSPOTS.items()
-})
-inspection_hotspots_json = json.dumps({
-    i["sequence"]: i.get("hotspots", [])
-    for i in PLAN
-})
-
-
-def render_card(ins):
-    seq = ins["sequence"]
-    chips = [f'<span class="chip">{html_lib.escape(ins["type"])}</span>',
-             f'<span class="pill">{html_lib.escape(ins["level"])}</span>']
-    if ins.get("holdPoint"):
-        chips.append('<span class="badge hold">Hold</span>')
-    chips_html = "".join(chips)
-    dwg_html = "".join(
-        f'<span class="dwg"><code>{html_lib.escape(sn)}</code> {html_lib.escape(desc)}</span>'
-        for sn, desc in ins["drawings"]
-    )
-    check_html = "".join(f"<li>{html_lib.escape(c)}</li>" for c in ins["checklist"])
-    scope_html = (f'<div class="scope">{html_lib.escape(ins["scopeNote"])}</div>'
-                  if ins.get("scopeNote") else "")
-    hold_class = " hold" if ins.get("holdPoint") else ""
-    return (
-        f'<div class="card{hold_class}" data-seq="{seq}" data-level="{html_lib.escape(ins["level"])}">'
-        f'<div class="card-row"><div class="seq">{seq:02d}</div><div class="body">'
-        f'<div class="card-head">{chips_html}</div>'
-        f'<h3>{html_lib.escape(ins["title"])}</h3>'
-        f'<div class="detail">'
-        f'<div class="row"><div class="k">Why</div><div class="v">{html_lib.escape(ins["rationale"])}</div></div>'
-        f'<div class="row drawings"><div class="k">Drawings</div><div class="v">{dwg_html}</div></div>'
-        f'<div class="row checklist"><div class="k">Checklist</div><div class="v"><ul>{check_html}</ul></div></div>'
-        f'{scope_html}'
-        f'</div></div></div></div>'
-    )
+    hotspots_json = json.dumps({
+        h: {"label": v["label"], "polygons": v["polygons"]}
+        for h, v in HOTSPOTS.items()
+    })
+    inspection_hotspots_json = json.dumps({
+        i["sequence"]: i.get("hotspots", [])
+        for i in PLAN
+    })
 
 
-phase_blocks_html = ""
-for ph_name, items in phases:
-    cards_html = "".join(render_card(i) for i in items)
-    phase_blocks_html += (
-        f'<div class="phase">'
-        f'<div class="phase-head">'
-        f'<span class="phase-num">Phase {phase_order.index(ph_name)+1:02d}</span>'
-        f'<h2>{ph_name}</h2>'
-        f'<span class="count">{len(items)} items</span>'
-        f'</div>{cards_html}</div>'
-    )
+    def render_card(ins):
+        seq = ins["sequence"]
+        chips = [f'<span class="chip">{html_lib.escape(ins["type"])}</span>',
+                 f'<span class="pill">{html_lib.escape(ins["level"])}</span>']
+        if ins.get("holdPoint"):
+            chips.append('<span class="badge hold">Hold</span>')
+        chips_html = "".join(chips)
+        dwg_html = "".join(
+            f'<span class="dwg"><code>{html_lib.escape(sn)}</code> {html_lib.escape(desc)}</span>'
+            for sn, desc in ins["drawings"]
+        )
+        check_html = "".join(f"<li>{html_lib.escape(c)}</li>" for c in ins["checklist"])
+        scope_html = (f'<div class="scope">{html_lib.escape(ins["scopeNote"])}</div>'
+                      if ins.get("scopeNote") else "")
+        hold_class = " hold" if ins.get("holdPoint") else ""
+        return (
+            f'<div class="card{hold_class}" data-seq="{seq}" data-level="{html_lib.escape(ins["level"])}">'
+            f'<div class="card-row"><div class="seq">{seq:02d}</div><div class="body">'
+            f'<div class="card-head">{chips_html}</div>'
+            f'<h3>{html_lib.escape(ins["title"])}</h3>'
+            f'<div class="detail">'
+            f'<div class="row"><div class="k">Why</div><div class="v">{html_lib.escape(ins["rationale"])}</div></div>'
+            f'<div class="row drawings"><div class="k">Drawings</div><div class="v">{dwg_html}</div></div>'
+            f'<div class="row checklist"><div class="k">Checklist</div><div class="v"><ul>{check_html}</ul></div></div>'
+            f'{scope_html}'
+            f'</div></div></div></div>'
+        )
 
-gen_date = datetime.date.today().isoformat()
 
-TEMPLATE = r"""<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>MBC Creativity & Arts Centre — Inspection Program</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Lora:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --dark: #141413; --light: #faf9f5; --mid-gray: #b0aea5; --light-gray: #e8e6dc;
-    --orange: #d97757; --blue: #6a9bcc; --green: #788c5d;
-    --rule: rgba(20,20,19,0.08); --soft: rgba(20,20,19,0.04);
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; height: 100%; }
-  body {
-    background: var(--light); color: var(--dark);
-    font-family: 'Lora', Georgia, serif; font-size: 15px; line-height: 1.55;
-    -webkit-font-smoothing: antialiased;
-    overflow: hidden;
-  }
-  h1, h2, h3, h4, .num, .chip, .badge, .lbl, .pill, .meta, .phase-num, .seq, .k, .filter {
-    font-family: 'Poppins', Arial, sans-serif; letter-spacing: -0.005em;
-  }
-  code, .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
-  header.top {
-    padding: 18px 28px; border-bottom: 1px solid var(--rule);
-    display: flex; align-items: baseline; gap: 24px; flex-wrap: wrap;
-  }
-  header.top h1 { font-size: 21px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
-  header.top .sub {
-    color: var(--mid-gray); font-family: 'Poppins'; font-size: 11.5px;
-    letter-spacing: 0.06em; text-transform: uppercase;
-  }
-  header.top .badge-tender {
-    background: var(--blue); color: var(--light);
-    font-size: 10px; padding: 3px 8px; border-radius: 3px;
-    letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600;
-  }
-  main {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(440px, 560px);
-    height: calc(100vh - 105px);
-  }
-  aside.iso {
-    padding: 20px 24px;
-    border-right: 1px solid var(--rule);
-    display: flex; flex-direction: column;
-    overflow: hidden;
-  }
-  .iso-stats {
-    display: grid; grid-template-columns: repeat(4, 1fr);
-    gap: 1px; background: var(--rule);
-    border: 1px solid var(--rule); border-radius: 4px;
-    margin-bottom: 12px; overflow: hidden;
-  }
-  .iso-stats .stat { background: var(--light); padding: 9px 11px; }
-  .iso-stats .stat .num {
-    font-size: 20px; font-weight: 600; line-height: 1;
-    display: block; margin-bottom: 2px; font-family: 'Poppins';
-  }
-  .iso-stats .stat .num.accent { color: var(--orange); }
-  .iso-stats .stat .lbl {
-    font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase;
-    color: var(--mid-gray); font-weight: 500;
-  }
-  .filter-row { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 12px; }
-  .filter {
-    font-size: 11px; letter-spacing: 0.04em;
-    padding: 4px 10px; border: 1px solid var(--rule); border-radius: 999px;
-    background: var(--light); color: var(--dark); cursor: pointer;
-    transition: all 0.12s ease;
-  }
-  .filter:hover { border-color: var(--mid-gray); }
-  .filter.active { background: var(--dark); color: var(--light); border-color: var(--dark); }
-  .iso-wrap {
-    position: relative; flex: 1;
-    display: flex; align-items: center; justify-content: center;
-    background: #fbfaf6;
-    border: 1px solid var(--rule); border-radius: 4px;
-    padding: 10px; overflow: hidden; min-height: 0;
-  }
-  .iso-img-container {
-    position: relative; max-width: 100%; max-height: 100%; line-height: 0;
-  }
-  .iso-img-container img {
-    max-width: 100%; max-height: 100%; width: auto; height: auto; display: block;
-  }
-  svg.hotspot-overlay {
-    position: absolute; top: 0; left: 0;
-    width: 100%; height: 100%; pointer-events: none;
-  }
-  svg.hotspot-overlay polygon {
-    fill: transparent; stroke: transparent; stroke-width: 0.4;
-    transition: all 0.18s ease; pointer-events: auto; cursor: pointer;
-  }
-  svg.hotspot-overlay polygon.active {
-    fill: rgba(217, 119, 87, 0.36);
-    stroke: #b14a26; stroke-width: 0.5;
-    filter: drop-shadow(0 0 4px rgba(217, 119, 87, 0.7));
-  }
-  svg.hotspot-overlay polygon.hover {
-    fill: rgba(217, 119, 87, 0.18); stroke: var(--orange);
-  }
-  .iso-legend {
-    margin-top: 10px;
-    font-size: 11px; color: var(--mid-gray);
-    font-family: 'Poppins'; letter-spacing: 0.02em;
-    display: flex; align-items: center; gap: 8px;
-  }
-  .iso-legend .swatch {
-    width: 11px; height: 11px; border: 1px solid #b14a26;
-    background: rgba(217, 119, 87, 0.36); border-radius: 2px;
-  }
-  section.program {
-    overflow-y: auto; padding: 18px 24px; background: var(--light);
-  }
-  .phase { margin-bottom: 22px; }
-  .phase-head {
-    display: flex; align-items: baseline; gap: 12px;
-    padding-bottom: 6px; margin-bottom: 10px;
-    border-bottom: 1px solid var(--rule);
-  }
-  .phase-num {
-    font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
-    color: var(--mid-gray); font-weight: 500;
-  }
-  .phase-head h2 {
-    font-size: 16px; font-weight: 600; margin: 0; letter-spacing: -0.01em;
-  }
-  .phase-head .count {
-    margin-left: auto; font-size: 10.5px; color: var(--mid-gray);
-    font-family: 'Poppins'; letter-spacing: 0.04em;
-  }
-  .card {
-    border: 1px solid var(--rule); border-left-width: 3px;
-    border-left-color: var(--mid-gray); border-radius: 4px;
-    background: var(--light); padding: 10px 12px;
-    margin-bottom: 6px; cursor: pointer;
-    transition: border-color 0.12s ease, background 0.12s ease;
-    user-select: none;
-  }
-  .card:hover { border-color: rgba(20,20,19,0.18); border-left-color: var(--dark); }
-  .card.active {
-    border-color: var(--orange); border-left-color: var(--orange);
-    background: rgba(217, 119, 87, 0.05);
-  }
-  .card.hold { border-left-color: var(--orange); }
-  .card.dim { opacity: 0.32; }
-  .card-row { display: flex; align-items: flex-start; gap: 10px; }
-  .card .seq {
-    font-size: 17px; font-weight: 600; color: var(--dark);
-    line-height: 1; min-width: 26px; padding-top: 2px;
-    font-variant-numeric: tabular-nums;
-  }
-  .card .body { flex: 1; min-width: 0; }
-  .card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-bottom: 3px; }
-  .chip {
-    font-size: 10px; font-family: 'JetBrains Mono', monospace;
-    padding: 2px 6px; background: var(--light-gray); color: var(--dark);
-    border-radius: 2px;
-  }
-  .pill {
-    font-size: 10px; padding: 2px 7px; border-radius: 999px;
-    background: var(--soft); color: var(--dark);
-    letter-spacing: 0.04em; text-transform: uppercase;
-  }
-  .badge {
-    font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase;
-    padding: 2px 6px; border-radius: 2px; font-weight: 600;
-  }
-  .badge.hold { background: var(--orange); color: var(--light); }
-  .card h3 {
-    font-size: 13px; font-weight: 600; margin: 1px 0;
-    line-height: 1.35; letter-spacing: -0.005em; color: var(--dark);
-  }
-  .detail {
-    display: none; padding-top: 8px; margin-top: 6px;
-    border-top: 1px dashed var(--rule);
-  }
-  .card.active .detail { display: block; }
-  .detail .row {
-    display: grid; grid-template-columns: 80px 1fr;
-    gap: 10px; font-size: 12px; margin-bottom: 5px;
-  }
-  .detail .row .k {
-    font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase;
-    color: var(--mid-gray); padding-top: 2px; font-weight: 500;
-  }
-  .detail .row .v { color: rgba(20,20,19,0.85); line-height: 1.5; }
-  .detail .row.checklist .v ul { margin: 0; padding: 0; list-style: none; }
-  .detail .row.checklist .v li {
-    padding: 1px 0 1px 14px; position: relative; font-size: 11.5px;
-  }
-  .detail .row.checklist .v li::before {
-    content: ""; position: absolute; left: 0; top: 7px;
-    width: 4px; height: 4px;
-    border: 1px solid var(--mid-gray); border-radius: 1px;
-  }
-  .detail .row.drawings .v { font-size: 11px; line-height: 1.5; }
-  .detail .row.drawings .v .dwg { display: inline-block; margin: 1px 5px 1px 0; }
-  .detail .row.drawings .v .dwg code {
-    background: var(--light-gray); padding: 1px 5px; border-radius: 2px;
-    font-size: 10px;
-  }
-  .detail .scope {
-    margin-top: 6px; font-size: 11px; font-style: italic;
-    color: var(--mid-gray); padding-left: 10px;
-    border-left: 2px solid var(--rule);
-  }
-  footer.bottom {
-    border-top: 1px solid var(--rule); padding: 12px 28px;
-    display: flex; justify-content: space-between; align-items: center;
-    font-size: 11px; color: var(--mid-gray);
-    font-family: 'Poppins'; letter-spacing: 0.04em; background: var(--light);
-  }
-  footer.bottom .actions { display: flex; gap: 8px; }
-  footer.bottom a.action {
-    font-size: 11px; padding: 5px 12px; border: 1px solid var(--rule);
-    border-radius: 3px; color: var(--dark); text-decoration: none;
-    background: var(--light); transition: all 0.12s ease;
-  }
-  footer.bottom a.action:hover { border-color: var(--dark); }
-  footer.bottom a.action.primary {
-    background: var(--dark); color: var(--light); border-color: var(--dark);
-  }
-  footer.bottom a.action.primary:hover { background: var(--orange); border-color: var(--orange); }
-  section.program::-webkit-scrollbar { width: 8px; }
-  section.program::-webkit-scrollbar-track { background: var(--soft); }
-  section.program::-webkit-scrollbar-thumb { background: var(--mid-gray); border-radius: 4px; }
-</style>
-</head>
-<body>
+    phase_blocks_html = ""
+    for ph_name, items in phases:
+        cards_html = "".join(render_card(i) for i in items)
+        phase_blocks_html += (
+            f'<div class="phase">'
+            f'<div class="phase-head">'
+            f'<span class="phase-num">Phase {phase_order.index(ph_name)+1:02d}</span>'
+            f'<h2>{ph_name}</h2>'
+            f'<span class="count">{len(items)} items</span>'
+            f'</div>{cards_html}</div>'
+        )
 
-<header class="top">
-  <h1>MBC Creativity & Arts Centre</h1>
-  <span class="sub">Job 2024.0230 · Rev T2 · Moreton Bay College, Manly West</span>
-  <span class="badge-tender">TENDER · Not For Construction</span>
-</header>
+    gen_date = datetime.date.today().isoformat()
 
-<main>
-  <aside class="iso">
-    <div class="iso-stats">
-      <div class="stat"><span class="num">__TOTAL__</span><span class="lbl">Inspections</span></div>
-      <div class="stat"><span class="num accent">__HOLDS__</span><span class="lbl">Hold points</span></div>
-      <div class="stat"><span class="num">__DRAWINGS__</span><span class="lbl">Drawings ref'd</span></div>
-      <div class="stat"><span class="num">62</span><span class="lbl">Sheets total</span></div>
-    </div>
+    TEMPLATE = r"""<!doctype html>
+    <html lang="en">
+    <head>
+    <meta charset="utf-8">
+    <title>MBC Creativity & Arts Centre — Inspection Program</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Lora:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --dark: #141413; --light: #faf9f5; --mid-gray: #b0aea5; --light-gray: #e8e6dc;
+        --orange: #d97757; --blue: #6a9bcc; --green: #788c5d;
+        --rule: rgba(20,20,19,0.08); --soft: rgba(20,20,19,0.04);
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; height: 100%; }
+      body {
+        background: var(--light); color: var(--dark);
+        font-family: 'Lora', Georgia, serif; font-size: 15px; line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+        overflow: hidden;
+      }
+      h1, h2, h3, h4, .num, .chip, .badge, .lbl, .pill, .meta, .phase-num, .seq, .k, .filter {
+        font-family: 'Poppins', Arial, sans-serif; letter-spacing: -0.005em;
+      }
+      code, .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+      header.top {
+        padding: 18px 28px; border-bottom: 1px solid var(--rule);
+        display: flex; align-items: baseline; gap: 24px; flex-wrap: wrap;
+      }
+      header.top h1 { font-size: 21px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+      header.top .sub {
+        color: var(--mid-gray); font-family: 'Poppins'; font-size: 11.5px;
+        letter-spacing: 0.06em; text-transform: uppercase;
+      }
+      header.top .badge-tender {
+        background: var(--blue); color: var(--light);
+        font-size: 10px; padding: 3px 8px; border-radius: 3px;
+        letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600;
+      }
+      main {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(440px, 560px);
+        height: calc(100vh - 105px);
+      }
+      aside.iso {
+        padding: 20px 24px;
+        border-right: 1px solid var(--rule);
+        display: flex; flex-direction: column;
+        overflow: hidden;
+      }
+      .iso-stats {
+        display: grid; grid-template-columns: repeat(4, 1fr);
+        gap: 1px; background: var(--rule);
+        border: 1px solid var(--rule); border-radius: 4px;
+        margin-bottom: 12px; overflow: hidden;
+      }
+      .iso-stats .stat { background: var(--light); padding: 9px 11px; }
+      .iso-stats .stat .num {
+        font-size: 20px; font-weight: 600; line-height: 1;
+        display: block; margin-bottom: 2px; font-family: 'Poppins';
+      }
+      .iso-stats .stat .num.accent { color: var(--orange); }
+      .iso-stats .stat .lbl {
+        font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase;
+        color: var(--mid-gray); font-weight: 500;
+      }
+      .filter-row { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 12px; }
+      .filter {
+        font-size: 11px; letter-spacing: 0.04em;
+        padding: 4px 10px; border: 1px solid var(--rule); border-radius: 999px;
+        background: var(--light); color: var(--dark); cursor: pointer;
+        transition: all 0.12s ease;
+      }
+      .filter:hover { border-color: var(--mid-gray); }
+      .filter.active { background: var(--dark); color: var(--light); border-color: var(--dark); }
+      .iso-wrap {
+        position: relative; flex: 1;
+        display: flex; align-items: center; justify-content: center;
+        background: #fbfaf6;
+        border: 1px solid var(--rule); border-radius: 4px;
+        padding: 10px; overflow: hidden; min-height: 0;
+      }
+      .iso-img-container {
+        position: relative; max-width: 100%; max-height: 100%; line-height: 0;
+      }
+      .iso-img-container img {
+        max-width: 100%; max-height: 100%; width: auto; height: auto; display: block;
+      }
+      svg.hotspot-overlay {
+        position: absolute; top: 0; left: 0;
+        width: 100%; height: 100%; pointer-events: none;
+      }
+      svg.hotspot-overlay polygon {
+        fill: transparent; stroke: transparent; stroke-width: 0.4;
+        transition: all 0.18s ease; pointer-events: auto; cursor: pointer;
+      }
+      svg.hotspot-overlay polygon.active {
+        fill: rgba(217, 119, 87, 0.36);
+        stroke: #b14a26; stroke-width: 0.5;
+        filter: drop-shadow(0 0 4px rgba(217, 119, 87, 0.7));
+      }
+      svg.hotspot-overlay polygon.hover {
+        fill: rgba(217, 119, 87, 0.18); stroke: var(--orange);
+      }
+      .iso-legend {
+        margin-top: 10px;
+        font-size: 11px; color: var(--mid-gray);
+        font-family: 'Poppins'; letter-spacing: 0.02em;
+        display: flex; align-items: center; gap: 8px;
+      }
+      .iso-legend .swatch {
+        width: 11px; height: 11px; border: 1px solid #b14a26;
+        background: rgba(217, 119, 87, 0.36); border-radius: 2px;
+      }
+      section.program {
+        overflow-y: auto; padding: 18px 24px; background: var(--light);
+      }
+      .phase { margin-bottom: 22px; }
+      .phase-head {
+        display: flex; align-items: baseline; gap: 12px;
+        padding-bottom: 6px; margin-bottom: 10px;
+        border-bottom: 1px solid var(--rule);
+      }
+      .phase-num {
+        font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
+        color: var(--mid-gray); font-weight: 500;
+      }
+      .phase-head h2 {
+        font-size: 16px; font-weight: 600; margin: 0; letter-spacing: -0.01em;
+      }
+      .phase-head .count {
+        margin-left: auto; font-size: 10.5px; color: var(--mid-gray);
+        font-family: 'Poppins'; letter-spacing: 0.04em;
+      }
+      .card {
+        border: 1px solid var(--rule); border-left-width: 3px;
+        border-left-color: var(--mid-gray); border-radius: 4px;
+        background: var(--light); padding: 10px 12px;
+        margin-bottom: 6px; cursor: pointer;
+        transition: border-color 0.12s ease, background 0.12s ease;
+        user-select: none;
+      }
+      .card:hover { border-color: rgba(20,20,19,0.18); border-left-color: var(--dark); }
+      .card.active {
+        border-color: var(--orange); border-left-color: var(--orange);
+        background: rgba(217, 119, 87, 0.05);
+      }
+      .card.hold { border-left-color: var(--orange); }
+      .card.dim { opacity: 0.32; }
+      .card-row { display: flex; align-items: flex-start; gap: 10px; }
+      .card .seq {
+        font-size: 17px; font-weight: 600; color: var(--dark);
+        line-height: 1; min-width: 26px; padding-top: 2px;
+        font-variant-numeric: tabular-nums;
+      }
+      .card .body { flex: 1; min-width: 0; }
+      .card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-bottom: 3px; }
+      .chip {
+        font-size: 10px; font-family: 'JetBrains Mono', monospace;
+        padding: 2px 6px; background: var(--light-gray); color: var(--dark);
+        border-radius: 2px;
+      }
+      .pill {
+        font-size: 10px; padding: 2px 7px; border-radius: 999px;
+        background: var(--soft); color: var(--dark);
+        letter-spacing: 0.04em; text-transform: uppercase;
+      }
+      .badge {
+        font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase;
+        padding: 2px 6px; border-radius: 2px; font-weight: 600;
+      }
+      .badge.hold { background: var(--orange); color: var(--light); }
+      .card h3 {
+        font-size: 13px; font-weight: 600; margin: 1px 0;
+        line-height: 1.35; letter-spacing: -0.005em; color: var(--dark);
+      }
+      .detail {
+        display: none; padding-top: 8px; margin-top: 6px;
+        border-top: 1px dashed var(--rule);
+      }
+      .card.active .detail { display: block; }
+      .detail .row {
+        display: grid; grid-template-columns: 80px 1fr;
+        gap: 10px; font-size: 12px; margin-bottom: 5px;
+      }
+      .detail .row .k {
+        font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase;
+        color: var(--mid-gray); padding-top: 2px; font-weight: 500;
+      }
+      .detail .row .v { color: rgba(20,20,19,0.85); line-height: 1.5; }
+      .detail .row.checklist .v ul { margin: 0; padding: 0; list-style: none; }
+      .detail .row.checklist .v li {
+        padding: 1px 0 1px 14px; position: relative; font-size: 11.5px;
+      }
+      .detail .row.checklist .v li::before {
+        content: ""; position: absolute; left: 0; top: 7px;
+        width: 4px; height: 4px;
+        border: 1px solid var(--mid-gray); border-radius: 1px;
+      }
+      .detail .row.drawings .v { font-size: 11px; line-height: 1.5; }
+      .detail .row.drawings .v .dwg { display: inline-block; margin: 1px 5px 1px 0; }
+      .detail .row.drawings .v .dwg code {
+        background: var(--light-gray); padding: 1px 5px; border-radius: 2px;
+        font-size: 10px;
+      }
+      .detail .scope {
+        margin-top: 6px; font-size: 11px; font-style: italic;
+        color: var(--mid-gray); padding-left: 10px;
+        border-left: 2px solid var(--rule);
+      }
+      footer.bottom {
+        border-top: 1px solid var(--rule); padding: 12px 28px;
+        display: flex; justify-content: space-between; align-items: center;
+        font-size: 11px; color: var(--mid-gray);
+        font-family: 'Poppins'; letter-spacing: 0.04em; background: var(--light);
+      }
+      footer.bottom .actions { display: flex; gap: 8px; }
+      footer.bottom a.action {
+        font-size: 11px; padding: 5px 12px; border: 1px solid var(--rule);
+        border-radius: 3px; color: var(--dark); text-decoration: none;
+        background: var(--light); transition: all 0.12s ease;
+      }
+      footer.bottom a.action:hover { border-color: var(--dark); }
+      footer.bottom a.action.primary {
+        background: var(--dark); color: var(--light); border-color: var(--dark);
+      }
+      footer.bottom a.action.primary:hover { background: var(--orange); border-color: var(--orange); }
+      section.program::-webkit-scrollbar { width: 8px; }
+      section.program::-webkit-scrollbar-track { background: var(--soft); }
+      section.program::-webkit-scrollbar-thumb { background: var(--mid-gray); border-radius: 4px; }
+    </style>
+    </head>
+    <body>
 
-    <div class="filter-row">
-      <button class="filter active" data-level="all">All</button>
-      <button class="filter" data-level="ground">Substructure + Ground</button>
-      <button class="filter" data-level="l1">L1</button>
-      <button class="filter" data-level="roof">Roof (3 tiers)</button>
-      <button class="filter" data-level="multi">Misc</button>
-    </div>
+    <header class="top">
+      <h1>MBC Creativity & Arts Centre</h1>
+      <span class="sub">Job 2024.0230 · Rev T2 · Moreton Bay College, Manly West</span>
+      <span class="badge-tender">TENDER · Not For Construction</span>
+    </header>
 
-    <div class="iso-wrap">
-      <div class="iso-img-container">
-        <img id="iso-img" src="data:image/png;base64,__IMG_B64__" alt="MBC Creativity & Arts Centre structural isometric">
-        <svg class="hotspot-overlay" id="hotspots" preserveAspectRatio="none" viewBox="0 0 100 100"></svg>
+    <main>
+      <aside class="iso">
+        <div class="iso-stats">
+          <div class="stat"><span class="num">__TOTAL__</span><span class="lbl">Inspections</span></div>
+          <div class="stat"><span class="num accent">__HOLDS__</span><span class="lbl">Hold points</span></div>
+          <div class="stat"><span class="num">__DRAWINGS__</span><span class="lbl">Drawings ref'd</span></div>
+          <div class="stat"><span class="num">62</span><span class="lbl">Sheets total</span></div>
+        </div>
+
+        <div class="filter-row">
+          <button class="filter active" data-level="all">All</button>
+          <button class="filter" data-level="ground">Substructure + Ground</button>
+          <button class="filter" data-level="l1">L1</button>
+          <button class="filter" data-level="roof">Roof (3 tiers)</button>
+          <button class="filter" data-level="multi">Misc</button>
+        </div>
+
+        <div class="iso-wrap">
+          <div class="iso-img-container">
+            <img id="iso-img" src="data:image/png;base64,__IMG_B64__" alt="MBC Creativity & Arts Centre structural isometric">
+            <svg class="hotspot-overlay" id="hotspots" preserveAspectRatio="none" viewBox="0 0 100 100"></svg>
+          </div>
+        </div>
+
+        <div class="iso-legend">
+          <span class="swatch"></span>
+          <span>Click an inspection card → element(s) light up here. TENDER ISSUE — provisional pending Construction Issue.</span>
+        </div>
+      </aside>
+
+      <section class="program" id="program">
+    __PHASE_BLOCKS__
+      </section>
+    </main>
+
+    <footer class="bottom">
+      <span>Bligh Tanner · Cowork-generated · __DATE__ · TENDER ISSUE — verify against Construction Issue when received</span>
+      <div class="actions">
+        <a class="action" href="mailto:?subject=MBC inspection program — request changes&body=Card numbers needing changes:%0D%0A%0D%0A">Request changes</a>
+        <a class="action primary" href="mailto:?subject=MBC inspection program — APPROVED (provisional)&body=Approved as drafted (provisional, pending Construction Issue). Proceed to write project-map.json + project.btproject.">Approve program</a>
       </div>
-    </div>
+    </footer>
 
-    <div class="iso-legend">
-      <span class="swatch"></span>
-      <span>Click an inspection card → element(s) light up here. TENDER ISSUE — provisional pending Construction Issue.</span>
-    </div>
-  </aside>
+    <script>
+    const HOTSPOTS = __HOTSPOTS_JSON__;
+    const INSPECTION_HOTSPOTS = __INSPECTION_HOTSPOTS_JSON__;
 
-  <section class="program" id="program">
-__PHASE_BLOCKS__
-  </section>
-</main>
+    const svg = document.getElementById('hotspots');
+    const polyElems = {};
+    for (const [hid, h] of Object.entries(HOTSPOTS)) {
+      polyElems[hid] = [];
+      for (const points of h.polygons) {
+        const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        poly.setAttribute('points', points);
+        poly.setAttribute('data-hotspot', hid);
+        poly.setAttribute('vector-effect', 'non-scaling-stroke');
+        svg.appendChild(poly);
+        polyElems[hid].push(poly);
+      }
+    }
 
-<footer class="bottom">
-  <span>Bligh Tanner · Cowork-generated · __DATE__ · TENDER ISSUE — verify against Construction Issue when received</span>
-  <div class="actions">
-    <a class="action" href="mailto:?subject=MBC inspection program — request changes&body=Card numbers needing changes:%0D%0A%0D%0A">Request changes</a>
-    <a class="action primary" href="mailto:?subject=MBC inspection program — APPROVED (provisional)&body=Approved as drafted (provisional, pending Construction Issue). Proceed to write project-map.json + project.btproject.">Approve program</a>
-  </div>
-</footer>
-
-<script>
-const HOTSPOTS = __HOTSPOTS_JSON__;
-const INSPECTION_HOTSPOTS = __INSPECTION_HOTSPOTS_JSON__;
-
-const svg = document.getElementById('hotspots');
-const polyElems = {};
-for (const [hid, h] of Object.entries(HOTSPOTS)) {
-  polyElems[hid] = [];
-  for (const points of h.polygons) {
-    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-    poly.setAttribute('points', points);
-    poly.setAttribute('data-hotspot', hid);
-    poly.setAttribute('vector-effect', 'non-scaling-stroke');
-    svg.appendChild(poly);
-    polyElems[hid].push(poly);
-  }
-}
-
-const cards = document.querySelectorAll('.card');
-cards.forEach(card => {
-  card.addEventListener('click', () => {
-    const seq = parseInt(card.dataset.seq);
-    activateInspection(seq, card);
-  });
-});
-
-function clearActive() {
-  cards.forEach(c => c.classList.remove('active'));
-  Object.values(polyElems).flat().forEach(p => p.classList.remove('active'));
-}
-
-function activateInspection(seq, card) {
-  const wasActive = card.classList.contains('active');
-  clearActive();
-  if (wasActive) return;
-  card.classList.add('active');
-  const hids = INSPECTION_HOTSPOTS[seq] || [];
-  hids.forEach(hid => {
-    (polyElems[hid] || []).forEach(p => p.classList.add('active'));
-  });
-}
-
-Object.entries(polyElems).forEach(([hid, polys]) => {
-  polys.forEach(p => {
-    p.addEventListener('mouseenter', () => {
-      polys.forEach(pp => pp.classList.add('hover'));
-    });
-    p.addEventListener('mouseleave', () => {
-      polys.forEach(pp => pp.classList.remove('hover'));
-    });
-    p.addEventListener('click', () => {
-      for (const card of cards) {
+    const cards = document.querySelectorAll('.card');
+    cards.forEach(card => {
+      card.addEventListener('click', () => {
         const seq = parseInt(card.dataset.seq);
-        const hids = INSPECTION_HOTSPOTS[seq] || [];
-        if (hids.includes(hid)) {
-          activateInspection(seq, card);
-          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          break;
-        }
-      }
+        activateInspection(seq, card);
+      });
     });
-  });
-});
 
-const filterButtons = document.querySelectorAll('.filter');
-filterButtons.forEach(btn => {
-  btn.addEventListener('click', () => {
-    filterButtons.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    const lvl = btn.dataset.level;
-    cards.forEach(c => {
-      if (lvl === 'all') {
-        c.classList.remove('dim');
-      } else if (lvl === 'ground') {
-        c.classList.toggle('dim', c.dataset.level !== 'ground');
-      } else {
-        c.classList.toggle('dim', c.dataset.level !== lvl);
-      }
+    function clearActive() {
+      cards.forEach(c => c.classList.remove('active'));
+      Object.values(polyElems).flat().forEach(p => p.classList.remove('active'));
+    }
+
+    function activateInspection(seq, card) {
+      const wasActive = card.classList.contains('active');
+      clearActive();
+      if (wasActive) return;
+      card.classList.add('active');
+      const hids = INSPECTION_HOTSPOTS[seq] || [];
+      hids.forEach(hid => {
+        (polyElems[hid] || []).forEach(p => p.classList.add('active'));
+      });
+    }
+
+    Object.entries(polyElems).forEach(([hid, polys]) => {
+      polys.forEach(p => {
+        p.addEventListener('mouseenter', () => {
+          polys.forEach(pp => pp.classList.add('hover'));
+        });
+        p.addEventListener('mouseleave', () => {
+          polys.forEach(pp => pp.classList.remove('hover'));
+        });
+        p.addEventListener('click', () => {
+          for (const card of cards) {
+            const seq = parseInt(card.dataset.seq);
+            const hids = INSPECTION_HOTSPOTS[seq] || [];
+            if (hids.includes(hid)) {
+              activateInspection(seq, card);
+              card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              break;
+            }
+          }
+        });
+      });
     });
-  });
-});
-</script>
-</body>
-</html>
-"""
 
-html_out = (
-    TEMPLATE
-    .replace("__TOTAL__", str(total))
-    .replace("__HOLDS__", str(holds))
-    .replace("__DRAWINGS__", str(drawings_referenced))
-    .replace("__IMG_B64__", img_b64)
-    .replace("__PHASE_BLOCKS__", phase_blocks_html)
-    .replace("__DATE__", gen_date)
-    .replace("__HOTSPOTS_JSON__", hotspots_json)
-    .replace("__INSPECTION_HOTSPOTS_JSON__", inspection_hotspots_json)
-)
+    const filterButtons = document.querySelectorAll('.filter');
+    filterButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const lvl = btn.dataset.level;
+        cards.forEach(c => {
+          if (lvl === 'all') {
+            c.classList.remove('dim');
+          } else if (lvl === 'ground') {
+            c.classList.toggle('dim', c.dataset.level !== 'ground');
+          } else {
+            c.classList.toggle('dim', c.dataset.level !== lvl);
+          }
+        });
+      });
+    });
+    </script>
+    </body>
+    </html>
+    """
 
-OUT_HTML.write_text(html_out)
-print(f"Wrote {OUT_HTML}")
-print(f"  size: {len(html_out):,} chars ({len(html_out)/1024:.0f} KB)")
-print(f"  inspections: {total}")
-print(f"  hold points: {holds}")
-print(f"  hotspots: {len(HOTSPOTS)} ({sum(len(h['polygons']) for h in HOTSPOTS.values())} polygons)")
-print(f"  drawings referenced: {drawings_referenced}")
+    html_out = (
+        TEMPLATE
+        .replace("__TOTAL__", str(total))
+        .replace("__HOLDS__", str(holds))
+        .replace("__DRAWINGS__", str(drawings_referenced))
+        .replace("__IMG_B64__", img_b64)
+        .replace("__PHASE_BLOCKS__", phase_blocks_html)
+        .replace("__DATE__", gen_date)
+        .replace("__HOTSPOTS_JSON__", hotspots_json)
+        .replace("__INSPECTION_HOTSPOTS_JSON__", inspection_hotspots_json)
+    )
+
+    OUT_HTML.write_text(html_out)
+    print(f"Wrote {OUT_HTML}")
+    print(f"  size: {len(html_out):,} chars ({len(html_out)/1024:.0f} KB)")
+    print(f"  inspections: {total}")
+    print(f"  hold points: {holds}")
+    print(f"  hotspots: {len(HOTSPOTS)} ({sum(len(h['polygons']) for h in HOTSPOTS.values())} polygons)")
+    print(f"  drawings referenced: {drawings_referenced}")

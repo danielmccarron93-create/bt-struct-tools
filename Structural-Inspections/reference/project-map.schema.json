@@ -24,7 +24,21 @@
         "builder":           { "type": ["string", "null"] },
         "architect":         { "type": ["string", "null"] },
         "engineerOfRecord":  { "type": ["string", "null"], "description": "'Bligh Tanner' for BT-authored, or external engineer for reviewed sets" },
-        "rpeqSignatory":     { "type": ["string", "null"] }
+        "rpeqSignatory":     { "type": ["string", "null"] },
+        "excludedFromBT": {
+          "type": "array",
+          "description": "Mirror of generalNotes.certifiedByOthers — surfaced in the pre-inspection brief so the engineer knows what they're NOT inspecting (e.g. precast lifting/inserts, steel temp props, light-gauge stud framing).",
+          "items": {
+            "type": "object",
+            "required": ["element"],
+            "properties": {
+              "element":        { "type": "string" },
+              "responsibility": { "type": ["string", "null"] },
+              "noteRef":        { "type": ["string", "null"] },
+              "scope":          { "type": ["string", "null"] }
+            }
+          }
+        }
       }
     },
 
@@ -200,9 +214,40 @@
           "defaultSeverity":   { "type": "string", "enum": ["observation", "defect", "hold-point", "closed"], "default": "observation" },
           "expectedChecklist": {
             "type": "array",
+            "items": {
+              "oneOf": [
+                { "type": "string", "description": "Plain-text checklist item (legacy format)" },
+                {
+                  "type": "object",
+                  "required": ["text"],
+                  "properties": {
+                    "text":         { "type": "string" },
+                    "asClauseRef":  { "type": ["string", "null"], "description": "e.g. 'AS 3600 Cl 4.10.3' — surfaces in the brief and report" },
+                    "noteRef":      { "type": ["string", "null"], "description": "Project-specific General Notes reference, e.g. 'note C18'" }
+                  }
+                }
+              ]
+            },
+            "description": "Each item can be a plain string OR an object with structured AS / project-note references for richer surfacing in the brief"
+          },
+          "siteReadinessCheck": {
+            "type": "array",
+            "description": "Advisory checklist for the builder before booking — surfaced in the pre-inspection brief modal. Each item is a yes/no question.",
             "items": { "type": "string" }
           },
-          "scopeNote":         { "type": ["string", "null"], "description": "e.g. 'BT engineering review, not BT-authored' for client-issued sets" }
+          "postPourRecord": {
+            "type": "object",
+            "description": "What to capture from concrete delivery dockets / steel certs at the time of inspection",
+            "properties": {
+              "concreteGrade":    { "type": ["string", "null"], "description": "e.g. 'N40'" },
+              "expectedSlump":    { "type": ["number", "null"], "description": "Slump in mm" },
+              "tempRange":        { "type": ["string", "null"], "description": "Allowable pour temp range, e.g. '5–35 °C per note C19'" },
+              "steelGrade":       { "type": ["string", "null"], "description": "e.g. '8.8/S' for bolts, 'Grade 300' for sections" },
+              "captureItems":     { "type": "array", "items": { "type": "string" }, "description": "List of things to photograph: 'delivery docket', 'mill cert', 'cube test slip', etc." }
+            }
+          },
+          "scopeNote":         { "type": ["string", "null"], "description": "e.g. 'BT engineering review, not BT-authored' for client-issued sets" },
+          "phase":             { "type": ["string", "null"], "description": "Optional grouping label, e.g. 'Substructure', 'Ground Floor', 'Level 1', 'Roof', 'Sub-Builds' — used by the project view to group plan entries" }
         }
       }
     },

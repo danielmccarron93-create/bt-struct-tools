@@ -169,42 +169,52 @@ db.version(5).stores({
 const ANY_TYPE = '_any_';
 
 async function seedReferenceData() {
-  const count = await db.inspectionTypes.count();
-  if (count === 0) {
-    const seed = [
-      // Concrete / reinforcement
-      { key: 'slab-prepour-ground',     category: 'Concrete', name: 'Slab on Ground Pre-Pour Reinforcement' },
-      { key: 'slab-prepour-suspended',  category: 'Concrete', name: 'Suspended Slab Pre-Pour Reinforcement' },
-      { key: 'pad-footing-prepour',     category: 'Concrete', name: 'Pad Footing Pre-Pour Reinforcement' },
-      { key: 'strip-footing-prepour',   category: 'Concrete', name: 'Strip Footing Pre-Pour Reinforcement' },
-      { key: 'raft-footing-prepour',    category: 'Concrete', name: 'Raft / Waffle Footing Pre-Pour Reinforcement' },
-      { key: 'beam-prepour',            category: 'Concrete', name: 'Beam Pre-Pour Reinforcement' },
-      { key: 'column-prepour',          category: 'Concrete', name: 'Column Pre-Pour Reinforcement' },
-      { key: 'retaining-wall-prepour',  category: 'Concrete', name: 'Retaining Wall Pre-Pour Reinforcement' },
-      { key: 'post-tension-strand',     category: 'Concrete', name: 'Post-Tension Strand Placement' },
-      { key: 'concrete-pour-witness',   category: 'Concrete', name: 'Concrete Pour Witness' },
+  // Idempotent seed: insert any keys not yet in the table, leave existing alone.
+  // This allows reference/inspection-types.json to grow over time without forcing
+  // a full re-seed (and without overwriting any user-edited entries).
+  const seed = [
+    // Concrete / reinforcement
+    { key: 'pad-footing-prepour',     category: 'Concrete', name: 'Pad Footing Pre-Pour Reinforcement' },
+    { key: 'strip-footing-prepour',   category: 'Concrete', name: 'Strip Footing Pre-Pour Reinforcement' },
+    { key: 'raft-footing-prepour',    category: 'Concrete', name: 'Raft / Waffle Footing Pre-Pour Reinforcement' },
+    { key: 'slab-prepour-ground',     category: 'Concrete', name: 'Slab on Ground Pre-Pour Reinforcement' },
+    { key: 'slab-prepour-suspended',  category: 'Concrete', name: 'Suspended Slab Pre-Pour Reinforcement' },
+    { key: 'head-framing',            category: 'Concrete', name: 'Suspended Slab Head Framing (Formwork & Props)' },
+    { key: 'beam-prepour',            category: 'Concrete', name: 'Beam Pre-Pour Reinforcement' },
+    { key: 'column-prepour',          category: 'Concrete', name: 'Column Pre-Pour Reinforcement' },
+    { key: 'concrete-wall-prepour',   category: 'Concrete', name: 'Concrete Wall Pre-Pour Reinforcement' },
+    { key: 'retaining-wall-prepour',  category: 'Concrete', name: 'Retaining Wall Pre-Pour Reinforcement' },
+    { key: 'stair-prepour',           category: 'Concrete', name: 'Stair Flight & Landing Pre-Pour Reinforcement' },
+    { key: 'post-tension-strand',     category: 'Concrete', name: 'Post-Tension Strand Placement' },
+    { key: 'concrete-pour-witness',   category: 'Concrete', name: 'Concrete Pour Witness' },
+    { key: 'transfer-slab-witness',   category: 'Concrete', name: 'Transfer Slab Pour Witness (Critical)' },
 
-      // Masonry
-      { key: 'blockwork-wall-reinf',    category: 'Masonry',  name: 'Blockwork Wall Vertical Reinforcement' },
-      { key: 'blockwork-core-fill',     category: 'Masonry',  name: 'Blockwork Core-Fill Pre-Pour' },
+    // Masonry
+    { key: 'blockwork-wall-reinf',    category: 'Masonry',  name: 'Blockwork Wall Vertical Reinforcement' },
+    { key: 'blockwork-core-fill',     category: 'Masonry',  name: 'Blockwork Core-Fill Pre-Pour' },
 
-      // Steel
-      { key: 'steel-frame-erection',    category: 'Steel',    name: 'Steel Frame Erection' },
-      { key: 'steel-connection',        category: 'Steel',    name: 'Steel Connection Inspection' },
-      { key: 'baseplate-anchor',        category: 'Steel',    name: 'Baseplate / Anchor Bolt Inspection' },
+    // Steel
+    { key: 'baseplate-anchor',        category: 'Steel',    name: 'Baseplate / Anchor Bolt Inspection' },
+    { key: 'steel-frame-erection',    category: 'Steel',    name: 'Steel Frame Erection' },
+    { key: 'steel-connection',        category: 'Steel',    name: 'Steel Connection Inspection' },
 
-      // Timber
-      { key: 'timber-framing',          category: 'Timber',   name: 'Timber Framing Inspection' },
-      { key: 'mass-timber-install',     category: 'Timber',   name: 'Mass Timber (GLT/CLT) Installation' },
-      { key: 'bracing',                 category: 'Timber',   name: 'Bracing Inspection' },
+    // Timber
+    { key: 'timber-framing',          category: 'Timber',   name: 'Timber Framing Inspection' },
+    { key: 'mass-timber-install',     category: 'Timber',   name: 'Mass Timber (GLT/CLT) Installation' },
+    { key: 'bracing',                 category: 'Timber',   name: 'Bracing Inspection' },
 
-      // Other
-      { key: 'subgrade',                category: 'Other',    name: 'Subgrade / Bearing Inspection' },
-      { key: 'waterproofing-precover',  category: 'Other',    name: 'Waterproofing Pre-Cover' },
-      { key: 'adhoc',                   category: 'Other',    name: 'Ad-hoc (free form)' }
-    ];
-    await db.inspectionTypes.bulkAdd(seed);
-  }
+    // Other
+    { key: 'subgrade',                category: 'Other',    name: 'Subgrade / Bearing Inspection' },
+    { key: 'pile-cfa-install',        category: 'Other',    name: 'CFA Pile Installation' },
+    { key: 'pile-bored-install',      category: 'Other',    name: 'Bored Pier Installation' },
+    { key: 'waterproofing-precover',  category: 'Other',    name: 'Waterproofing Pre-Cover' },
+    { key: 'adhoc',                   category: 'Other',    name: 'Ad-hoc (free form)' }
+  ];
+
+  const existing = await db.inspectionTypes.toArray();
+  const existingKeys = new Set(existing.map((t) => t.key));
+  const toAdd = seed.filter((t) => !existingKeys.has(t.key));
+  if (toAdd.length) await db.inspectionTypes.bulkAdd(toAdd);
 
   await seedCommentLibrary();
   await seedGeneralComments();
@@ -833,7 +843,57 @@ const GENERAL_COMMENTS_SEED = [
   { inspectionTypeKey: 'pad-footing-prepour',
     text: 'Footing excavation, reinforcement and starters are ready for concrete placement, subject to rectification of the items listed above.' },
   { inspectionTypeKey: 'strip-footing-prepour',
-    text: 'Strip footing excavation, reinforcement and starters are ready for concrete placement, subject to rectification of the items listed above.' }
+    text: 'Strip footing excavation, reinforcement and starters are ready for concrete placement, subject to rectification of the items listed above.' },
+
+  // ─── v2.2.1 — additional types from BT standard checks library ───
+  { inspectionTypeKey: 'subgrade',
+    text: 'Bearing capacity confirmed by geotech on site as adequate for the footings shown.' },
+  { inspectionTypeKey: 'subgrade',
+    text: 'Subgrade is firm, dry, and free of soft material at the time of inspection.' },
+
+  { inspectionTypeKey: 'pile-cfa-install',
+    text: 'CFA piles installed as per plan, with founding depths and torques recorded.' },
+  { inspectionTypeKey: 'pile-cfa-install',
+    text: 'BT inspection of CFA piles is advisory only; the geotechnical engineer holds the certification of pile bearing capacity.' },
+
+  { inspectionTypeKey: 'pile-bored-install',
+    text: 'Bored piers installed to founding depths recorded by the geotechnical engineer; bearing capacity confirmed adequate.' },
+  { inspectionTypeKey: 'pile-bored-install',
+    text: 'BT inspection of bored piers is advisory; certification of bearing capacity rests with the geotechnical engineer.' },
+
+  { inspectionTypeKey: 'concrete-wall-prepour',
+    text: 'Concrete wall reinforcement and formwork are in accordance with the structural drawings and ready for concrete placement, subject to rectification of items listed above.' },
+
+  { inspectionTypeKey: 'stair-prepour',
+    text: 'Stair flight and landing reinforcement are ready for concrete placement, subject to rectification of items listed above.' },
+
+  { inspectionTypeKey: 'head-framing',
+    text: 'Head framing, formwork and propping are in place and ready for reinforcement.' },
+
+  { inspectionTypeKey: 'transfer-slab-witness',
+    text: 'Transfer slab pour was witnessed in full; placement, vibration and curing were in accordance with AS 3600 and the project specification.' },
+
+  { inspectionTypeKey: 'post-tension-strand',
+    text: 'Post-tension strand placement is in accordance with the PT designer\'s drawings and ready for concrete placement, subject to PT designer sign-off.' },
+  { inspectionTypeKey: 'post-tension-strand',
+    text: 'BT inspection of post-tensioned concrete is limited to the in-situ supporting works; PT design and certification rests with the PT specialist sub-contractor (Form 15 / Form 16).' },
+
+  { inspectionTypeKey: 'blockwork-wall-reinf',
+    text: 'Block wall vertical reinforcement is in accordance with the structural drawings and ready for core fill.' },
+  { inspectionTypeKey: 'blockwork-core-fill',
+    text: 'Block wall core fill placement is in accordance with the structural drawings and AS 3700; lift heights, slump and grout consolidation observed and verified.' },
+
+  { inspectionTypeKey: 'baseplate-anchor',
+    text: 'Baseplate position, anchor projection and grout pad are in accordance with the structural drawings.' },
+
+  { inspectionTypeKey: 'steel-connection',
+    text: 'All bolted and welded connections inspected and verified to comply with AS 4100, AS 1554 and the structural drawings.' },
+
+  { inspectionTypeKey: 'waterproofing-precover',
+    text: 'Waterproofing membrane has been installed and inspected prior to cover; no defects observed at the time of inspection.' },
+
+  { inspectionTypeKey: 'bracing',
+    text: 'Wall and roof bracing has been installed in accordance with the structural drawings and provides the lateral load resistance required.' }
 ];
 
 /* --------------------------------------------------------------------------
@@ -1678,14 +1738,18 @@ export async function createItem(inspectionId, data = {}) {
 export async function updateItem(id, patch) {
   const itemId = Number(id);
   const record = {};
-  if (patch.comment    !== undefined) record.comment    = String(patch.comment).trim();
-  if (patch.severity   !== undefined) record.severity   = String(patch.severity);
-  if (patch.status     !== undefined) record.status     = String(patch.status);
-  if (patch.pdfX       !== undefined) record.pdfX       = patch.pdfX;
-  if (patch.pdfY       !== undefined) record.pdfY       = patch.pdfY;
-  if (patch.libraryKey !== undefined) record.libraryKey = patch.libraryKey || null;
-  if (patch.asClause   !== undefined) record.asClause   = String(patch.asClause || '').trim();
-  if (patch.gridRef    !== undefined) record.gridRef    = String(patch.gridRef || '').trim();
+  if (patch.comment      !== undefined) record.comment      = String(patch.comment).trim();
+  if (patch.severity     !== undefined) record.severity     = String(patch.severity);
+  if (patch.status       !== undefined) record.status       = String(patch.status);
+  if (patch.pdfX         !== undefined) record.pdfX         = patch.pdfX;
+  if (patch.pdfY         !== undefined) record.pdfY         = patch.pdfY;
+  if (patch.libraryKey   !== undefined) record.libraryKey   = patch.libraryKey || null;
+  if (patch.asClause     !== undefined) record.asClause     = String(patch.asClause || '').trim();
+  if (patch.gridRef      !== undefined) record.gridRef      = String(patch.gridRef || '').trim();
+  // Rectification close-out fields (Phase C1 — outstanding rectification register)
+  if (patch.closedAt     !== undefined) record.closedAt     = patch.closedAt;
+  if (patch.closedNotes  !== undefined) record.closedNotes  = String(patch.closedNotes || '').trim();
+  if (patch.closedByPhotoId !== undefined) record.closedByPhotoId = patch.closedByPhotoId;
   record.updatedAt = new Date().toISOString();
 
   await db.items.update(itemId, record);
@@ -1694,6 +1758,271 @@ export async function updateItem(id, patch) {
     await db.inspections.update(item.inspectionId, { updatedAt: record.updatedAt });
   }
   return item;
+}
+
+/**
+ * Close out a rectification item with a timestamp + optional notes / photo.
+ * Convenience wrapper around updateItem for the rectification register UX.
+ */
+export async function closeItem(id, { notes = '', photoId = null } = {}) {
+  return updateItem(id, {
+    status: 'closed',
+    closedAt: new Date().toISOString(),
+    closedNotes: notes,
+    closedByPhotoId: photoId
+  });
+}
+
+/**
+ * Re-open a previously-closed rectification item (in case engineer wants to
+ * undo a close or revisit on next site walk).
+ */
+export async function reopenItem(id) {
+  return updateItem(id, {
+    status: 'open',
+    closedAt: null,
+    closedNotes: '',
+    closedByPhotoId: null
+  });
+}
+
+/**
+ * List all outstanding rectifications (open defect/hold-point items) across
+ * every project in the database. Used by the rectification register view.
+ *
+ * Returns enriched items with project + inspection context joined in:
+ *   [
+ *     { item, inspection, project, primaryDrawing, firstPhoto, ageDays }, ...
+ *   ]
+ *
+ * Sorted by ageDays descending (oldest first — the things you've been
+ * sitting on longest).
+ */
+export async function listOutstandingRectifications({ projectId = null } = {}) {
+  // Pull all open defect/hold-point items
+  const allItems = await db.items
+    .filter((it) => {
+      if (it.status === 'closed') return false;
+      const sev = String(it.severity || '').toLowerCase();
+      return sev === 'defect' || sev === 'holdpoint' || sev === 'hold-point';
+    })
+    .toArray();
+
+  if (allItems.length === 0) return [];
+
+  // Bulk-fetch inspections + projects + drawings for join
+  const inspIds = [...new Set(allItems.map((i) => i.inspectionId))];
+  const insps = await db.inspections.where('id').anyOf(inspIds).toArray();
+  const inspById = new Map(insps.map((i) => [i.id, i]));
+
+  const projIds = [...new Set(insps.map((i) => i.projectId))];
+  const projs = await db.projects.where('id').anyOf(projIds).toArray();
+  const projById = new Map(projs.map((p) => [p.id, p]));
+
+  const dwgIds = [...new Set(insps.map((i) => i.primaryDrawingId).filter(Boolean))];
+  const dwgs = dwgIds.length ? await db.drawings.where('id').anyOf(dwgIds).toArray() : [];
+  const dwgById = new Map(dwgs.map((d) => [d.id, d]));
+
+  // First photo per item (for thumbnail in the register)
+  const itemIds = allItems.map((i) => i.id);
+  const photos = await db.photos.where('itemId').anyOf(itemIds).toArray();
+  const firstPhotoByItemId = new Map();
+  // Sort by createdAt ascending so we get the FIRST photo per item
+  photos.sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+  for (const p of photos) {
+    if (!firstPhotoByItemId.has(p.itemId)) firstPhotoByItemId.set(p.itemId, p);
+  }
+
+  const now = Date.now();
+  const enriched = allItems
+    .map((item) => {
+      const inspection = inspById.get(item.inspectionId);
+      if (!inspection) return null;
+      const project = projById.get(inspection.projectId);
+      if (!project) return null;
+      // Optional projectId filter
+      if (projectId && Number(projectId) !== project.id) return null;
+      const primaryDrawing = inspection.primaryDrawingId
+        ? dwgById.get(inspection.primaryDrawingId)
+        : null;
+      const firstPhoto = firstPhotoByItemId.get(item.id) || null;
+      const created = item.createdAt ? new Date(item.createdAt).getTime() : now;
+      const ageDays = Math.max(0, Math.floor((now - created) / (1000 * 60 * 60 * 24)));
+      return { item, inspection, project, primaryDrawing, firstPhoto, ageDays };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.ageDays - a.ageDays);
+
+  return enriched;
+}
+
+/**
+ * Project-level Form 12 / progress stats for the project header strip.
+ *
+ * Returns: {
+ *   plan: { total, complete, inProgress, pending, skipped, holdsOutstanding },
+ *   rectifications: { outstanding, closed },
+ *   form12Ready: boolean,         // all plan complete && 0 outstanding rectifications
+ *   form12IssuedAt: ISO string|null
+ * }
+ */
+export async function getProjectProgress(projectId) {
+  const project = await db.projects.get(Number(projectId));
+  if (!project) throw new Error('Project not found');
+
+  const plan = Array.isArray(project.inspectionPlan) ? project.inspectionPlan : [];
+  const inspections = await db.inspections.where('projectId').equals(Number(projectId)).toArray();
+  const inspById = new Map(inspections.map((i) => [i.id, i]));
+
+  let complete = 0, inProgress = 0, pending = 0, skipped = 0, holdsOutstanding = 0;
+  for (const entry of plan) {
+    const linkedInsp = entry.completedInspectionId ? inspById.get(Number(entry.completedInspectionId)) : null;
+    const status = (linkedInsp && linkedInsp.status === 'complete')
+      ? 'done'
+      : (entry.status || 'pending');
+    if (status === 'done')        complete += 1;
+    else if (status === 'in-progress') inProgress += 1;
+    else if (status === 'skipped') skipped += 1;
+    else                            pending += 1;
+    if (entry.holdPoint && status !== 'done' && status !== 'skipped') holdsOutstanding += 1;
+  }
+
+  const rects = await listOutstandingRectifications({ projectId: Number(projectId) });
+  const outstanding = rects.length;
+  const closedItems = await db.items
+    .where('inspectionId').anyOf(inspections.map((i) => i.id))
+    .filter((it) => it.status === 'closed')
+    .count()
+    .catch(() => 0);
+
+  const form12Ready = (
+    plan.length > 0 &&
+    complete + skipped === plan.length &&
+    outstanding === 0
+  );
+
+  return {
+    plan: { total: plan.length, complete, inProgress, pending, skipped, holdsOutstanding },
+    rectifications: { outstanding, closed: closedItems },
+    form12Ready,
+    form12IssuedAt: project.form12IssuedAt || null
+  };
+}
+
+/**
+ * Mark Form 12 as issued (sets a timestamp on the project record).
+ * Pure status flag — does NOT generate a PDF (deferred to v2.3).
+ */
+export async function markForm12Issued(projectId) {
+  await db.projects.update(Number(projectId), {
+    form12IssuedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  });
+}
+
+export async function unmarkForm12Issued(projectId) {
+  await db.projects.update(Number(projectId), {
+    form12IssuedAt: null,
+    updatedAt: new Date().toISOString()
+  });
+}
+
+/**
+ * Apply a Cowork-produced revision-{ts}.json diff to a project.
+ *
+ * For now we DO NOT auto-replace the source PDFs (the engineer may want to
+ * keep both old and new for audit). What we do:
+ *   - Stamp affected drawings rows with `revisionChangedAt`
+ *   - Stamp the project with `pendingRevisions[]` so the project view shows
+ *     a prominent banner
+ *   - Mark each affected plan entry with `revisionChangedAt` so cards show
+ *     a "revision changed since last review" badge
+ *
+ * The engineer reviews each affected card, decides if it changes their
+ * inspection, then taps "Acknowledge" (which clears the badge).
+ *
+ * @param {number} projectId
+ * @param {Object} diff      — the parsed revision-{ts}.json contents
+ */
+export async function applyRevisionDiff(projectId, diff) {
+  const project = await db.projects.get(Number(projectId));
+  if (!project) throw new Error('Project not found');
+
+  const now = new Date().toISOString();
+
+  // 1) Mark affected drawings (changed sheets only — added/removed touch the
+  //    drawings list itself, but those happen on the next full re-import)
+  const drawings = await db.drawings.where('projectId').equals(Number(projectId)).toArray();
+  const drawBySheet = new Map(drawings.map((d) => [(d.sheetNumber || '').toUpperCase(), d]));
+  let stampedDrawings = 0;
+  for (const ch of (diff.changed || [])) {
+    const sn = (ch.sheetNumber || '').toUpperCase();
+    const dwg = drawBySheet.get(sn);
+    if (dwg) {
+      await db.drawings.update(dwg.id, {
+        revisionChangedAt: now,
+        revisionPrevious:  ch.oldRevision || dwg.revision,
+        revisionNew:       ch.newRevision,
+        updatedAt:         now
+      });
+      stampedDrawings += 1;
+    }
+  }
+
+  // 2) Mark affected plan entries
+  const planCopy = (project.inspectionPlan || []).slice();
+  const affected = new Set(diff.affectedInspectionPlanIndices || []);
+  for (const idx of affected) {
+    if (planCopy[idx]) {
+      planCopy[idx] = {
+        ...planCopy[idx],
+        revisionChangedAt: now,
+        revisionAcknowledgedAt: null
+      };
+    }
+  }
+
+  // 3) Stamp the project with the pending revision summary
+  const pendingRevisions = Array.isArray(project.pendingRevisions) ? project.pendingRevisions.slice() : [];
+  pendingRevisions.push({
+    importedAt:   now,
+    summary:      diff.summary,
+    againstIssue: diff.againstIssue,
+    newPdf:       diff.newPdfFilename,
+    addedCount:   (diff.added || []).length,
+    changedCount: (diff.changed || []).length,
+    removedCount: (diff.removed || []).length,
+    affectedPlanCount: affected.size
+  });
+
+  await db.projects.update(Number(projectId), {
+    inspectionPlan:    planCopy,
+    pendingRevisions,
+    updatedAt:         now
+  });
+
+  return {
+    stampedDrawings,
+    affectedPlanEntries: affected.size
+  };
+}
+
+/**
+ * Acknowledge a revision change on a plan entry — clears the badge after
+ * the engineer has reviewed and decided no follow-up is needed.
+ */
+export async function acknowledgeRevisionChange(projectId, planIndex) {
+  const project = await db.projects.get(Number(projectId));
+  if (!project?.inspectionPlan?.[planIndex]) return;
+  const planCopy = project.inspectionPlan.slice();
+  planCopy[planIndex] = {
+    ...planCopy[planIndex],
+    revisionAcknowledgedAt: new Date().toISOString()
+  };
+  await db.projects.update(Number(projectId), {
+    inspectionPlan: planCopy,
+    updatedAt: new Date().toISOString()
+  });
 }
 
 /**

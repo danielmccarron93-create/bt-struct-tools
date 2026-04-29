@@ -32,6 +32,7 @@ import { renderThumbnail as renderPdfThumb } from '../lib/pdf.js';
 import { generateReport } from '../lib/report.js';
 import { shareReport, openPdfPreview, canShareFiles } from '../lib/share.js';
 import { buildExportBundle } from '../lib/export-bundle.js';
+import { getStandardChecksForType } from '../lib/bt-standard-checks.js';
 
 export async function render(root, params) {
   const id = Number(params[0]);
@@ -305,10 +306,18 @@ async function onAddGeneralCustom(inspection) {
  * engineer arrives on site already knowing what they're checking.
  */
 function renderPlanContextCard(inspection) {
-  if (inspection.fromPlanIndex == null) return '';
-  const checklist = Array.isArray(inspection.expectedChecklist) ? inspection.expectedChecklist : [];
-  const hasContent = inspection.rationale || checklist.length || inspection.holdPoint;
-  if (!hasContent) return '';
+  // Pull BT standard checks for this inspection type — these surface even
+  // when the inspection wasn't started from a plan entry (e.g. ad-hoc).
+  const typeKey = inspection.inspectionTypeKey || (Array.isArray(inspection.types) && inspection.types[0]) || null;
+  const standard = typeKey ? getStandardChecksForType(typeKey) : null;
+
+  const projectChecklist = Array.isArray(inspection.expectedChecklist) ? inspection.expectedChecklist : [];
+
+  const hasPlanContent = inspection.fromPlanIndex != null && (inspection.rationale || projectChecklist.length || inspection.holdPoint);
+  const hasStandardContent = standard && (
+    standard.onSiteChecks.length || standard.pourDayRecords.length || standard.certifications.length
+  );
+  if (!hasPlanContent && !hasStandardContent) return '';
 
   const meta = [
     inspection.level     ? escapeHtml(inspection.level) : '',
@@ -316,11 +325,20 @@ function renderPlanContextCard(inspection) {
     inspection.stage     ? escapeHtml(inspection.stage) : ''
   ].filter(Boolean).join(' · ');
 
+  // De-dupe project + standard on-site checks (project text wins)
+  const projectChecksTexts = new Set(projectChecklist.map((c) => {
+    const t = (typeof c === 'string') ? c : (c && c.text) || '';
+    return t.toLowerCase();
+  }));
+  const standardOnly = (standard?.onSiteChecks || []).filter(
+    (c) => !projectChecksTexts.has((c.text || '').toLowerCase())
+  );
+
   return `
     <section class="project-section">
       <details class="plan-context-card card" open>
         <summary>
-          <span class="plan-context-card__title">From the project plan</span>
+          <span class="plan-context-card__title">${hasPlanContent ? 'From the project plan' : 'BT standard checks for this inspection'}</span>
           ${inspection.holdPoint ? '<span class="badge badge--hold">hold point</span>' : ''}
           ${meta ? `<span class="muted small">${meta}</span>` : ''}
         </summary>
@@ -328,19 +346,68 @@ function renderPlanContextCard(inspection) {
           ${inspection.rationale ? `
             <p class="plan-context-card__rationale">${escapeHtml(inspection.rationale)}</p>
           ` : ''}
-          ${checklist.length ? `
+
+          ${projectChecklist.length ? `
             <div class="plan-context-card__checklist">
-              <div class="plan-context-card__section-title muted small">Suggested checks</div>
+              <div class="plan-context-card__section-title muted small">Project-specific checks (from drawings + General Notes)</div>
               <ul>
-                ${checklist.map((c) => `<li>${escapeHtml(c)}</li>`).join('')}
+                ${projectChecklist.map((c) => renderChecklistRow(c)).join('')}
               </ul>
-              <div class="muted small">Tick these off as you go on site by dropping pins on the plan.</div>
             </div>
           ` : ''}
+
+          ${standardOnly.length ? `
+            <div class="plan-context-card__checklist">
+              <div class="plan-context-card__section-title muted small">BT standard checks for ${escapeHtml(standard.name)}</div>
+              <ul>
+                ${standardOnly.map((c) => renderChecklistRow(c)).join('')}
+              </ul>
+            </div>
+          ` : ''}
+
+          ${standard?.pourDayRecords?.length ? `
+            <div class="plan-context-card__checklist">
+              <div class="plan-context-card__section-title muted small">Pour-day records to capture</div>
+              <ul>
+                ${standard.pourDayRecords.map((r) => `
+                  <li>${escapeHtml(r.text)}${r.captureType ? ` <span class="muted small">[${escapeHtml(r.captureType)}]</span>` : ''}</li>
+                `).join('')}
+              </ul>
+            </div>
+          ` : ''}
+
+          ${standard?.certifications?.length ? `
+            <div class="plan-context-card__checklist">
+              <div class="plan-context-card__section-title muted small">Certifications expected from contractor</div>
+              <ul>
+                ${standard.certifications.map((c) => `
+                  <li>
+                    ${escapeHtml(c.text)}
+                    ${c.providedBy ? ` <span class="muted small">— ${escapeHtml(c.providedBy)}</span>` : ''}
+                    ${c.formType ? ` <code>${escapeHtml(c.formType)}</code>` : ''}
+                    ${c.noteRef ? ` <code>${escapeHtml(c.noteRef)}</code>` : ''}
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
+          ` : ''}
+
+          <div class="muted small">Drop pins on the plan to record observations / defects against any of these.</div>
         </div>
       </details>
     </section>
   `;
+}
+
+function renderChecklistRow(c) {
+  if (typeof c === 'string') return `<li>${escapeHtml(c)}</li>`;
+  if (!c || typeof c !== 'object') return '';
+  const refs = [];
+  if (c.asClauseRef) refs.push(`<code>${escapeHtml(c.asClauseRef)}</code>`);
+  if (c.noteRef)     refs.push(`<code>${escapeHtml(c.noteRef)}</code>`);
+  const refHtml = refs.length ? ` <span class="muted small">${refs.join(' · ')}</span>` : '';
+  const critHtml = c.critical ? `<span class="check-crit" title="Critical check">!</span>` : '';
+  return `<li class="${c.critical ? 'check-row--critical' : ''}">${critHtml}${escapeHtml(c.text || '')}${refHtml}</li>`;
 }
 
 function renderPlanCard(drawing) {

@@ -6,16 +6,17 @@
  */
 
 const routes = {
-  home:        () => import('./views/home.js'),
-  projects:    () => import('./views/projects.js'),
-  project:     () => import('./views/project-detail.js'),
-  drawing:     () => import('./views/drawing-viewer.js'),
-  inspections: () => import('./views/inspections.js'),
-  inspection:  () => import('./views/inspection-detail.js'),
+  home:           () => import('./views/home.js'),
+  projects:       () => import('./views/projects.js'),
+  project:        () => import('./views/project-detail.js'),
+  drawing:        () => import('./views/drawing-viewer.js'),
+  inspections:    () => import('./views/inspections.js'),
+  inspection:     () => import('./views/inspection-detail.js'),
+  rectifications: () => import('./views/rectifications.js'),
   // Markup reuses drawing-viewer.js but exposes `renderMarkup` as `render`
   // so the router's module shape stays uniform.
-  markup:      () => import('./views/drawing-viewer.js').then((m) => ({ render: m.renderMarkup })),
-  settings:    () => import('./views/settings.js')
+  markup:         () => import('./views/drawing-viewer.js').then((m) => ({ render: m.renderMarkup })),
+  settings:       () => import('./views/settings.js')
 };
 
 /** Which nav item (if any) should be highlighted for this route. */

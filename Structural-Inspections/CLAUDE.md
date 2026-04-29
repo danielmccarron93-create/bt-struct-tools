@@ -625,7 +625,7 @@ When the engineer hits the "Approve program" mailto button (or just confirms ver
 2. **Write `project-map.json`** in the project folder, pretty-printed (2-space indent), schema-compliant.
 3. **Bundle `project.btproject`** — a ZIP archive (consumed by `js/lib/btproject.js → readBundle()` in the PWA) containing:
    - `project-map.json` at the root
-   - `pdfs/<filename>.pdf` for every source PDF
+   - `Drawings/<filename>.pdf` for every source PDF — the folder name MUST be `Drawings/` (not `pdfs/`); the bundle reader at line 86 of btproject.js searches that exact folder
    - `manifest.txt` — human-readable summary (project name, date generated, drawing count, inspection count)
 4. **Print summary** with file sizes and the iPhone import instruction (open BT Inspect → Projects → Import → select the .btproject).
 
@@ -699,6 +699,9 @@ A short list of things that took time to figure out and shouldn't be re-derived 
 12. **Cover-sheet drawing list is more reliable than per-page title cells.** Especially in the newer template variant, per-page title extraction is hit-and-miss but the cover-sheet `STRUCTURAL DRAWING LIST` always has every sheet. Cross-check; for projects where per-page is unreliable, use the cover list as authoritative.
 13. **Tender Issue projects need a "provisional" caveat.** When a project is "TENDER — NOT FOR CONSTRUCTION", the inspection program is necessarily provisional. Flag this on the HTML (badge in header), in the approve mailto subject, and as a footer note. Re-run the procedure when the Construction Issue arrives.
 14. **Multi-tier roofs are common in commercial.** MBC has Lower / Main / Upper roof tiers — three separate inspection sequences (frame + connections + purlins per tier). Don't lump them into one "roof" card.
+15. **The bundle PDF folder MUST be `Drawings/` not `pdfs/`.** `js/lib/btproject.js → readBundle()` reads from exactly `Drawings/` (line 86). The `tools/build_btproject.py` generator emits to that path. (Discovered while building the v2.2 bundle generator.)
+16. **Per-project `build_html.py` should expose data as module-level constants and wrap render in `if __name__ == '__main__':`.** The bundle generator imports the module to read `PROJECT_META`, `GENERAL_NOTES`, `EXCLUDED_FROM_BT`, `PLAN`, `HOTSPOTS`, `WARNINGS`. Without the guard, importing the module triggers the HTML write. Use `tools/build_btproject.py` as the canonical pattern. (v2.2 build.)
+17. **The PWA's `seedReferenceData()` was originally `if (count === 0)` only — meaning new inspection-type keys never reach existing users.** Made idempotent in v2.2 — adds any missing keys without overwriting user-edited entries. Pattern to copy for any future seed function.
 
 ---
 
@@ -761,4 +764,4 @@ See `skills/README.md` for the canonical list. As of last revision:
 
 ---
 
-*This playbook is the source of truth for the BT inspection workflow. Update it when patterns emerge that aren't yet documented. Date last revised: 2026-04-28 — added MBC reference project + newer-template-variant lessons.*
+*This playbook is the source of truth for the BT inspection workflow. Update it when patterns emerge that aren't yet documented. Date last revised: 2026-04-29 — v2.2 build: bundle generator (`tools/build_btproject.py`), bundle verifier (`tools/verify_btproject.py`), revision diff (`tools/diff_revision.py`), PWA: outstanding rectifications register, rich pre-inspection brief, Form 12 progress tracker, drawing revision diff import. See `BUILD-PLAN.md` for the full delta.*
