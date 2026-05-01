@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -154,10 +156,13 @@ input, select { font-family: inherit; }
 }
 .outputs-pane {
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto 1fr auto auto;
   padding: 16px;
   gap: 12px;
   min-height: 0;
+  overflow-y: auto;            /* fallback so checks / forces table don't clip the visuals
+                                  on very short viewports — visuals retain their min-height
+                                  via .visuals { min-height: … } */
 }
 
 /* ── INPUT CARDS ── */
@@ -327,7 +332,8 @@ input, select { font-family: inherit; }
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  min-height: 0;
+  min-height: 320px;          /* guarantee visuals always have room — protects against
+                                  large content elsewhere (e.g. force table) collapsing them */
 }
 .visual {
   background: var(--surface);
@@ -435,6 +441,9 @@ input, select { font-family: inherit; }
 .force-table-wrap {
   margin-top: 6px;
   overflow-x: auto;
+  max-height: 220px;          /* keep the force table compact so the 3D / charts above
+                                  stay visible at typical laptop screen heights */
+  overflow-y: auto;
 }
 .force-table {
   width: 100%;
@@ -908,18 +917,20 @@ input, select { font-family: inherit; }
     <!-- VISUALS -->
     <div class="visuals">
 
-      <!-- SECTION / FORCES tabs -->
+      <!-- 3D / SECTION / FORCES / REINFORCEMENT tabs -->
       <div class="visual">
         <div class="visual-head">
           <div class="visual-title">Wall Geometry</div>
           <div class="tabs" id="geomTabs">
-            <button class="tab active" data-view="section">Section</button>
+            <button class="tab active" data-view="3d">3D</button>
+            <button class="tab" data-view="section">Section</button>
             <button class="tab" data-view="forces">Forces</button>
             <button class="tab" data-view="reinf">Reinforcement</button>
           </div>
         </div>
         <div class="visual-body">
-          <canvas class="visual-canvas" id="canvasMain"></canvas>
+          <div class="visual-canvas" id="canvas3d"></div>
+          <canvas class="visual-canvas" id="canvasMain" style="display:none;"></canvas>
         </div>
       </div>
 
@@ -1424,7 +1435,7 @@ const S = {
   phiFill: 30, phiBase: 30, deltaRatio: 0.75,
   fc: 25, stemBar: 20, heelBar: 20, toeBar: 16,
   cls: 'B', pressMode: 'active',
-  geomTab: 'section', chartTab: 'bearing',
+  geomTab: '3d', chartTab: 'bearing',
   result: null,
 };
 
@@ -1896,10 +1907,411 @@ function drawReinforcement(r, cv) {
 
 function drawMain(r) {
   const cv = document.getElementById('canvasMain');
-  if (!cv) return;
-  if (S.geomTab === 'section') drawSection(r, cv);
+  const c3d = document.getElementById('canvas3d');
+  if (!cv || !c3d) return;
+  // Show/hide based on selected tab
+  c3d.style.display = (S.geomTab === '3d') ? 'block' : 'none';
+  cv.style.display  = (S.geomTab === '3d') ? 'none'  : 'block';
+  if (S.geomTab === '3d') render3D(r);
+  else if (S.geomTab === 'section') drawSection(r, cv);
   else if (S.geomTab === 'forces') drawForces(r, cv);
   else if (S.geomTab === 'reinf') drawReinforcement(r, cv);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// 3D RENDERING (Three.js) — wall geometry + full reinforcement model
+// ════════════════════════════════════════════════════════════════════════
+// Coordinate system: origin at centre of TOP of base.
+//   X = along wall length (rendered as a 1500 mm segment so multiple bar
+//       spacings are visible)
+//   Y = vertical, +Y up
+//   Z = horizontal section direction, +Z toward heel (retained side),
+//       −Z toward toe (free side)
+// All units in millimetres.
+
+let three = null;
+const SEG_LEN = 1500;   // length of wall segment shown in 3D (mm)
+
+function init3D() {
+  if (typeof THREE === 'undefined') {
+    console.warn('THREE not loaded — 3D unavailable');
+    return;
+  }
+  const container = document.getElementById('canvas3d');
+  if (!container) return;
+  const w = Math.max(100, container.clientWidth || 600);
+  const h = Math.max(100, container.clientHeight || 400);
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xfaf9f5);
+
+  const camera = new THREE.PerspectiveCamera(35, w/h, 1, 50000);
+  camera.position.set(3500, 3000, 4200);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(window.devicePixelRatio || 1);
+  container.appendChild(renderer.domElement);
+
+  let controls = null;
+  if (typeof THREE.OrbitControls === 'function') {
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 1500, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+  } else {
+    camera.lookAt(0, 1500, 0);
+  }
+
+  // Lights — soft warm ambient + main directional for shape, secondary fill
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+  dir.position.set(3000, 5000, 3000);
+  scene.add(dir);
+  const dir2 = new THREE.DirectionalLight(0xfff3e0, 0.4);
+  dir2.position.set(-2500, 3000, -1500);
+  scene.add(dir2);
+
+  const wallGroup = new THREE.Group();
+  scene.add(wallGroup);
+
+  three = { scene, camera, renderer, controls, wallGroup, container };
+
+  function animate() {
+    requestAnimationFrame(animate);
+    if (controls && controls.update) controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  window.addEventListener('resize', () => {
+    const w = container.clientWidth, h = container.clientHeight;
+    if (w === 0 || h === 0) return;
+    camera.aspect = w/h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  });
+}
+
+function render3D(r) {
+  if (!three || typeof THREE === 'undefined') return;
+  const g = three.wallGroup;
+  while (g.children.length) g.remove(g.children[0]);
+
+  // Convert to mm
+  const H  = r.H * 1000;
+  const D  = r.D * 1000;
+  const t  = r.t * 1000;
+  const Lt = r.Lt * 1000;
+  const Lh = r.Lh * 1000;
+  const L  = r.L * 1000;
+  const Dembed = r.Dembed * 1000;
+  const cw = r.coverW;       // wall cover (mm)
+  const cb = r.coverB;       // base cover (mm)
+
+  // Stem centre line (z): stem extends from z = (Lt - L/2) to (Lt + t - L/2)
+  const stemFrontZ = Lt - L/2;          // toe-side face of stem
+  const stemBackZ  = Lt + t - L/2;      // heel-side (retained) face of stem
+  const stemCentreZ = (stemFrontZ + stemBackZ) / 2;
+
+  // ─── CONCRETE ───
+  const concMat = new THREE.MeshLambertMaterial({
+    color: 0xd6d2c4, transparent: true, opacity: 0.55, depthWrite: false
+  });
+  const concEdge = new THREE.LineBasicMaterial({ color: 0x141413, transparent: true, opacity: 0.55 });
+
+  // Helper — adds a mesh + matching edge wireframe at the given world position.
+  // (Earlier buggy form chained `g.add(line).position.copy(...)`; Object3D.add()
+  // returns the parent group, not the child, so that pattern silently moved the
+  // whole wallGroup by `position`. Now positioned per-mesh, no group offset.)
+  function addBoxWithEdges(geom, mat, pos) {
+    const mesh = new THREE.Mesh(geom, mat);
+    mesh.position.copy(pos);
+    g.add(mesh);
+    const edge = new THREE.LineSegments(new THREE.EdgesGeometry(geom), concEdge);
+    edge.position.copy(pos);
+    g.add(edge);
+    return mesh;
+  }
+
+  // Stem
+  const stemGeom = new THREE.BoxGeometry(SEG_LEN, H, t);
+  addBoxWithEdges(stemGeom, concMat, new THREE.Vector3(0, H/2, stemCentreZ));
+
+  // Base
+  const baseGeom = new THREE.BoxGeometry(SEG_LEN, D, L);
+  addBoxWithEdges(baseGeom, concMat, new THREE.Vector3(0, -D/2, 0));
+
+  // Optional shear key
+  if (r.keyOn) {
+    const kD = r.keyD * 1000, kT = r.keyTh * 1000;
+    const keyZ = r.keyPos * 1000 - L/2;
+    const keyGeom = new THREE.BoxGeometry(SEG_LEN, kD, kT);
+    addBoxWithEdges(keyGeom, concMat, new THREE.Vector3(0, -D - kD/2, keyZ));
+  }
+
+  // ─── RETAINED SOIL (behind wall, above heel, up to top of stem) ───
+  // depthWrite:false ensures translucent objects don't occlude each other —
+  // we want the bars visible through the soil and the soil visible through the
+  // back face of the stem.
+  const soilMat = new THREE.MeshLambertMaterial({
+    color: 0xc8a878, transparent: true, opacity: 0.62, depthWrite: false
+  });
+  const soilEdge = new THREE.LineBasicMaterial({ color: 0x6b4d2c, transparent: true, opacity: 0.6 });
+  const fillExtra = Math.max(800, H * 0.6);
+  const betaR = (r.beta || 0) * Math.PI / 180;
+
+  // For β > 0 build a sloped-top soil prism using a custom geometry; for level
+  // fill (β = 0) use a simple box.
+  let soilMesh, soilEdgeMesh;
+  if (Math.abs(betaR) > 1e-3) {
+    // Sloped-top prism. Cross-section in the y-z plane is a trapezium with the
+    // top sloping up toward the back at angle β. Extrude along x by SEG_LEN.
+    const yBack = H + (Lh + fillExtra) * Math.tan(betaR);
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 0);                            // front-bottom (back of stem, top of base)
+    shape.lineTo(Lh + fillExtra, 0);               // back-bottom
+    shape.lineTo(Lh + fillExtra, yBack);           // back-top
+    shape.lineTo(0, H);                            // front-top
+    shape.lineTo(0, 0);
+    const extrudeGeom = new THREE.ExtrudeGeometry(shape, {
+      depth: SEG_LEN, bevelEnabled: false, steps: 1
+    });
+    // ExtrudeGeometry extrudes along +Z. We need extrusion along X (wall length).
+    // Bake the rotation into the geometry, then translate so the cross-section
+    // sits at world origin (we'll position the mesh next).
+    extrudeGeom.rotateY(-Math.PI/2);  // x ← z, z ← -x  (so depth becomes -x-axis)
+    extrudeGeom.translate(SEG_LEN/2, 0, 0);  // shift to centre on x=0
+    soilMesh = new THREE.Mesh(extrudeGeom, soilMat);
+    soilMesh.position.set(0, 0, stemBackZ);   // shape-local y=0 sits on top of base
+    g.add(soilMesh);
+    soilEdgeMesh = new THREE.LineSegments(new THREE.EdgesGeometry(extrudeGeom), soilEdge);
+    soilEdgeMesh.position.copy(soilMesh.position);
+    g.add(soilEdgeMesh);
+  } else {
+    const soilGeom = new THREE.BoxGeometry(SEG_LEN, H, Lh + fillExtra);
+    soilMesh = new THREE.Mesh(soilGeom, soilMat);
+    soilMesh.position.set(0, H/2, stemBackZ + (Lh + fillExtra)/2);
+    g.add(soilMesh);
+    soilEdgeMesh = new THREE.LineSegments(new THREE.EdgesGeometry(soilGeom), soilEdge);
+    soilEdgeMesh.position.copy(soilMesh.position);
+    g.add(soilEdgeMesh);
+  }
+
+  // ─── NATIVE GROUND in front of toe ───
+  // Convention: `Dembed` = founding depth (depth of the BOTTOM of the base
+  // below natural grade in front of the toe). So natural grade is at world
+  // y = -D + Dembed, i.e. (Dembed − D) above the top of the base on the toe
+  // side. The native-ground prism therefore extends from y = -D (base bottom)
+  // up to y = -D + Dembed.
+  const nativeH = Dembed;             // full prism height (mm)
+  if (nativeH > 5) {
+    const nativeMat = new THREE.MeshLambertMaterial({
+      color: 0xa89678, transparent: true, opacity: 0.55, depthWrite: false
+    });
+    const nativeGeom = new THREE.BoxGeometry(SEG_LEN, nativeH, fillExtra);
+    const native = new THREE.Mesh(nativeGeom, nativeMat);
+    native.position.set(0, -D + nativeH/2, stemFrontZ - fillExtra/2);
+    g.add(native);
+    const ne = new THREE.LineSegments(new THREE.EdgesGeometry(nativeGeom), soilEdge);
+    ne.position.copy(native.position);
+    g.add(ne);
+  }
+
+  // ─── REINFORCEMENT ───
+  const barMat   = new THREE.MeshLambertMaterial({ color: 0xd97757 });   // primary flexural — orange
+  const barMat2  = new THREE.MeshLambertMaterial({ color: 0xc5663b });   // shrinkage — darker orange/rust
+  const barMat3  = new THREE.MeshLambertMaterial({ color: 0xb55438 });   // longitudinal — deeper rust
+
+  function bar(dia_mm, length_mm, mat, axis) {
+    // axis: 'x' (along wall), 'y' (vertical), 'z' (cross-section)
+    const geom = new THREE.CylinderGeometry(dia_mm/2, dia_mm/2, length_mm, 14);
+    const m = new THREE.Mesh(geom, mat);
+    if (axis === 'x') m.rotation.z = Math.PI/2;          // cylinder default Y, rotate to X
+    else if (axis === 'z') m.rotation.x = Math.PI/2;     // rotate to Z
+    return m;
+  }
+
+  // ----- 1. Stem vertical bars (back face, retained side) -----
+  // Position: z = stemBackZ - cw - stemBar/2 (inset by cover and half-bar)
+  const sbarDia = r.stemBar;
+  const stemBarZ = stemBackZ - cw - sbarDia/2;
+  const stemBarHeight = H + (D - cb) - sbarDia/2;  // up the stem + down into base by D − cover (lap)
+  // Spacing along x: r.stemSp (mm)
+  const stemSp = r.stemSp;
+  const nStem = Math.floor(SEG_LEN / stemSp) + 1;
+  const stemX0 = -((nStem - 1) * stemSp) / 2;
+  // 90° hook into base — extends from the back-face bar toward the toe along
+  // the bottom of the base (with cover). Length capped so the hook always
+  // stays inside the base (between back face of stem and toe rear face).
+  const hookLen = Math.min(
+    Math.max(12 * sbarDia, 200),         // at least 12·db, never less than 200 mm
+    stemBarZ - (-L/2 + cb) - sbarDia/2   // never past the toe rear face (with cover)
+  );
+  for (let i = 0; i < nStem; i++) {
+    const xi = stemX0 + i * stemSp;
+    if (xi < -SEG_LEN/2 - 1 || xi > SEG_LEN/2 + 1) continue;
+    // Vertical part — stops at the lap point inside the base (covers + half-bar)
+    const vertLen = H + D - cb - sbarDia/2;
+    const m = bar(sbarDia, vertLen, barMat, 'y');
+    m.position.set(xi, (vertLen)/2 - (D - cb - sbarDia/2), stemBarZ);
+    g.add(m);
+    // Horizontal hook at the bottom of the base (with cover), running into the toe
+    if (hookLen > 0) {
+      const hk = bar(sbarDia, hookLen, barMat, 'z');
+      hk.position.set(xi, -D + cb + sbarDia/2, stemBarZ - hookLen/2);
+      g.add(hk);
+    }
+  }
+
+  // ----- 2. Stem front-face shrinkage bars (vertical, lighter) -----
+  const stemFrontBarDia = parseFloat(document.getElementById('inStemHorBar').value) || 12;
+  const stemFrontZBar = stemFrontZ + cw + stemFrontBarDia/2;
+  const nFront = Math.floor(SEG_LEN / 200) + 1;       // nominal 200 spacing front face
+  const front0 = -((nFront - 1) * 200) / 2;
+  for (let i = 0; i < nFront; i++) {
+    const xi = front0 + i * 200;
+    if (xi < -SEG_LEN/2 - 1 || xi > SEG_LEN/2 + 1) continue;
+    const m = bar(stemFrontBarDia*0.85, H * 0.97, barMat2, 'y');
+    m.position.set(xi, H/2, stemFrontZBar);
+    g.add(m);
+  }
+
+  // ----- 3. Stem horizontal shrinkage bars (back face, running along x) -----
+  const stemHorDia = parseFloat(document.getElementById('inStemHorBar').value) || 16;
+  const stemHorSp  = parseFloat(document.getElementById('inStemHorSp').value) || 250;
+  const stemHorZ   = stemBackZ - cw - sbarDia - stemHorDia/2;  // outside of vertical bars
+  const nHor = Math.floor(H / stemHorSp);
+  for (let j = 0; j <= nHor; j++) {
+    const yj = stemHorSp/2 + j * stemHorSp;
+    if (yj > H) break;
+    const m = bar(stemHorDia, SEG_LEN - 20, barMat2, 'x');
+    m.position.set(0, yj, stemHorZ);
+    g.add(m);
+  }
+  // Front face horizontal too (lighter)
+  const stemHorFrontZ = stemFrontZ + cw + stemFrontBarDia + stemHorDia/2;
+  for (let j = 0; j <= nHor; j++) {
+    const yj = stemHorSp/2 + j * stemHorSp;
+    if (yj > H) break;
+    const m = bar(stemHorDia*0.8, SEG_LEN - 20, barMat3, 'x');
+    m.position.set(0, yj, stemHorFrontZ);
+    g.add(m);
+  }
+
+  // ----- 4. Heel top bars (transverse, perpendicular to wall) -----
+  const heelDia = r.heelBar;
+  const heelSp  = r.heelSp;
+  const heelY   = -cb - heelDia/2;
+  const heelZ1  = stemBackZ + cb;            // start at back of stem face (with cover)
+  const heelZ2  = L/2 - cb;                  // end at heel rear face
+  const nHeel = Math.floor(SEG_LEN / heelSp) + 1;
+  const heelX0 = -((nHeel - 1) * heelSp) / 2;
+  for (let i = 0; i < nHeel; i++) {
+    const xi = heelX0 + i * heelSp;
+    if (xi < -SEG_LEN/2 - 1 || xi > SEG_LEN/2 + 1) continue;
+    const len = heelZ2 - heelZ1;
+    if (len <= 0) continue;
+    const m = bar(heelDia, len, barMat, 'z');
+    m.position.set(xi, heelY, (heelZ1 + heelZ2)/2);
+    g.add(m);
+  }
+
+  // ----- 5. Toe bottom bars (transverse) -----
+  const toeDia = r.toeBar;
+  const toeSp  = r.toeSp;
+  const toeY   = -D + cb + toeDia/2;
+  const toeZ1  = -L/2 + cb;
+  const toeZ2  = stemFrontZ - cb;
+  const nToe = Math.floor(SEG_LEN / toeSp) + 1;
+  const toeX0 = -((nToe - 1) * toeSp) / 2;
+  for (let i = 0; i < nToe; i++) {
+    const xi = toeX0 + i * toeSp;
+    if (xi < -SEG_LEN/2 - 1 || xi > SEG_LEN/2 + 1) continue;
+    const len = toeZ2 - toeZ1;
+    if (len <= 0) continue;
+    const m = bar(toeDia, len, barMat, 'z');
+    m.position.set(xi, toeY, (toeZ1 + toeZ2)/2);
+    g.add(m);
+  }
+
+  // ----- 6. Base longitudinal shrinkage bars (running along x) -----
+  const longDia = parseFloat(document.getElementById('inLongBar').value) || 12;
+  const longSp  = parseFloat(document.getElementById('inLongSp').value) || 200;
+  // Top layer (above heel bars) and bottom layer (below toe bars)
+  const longTopY = -cb - heelDia - longDia/2;
+  const longBotY = -D + cb + toeDia + longDia/2;
+  const nLong = Math.floor((L - 2*cb) / longSp) + 1;
+  const long0 = -L/2 + cb + longDia/2;
+  for (let i = 0; i < nLong; i++) {
+    const zi = long0 + i * longSp;
+    if (zi > L/2 - cb) break;
+    const mTop = bar(longDia, SEG_LEN - 20, barMat3, 'x');
+    mTop.position.set(0, longTopY, zi);
+    g.add(mTop);
+    const mBot = bar(longDia, SEG_LEN - 20, barMat3, 'x');
+    mBot.position.set(0, longBotY, zi);
+    g.add(mBot);
+  }
+
+  // ─── GROUND-LEVEL REFERENCE LINE (front of toe, dashed at natural grade) ───
+  if (nativeH > 5) {
+    const lineMat = new THREE.LineDashedMaterial({ color: 0x7a3d28, dashSize: 60, gapSize: 40 });
+    const yGrade = -D + nativeH;
+    const pts = [
+      new THREE.Vector3(SEG_LEN/2 + 50, yGrade, stemFrontZ),
+      new THREE.Vector3(SEG_LEN/2 + 50, yGrade, stemFrontZ - fillExtra)
+    ];
+    const lineGeom = new THREE.BufferGeometry().setFromPoints(pts);
+    const line = new THREE.Line(lineGeom, lineMat);
+    line.computeLineDistances();
+    g.add(line);
+  }
+
+  // ─── SURCHARGE ARROWS on top of retained fill ───
+  // Show downward arrows along the soil top to indicate the surcharge
+  // pressure `s` (kPa). One arrow row across the wall length, plus a label.
+  const surch = r.s;
+  if (surch && surch > 0.01) {
+    const arrowMat = new THREE.MeshLambertMaterial({ color: 0xd97757 });
+    const arrowLineMat = new THREE.LineBasicMaterial({ color: 0xd97757, linewidth: 2 });
+    // Arrow geometry: a small downward-pointing cone + a stem above it
+    const headH = 80, headR = 35;
+    const stemH = 140;
+    const arrowGeom = new THREE.ConeGeometry(headR, headH, 14);
+    // Arrows along the heel-side soil top, every ~spacing in z
+    const zStart = stemBackZ + 250;
+    const zEnd   = stemBackZ + Lh + fillExtra * 0.6;
+    const nArr = Math.max(3, Math.floor((zEnd - zStart) / 600));
+    for (let i = 0; i <= nArr; i++) {
+      const t = nArr === 0 ? 0.5 : i / nArr;
+      const zArr = zStart + t * (zEnd - zStart);
+      // Top of soil at this z (slope-aware for β > 0)
+      const yTop = H + (zArr - stemBackZ) * Math.tan(betaR);
+      // Cone (head) — points DOWN, so rotate it 180° around X
+      const cone = new THREE.Mesh(arrowGeom, arrowMat);
+      cone.rotation.x = Math.PI;
+      cone.position.set(0, yTop + headH/2, zArr);
+      g.add(cone);
+      // Stem (vertical line above cone)
+      const linePts = [
+        new THREE.Vector3(0, yTop + headH, zArr),
+        new THREE.Vector3(0, yTop + headH + stemH, zArr),
+      ];
+      const lg = new THREE.BufferGeometry().setFromPoints(linePts);
+      const ln = new THREE.Line(lg, arrowLineMat);
+      g.add(ln);
+    }
+  }
+
+  // ─── RECENTER CAMERA TARGET ───
+  if (three.controls && three.controls.target) {
+    three.controls.target.set(0, H * 0.45, 0);
+  }
+  // Tweak camera position to maintain framing as wall size changes.
+  // Pull the camera back further so the larger soil prism fits in view.
+  const diag = Math.sqrt(H*H + L*L);
+  three.camera.position.set(diag * 1.5, H * 0.95 + 800, diag * 1.6);
 }
 
 // ════════════════════════════════════════════════════════════════════════
@@ -2538,6 +2950,14 @@ function init() {
       btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"/><rect x="6" y="14" width="12" height="8"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/></svg> Print Calculations';
     }
   });
+
+  // Initialise the Three.js scene once (graceful — gives a clear error if the
+  // CDN load failed so the rest of the tool still works)
+  if (typeof THREE === 'undefined') {
+    showError('THREE not loaded', 'Three.js failed to load. The 3D view will be unavailable; use the Section / Forces / Reinforcement tabs instead.');
+  } else {
+    safe('3D init', () => init3D());
+  }
 
   // First compute (after layout settles, so canvas clientWidth/Height are valid)
   syncChips();
