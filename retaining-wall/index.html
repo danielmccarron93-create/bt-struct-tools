@@ -1,0 +1,2561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retaining Wall Designer · AS 4678 / AS 3600</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style id="errOverlayCSS">
+#globalErrors { position: fixed; bottom: 12px; right: 12px; max-width: 480px; z-index: 9999; display: none; }
+#globalErrors.show { display: block; }
+.gerr { background: #c15a3e; color: #faf9f5; padding: 10px 14px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-top: 6px; font-family: 'Poppins', Arial, sans-serif; font-size: 12px; line-height: 1.4; }
+.gerr strong { display: block; font-weight: 700; font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; opacity: 0.9; margin-bottom: 4px; }
+.gerr code { font-family: 'JetBrains Mono', monospace; font-size: 11px; background: rgba(0,0,0,0.25); padding: 1px 5px; border-radius: 3px; }
+.gerr-close { float: right; cursor: pointer; opacity: 0.7; padding: 0 6px; }
+.gerr-close:hover { opacity: 1; }
+</style>
+<script>
+window.__earlyErrors = [];
+window.addEventListener('error', function(e){
+  window.__earlyErrors.push({ msg: e.message, src: e.filename, line: e.lineno, col: e.colno });
+});
+</script>
+<style>
+:root {
+  --cream:        #faf9f5;
+  --surface:      #ffffff;
+  --surface-2:    #f3f1e8;
+  --hairline:     rgba(20,20,19,0.06);
+  --hairline-2:   rgba(20,20,19,0.10);
+  --ink:          #141413;
+  --ink-2:        #4a4a47;
+  --mute:         #b0aea5;
+  --light-gray:   #e8e6dc;
+  --orange:       #d97757;
+  --orange-soft:  rgba(217,119,87,0.10);
+  --orange-mid:   rgba(217,119,87,0.20);
+  --green:        #788c5d;
+  --green-soft:   rgba(120,140,93,0.12);
+  --blue:         #6a9bcc;
+  --blue-soft:    rgba(106,155,204,0.10);
+  --rust:         #c15a3e;
+  --rust-soft:    rgba(193,90,62,0.10);
+  --soil-fill:    #c8a878;
+  --soil-base:    #9a7f5a;
+  --shadow-sm:    0 1px 2px rgba(20,20,19,0.04);
+  --shadow:       0 1px 2px rgba(20,20,19,0.04), 0 4px 12px rgba(20,20,19,0.04);
+  --shadow-lg:    0 1px 3px rgba(20,20,19,0.06), 0 12px 28px rgba(20,20,19,0.06);
+  --radius:       10px;
+  --radius-sm:    6px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height: 100%; }
+body {
+  font-family: 'Poppins', Arial, sans-serif;
+  background: var(--cream);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+button { font-family: inherit; cursor: pointer; }
+input, select { font-family: inherit; }
+
+/* ── TOP BAR ── */
+.topbar {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--hairline);
+}
+.brand-block { display: flex; align-items: center; gap: 14px; }
+.brand-mark {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--orange) 0%, #c5663b 100%);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--cream); font-weight: 700; font-size: 14px; letter-spacing: -0.5px;
+  box-shadow: var(--shadow-sm);
+}
+.brand-meta { display: flex; flex-direction: column; line-height: 1.1; }
+.brand-name { font-size: 13px; font-weight: 600; letter-spacing: -0.1px; }
+.brand-tag  { font-size: 10.5px; color: var(--mute); font-weight: 500; }
+
+.project-name {
+  flex: 1;
+  max-width: 380px;
+  margin: 0 24px;
+  padding: 8px 14px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  text-align: center;
+  font-family: 'Lora', Georgia, serif;
+  font-style: italic;
+}
+.project-name:hover, .project-name:focus {
+  background: var(--surface-2);
+  outline: none;
+  border-color: var(--hairline);
+  font-style: normal;
+}
+.project-name::placeholder { color: var(--mute); }
+
+.actions { display: flex; gap: 8px; }
+.btn {
+  padding: 8px 14px;
+  border: 1px solid var(--hairline-2);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+}
+.btn:hover { background: var(--surface-2); border-color: var(--mute); }
+.btn.primary {
+  background: var(--orange);
+  color: var(--cream);
+  border-color: var(--orange);
+}
+.btn.primary:hover { background: #c5663b; border-color: #c5663b; }
+.btn svg { width: 14px; height: 14px; }
+
+/* ── LAYOUT ── */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(380px, 38%) 1fr;
+  height: calc(100vh - 56px);
+  gap: 0;
+}
+.inputs-pane {
+  background: var(--cream);
+  border-right: 1px solid var(--hairline);
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.outputs-pane {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: 16px;
+  gap: 12px;
+  min-height: 0;
+}
+
+/* ── INPUT CARDS ── */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+}
+.card-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--mute);
+  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.card-title::before {
+  content: '';
+  width: 4px; height: 4px;
+  background: var(--orange);
+  border-radius: 50%;
+}
+.card-title .toggle-collapse {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--mute);
+  cursor: pointer;
+  letter-spacing: 0.5px;
+}
+.card-title .toggle-collapse:hover { color: var(--ink); }
+.card.collapsed .card-body { display: none; }
+
+.row { display: flex; gap: 8px; align-items: flex-end; }
+.row + .row { margin-top: 10px; }
+
+.field {
+  flex: 1;
+  display: flex; flex-direction: column;
+}
+.field label {
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--mute);
+  margin-bottom: 4px;
+}
+.field input[type="number"], .field select, .field input[type="text"] {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--hairline-2);
+  background: var(--cream);
+  color: var(--ink);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  transition: all 0.12s;
+}
+.field input[type="number"]:focus, .field select:focus, .field input[type="text"]:focus {
+  border-color: var(--orange);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px var(--orange-soft);
+}
+.field input[type="number"]:hover, .field select:hover {
+  border-color: var(--mute);
+}
+
+/* ── CHIP GROUPS ── */
+.chips {
+  display: flex; flex-wrap: wrap; gap: 4px;
+}
+.chip {
+  padding: 6px 11px;
+  border: 1px solid var(--hairline-2);
+  background: var(--cream);
+  color: var(--ink-2);
+  font-size: 11.5px;
+  font-weight: 500;
+  border-radius: 999px;
+  transition: all 0.12s;
+  font-variant-numeric: tabular-nums;
+}
+.chip:hover { border-color: var(--mute); background: var(--surface); }
+.chip.active {
+  background: var(--ink);
+  color: var(--cream);
+  border-color: var(--ink);
+}
+.chip.shape { padding: 7px 13px; font-size: 11px; }
+
+/* ── HERO STRIP ── */
+.hero-strip {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow);
+  padding: 16px 20px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 22px;
+  align-items: center;
+  min-height: 110px;
+}
+.util-ring-wrap {
+  position: relative;
+  width: 84px; height: 84px;
+}
+.util-ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.util-ring-bg { fill: none; stroke: var(--light-gray); stroke-width: 8; }
+.util-ring-fg { fill: none; stroke: var(--orange); stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 0.6s cubic-bezier(.2,.7,.3,1), stroke 0.3s; }
+.util-ring-text {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  line-height: 1;
+}
+.util-num {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.4px;
+}
+.util-pct { font-size: 9px; color: var(--mute); font-weight: 600; letter-spacing: 1px; margin-top: 2px; }
+
+.hero-info { display: flex; flex-direction: column; gap: 4px; }
+.hero-status {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  width: fit-content;
+}
+.hero-status.pass { background: var(--green-soft); color: var(--green); }
+.hero-status.fail { background: var(--rust-soft); color: var(--rust); }
+.hero-status.warn { background: var(--orange-soft); color: var(--orange); }
+.hero-status::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+}
+.hero-headline {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1.3;
+}
+.hero-headline strong { font-weight: 600; color: var(--orange); }
+.hero-meta {
+  font-size: 11.5px;
+  color: var(--mute);
+  font-variant-numeric: tabular-nums;
+  display: flex; gap: 14px;
+  flex-wrap: wrap;
+}
+.hero-meta span strong { color: var(--ink-2); font-weight: 600; }
+
+/* ── VISUALS BAND ── */
+.visuals {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  min-height: 0;
+}
+.visual {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+.visual-head {
+  padding: 10px 14px 8px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--hairline);
+}
+.visual-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.tabs { display: flex; gap: 2px; }
+.tab {
+  padding: 4px 9px;
+  font-size: 10.5px;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  color: var(--mute);
+  border-radius: var(--radius-sm);
+  transition: all 0.12s;
+  letter-spacing: 0.2px;
+}
+.tab:hover { color: var(--ink); background: var(--surface-2); }
+.tab.active { color: var(--ink); background: var(--surface-2); }
+.visual-body { flex: 1; min-height: 0; position: relative; }
+.visual-canvas { position: absolute; inset: 0; }
+
+/* ── CHECK GRID ── */
+.checks {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.check-tile {
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-sm);
+  padding: 10px 12px;
+  display: flex; flex-direction: column;
+  gap: 4px;
+  transition: all 0.15s;
+  cursor: pointer;
+}
+.check-tile:hover { border-color: var(--hairline-2); box-shadow: var(--shadow); }
+.check-tile-head {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.check-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.check-status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 3px var(--green-soft);
+}
+.check-status-dot.fail { background: var(--rust); box-shadow: 0 0 0 3px var(--rust-soft); }
+.check-status-dot.warn { background: var(--orange); box-shadow: 0 0 0 3px var(--orange-soft); }
+.check-status-dot.na   { background: var(--mute); box-shadow: 0 0 0 3px rgba(176,174,165,0.18); }
+.check-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.3px;
+}
+.check-detail {
+  font-size: 10.5px;
+  color: var(--mute);
+  font-variant-numeric: tabular-nums;
+}
+.check-bar {
+  height: 3px;
+  background: var(--light-gray);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+.check-bar-fill {
+  height: 100%;
+  background: var(--green);
+  border-radius: 2px;
+  transition: width 0.4s ease-out, background 0.3s;
+}
+.check-tile.fail .check-bar-fill { background: var(--rust); }
+.check-tile.warn .check-bar-fill { background: var(--orange); }
+
+/* ── FORCE TABLE ── */
+.force-table-wrap {
+  margin-top: 6px;
+  overflow-x: auto;
+}
+.force-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.force-table th, .force-table td {
+  text-align: right;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--hairline);
+}
+.force-table th {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--mute);
+  background: transparent;
+}
+.force-table td:first-child, .force-table th:first-child {
+  text-align: left;
+  font-weight: 500;
+}
+.force-table td.muted { color: var(--mute); font-style: italic; }
+.force-table tr.section-row td {
+  background: var(--surface-2);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--mute);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 6px 6px 3px;
+}
+
+/* ── INPUT GRID HELPERS ── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; }
+
+.help {
+  font-size: 10.5px;
+  color: var(--mute);
+  font-style: italic;
+  margin-top: 4px;
+  font-family: 'Lora', Georgia, serif;
+}
+.assumption-pill {
+  display: inline-block;
+  padding: 1px 7px;
+  background: var(--blue-soft);
+  color: var(--blue);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 500;
+  margin-left: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* small inline value tag */
+.tag {
+  display: inline-block;
+  padding: 2px 6px;
+  background: var(--surface-2);
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+  margin-left: 4px;
+}
+.tag.pass { background: var(--green-soft); color: var(--green); }
+.tag.fail { background: var(--rust-soft); color: var(--rust); }
+.tag.warn { background: var(--orange-soft); color: var(--orange); }
+
+/* checkbox toggle for shear key */
+.toggle-row { display: flex; align-items: center; gap: 8px; }
+.toggle-row input[type="checkbox"] {
+  width: 16px; height: 16px; cursor: pointer; accent-color: var(--orange);
+}
+.toggle-row label {
+  font-size: 11px; font-weight: 500; color: var(--ink-2); cursor: pointer;
+  letter-spacing: 0.2px;
+}
+
+/* scrollbars */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--hairline-2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--mute); }
+
+/* PDF print container (hidden) */
+#pdfRoot {
+  position: fixed; left: -10000px; top: 0;
+  width: 794px;
+  background: white;
+  color: #141413;
+  font-family: 'Lora', Georgia, serif;
+}
+.pdf-page {
+  width: 794px;
+  min-height: 1123px;
+  padding: 60px 60px 80px 60px;
+  background: white;
+  page-break-after: always;
+  position: relative;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.pdf-header {
+  border-bottom: 2px solid #141413;
+  padding-bottom: 12px;
+  margin-bottom: 18px;
+  display: flex; justify-content: space-between; align-items: flex-start;
+}
+.pdf-header-l { display: flex; align-items: center; gap: 12px; }
+.pdf-mark {
+  width: 36px; height: 36px;
+  background: #d97757; color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Poppins'; font-weight: 800; border-radius: 8px;
+}
+.pdf-header h1 { font-family: 'Poppins'; font-size: 17px; font-weight: 700; margin-bottom: 2px; }
+.pdf-header .sub { font-size: 10px; color: #777; font-family: 'Poppins'; }
+.pdf-header-r { font-size: 10px; color: #444; text-align: right; line-height: 1.4; font-family: 'Poppins'; }
+.pdf-title { font-family: 'Poppins'; font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.pdf-subtitle { font-family: 'Lora'; font-style: italic; color: #555; margin-bottom: 18px; }
+.pdf-h2 { font-family: 'Poppins'; font-size: 14px; font-weight: 600; color: #141413; margin: 18px 0 8px; padding-bottom: 4px; border-bottom: 1px solid #d97757; }
+.pdf-h3 { font-family: 'Poppins'; font-size: 12px; font-weight: 600; color: #141413; margin: 12px 0 4px; }
+.pdf-narrative { font-family: 'Lora'; font-size: 11.5px; line-height: 1.55; }
+.pdf-narrative p { margin-bottom: 8px; }
+.pdf-narrative .as-ref { color: #d97757; font-style: italic; font-size: 10.5px; }
+.pdf-eq {
+  background: #faf9f5;
+  border-left: 3px solid #d97757;
+  padding: 8px 12px;
+  margin: 8px 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.pdf-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-family: 'Poppins'; font-size: 10.5px; }
+.pdf-table th { background: #141413; color: white; font-weight: 600; text-align: left; padding: 6px 8px; }
+.pdf-table td { padding: 5px 8px; border-bottom: 1px solid #e8e6dc; font-variant-numeric: tabular-nums; }
+.pdf-table tr.gov td { background: #fef0e9; font-weight: 600; }
+.pdf-pass { color: #788c5d; font-weight: 600; }
+.pdf-fail { color: #c15a3e; font-weight: 600; }
+.pdf-warn { color: #d97757; font-weight: 600; }
+.pdf-footer {
+  position: absolute; bottom: 30px; left: 60px; right: 60px;
+  border-top: 1px solid #e8e6dc;
+  padding-top: 8px;
+  font-family: 'Poppins'; font-size: 9px; color: #999;
+  display: flex; justify-content: space-between;
+}
+
+/* responsiveness */
+@media (max-width: 1280px) {
+  .layout { grid-template-columns: 380px 1fr; }
+  .visuals { grid-template-columns: 1fr; }
+  .checks { grid-template-columns: repeat(4, 1fr); }
+}
+@media (max-width: 900px) {
+  .checks { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- ─────────────────────────  TOP BAR  ───────────────────────── -->
+<header class="topbar">
+  <div class="brand-block">
+    <div class="brand-mark">BT</div>
+    <div class="brand-meta">
+      <div class="brand-name">Retaining Wall Designer</div>
+      <div class="brand-tag">AS 4678 / AS 3600 · Bligh Tanner</div>
+    </div>
+  </div>
+  <input class="project-name" id="projectName" placeholder="Untitled wall · click to name…" value="">
+  <div class="actions">
+    <button class="btn" id="btnLoadExample">Example 6.3</button>
+    <button class="btn" id="btnAutoSize">Auto-size</button>
+    <button class="btn" id="btnSaveJSON">Save</button>
+    <button class="btn" id="btnLoadJSON">Load</button>
+    <button class="btn primary" id="btnPrintPDF">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"/><rect x="6" y="14" width="12" height="8"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/></svg>
+      Print Calculations
+    </button>
+    <input type="file" id="fileLoader" accept=".json" style="display:none">
+  </div>
+</header>
+
+<!-- ─────────────────────────  MAIN LAYOUT  ───────────────────────── -->
+<div class="layout">
+
+  <!-- INPUTS PANE -->
+  <aside class="inputs-pane" id="inputsPane">
+
+    <!-- GEOMETRY CARD -->
+    <div class="card">
+      <div class="card-title">Geometry <span class="toggle-collapse" data-target="cardGeom">−</span></div>
+      <div class="card-body" id="cardGeom">
+        <div class="row">
+          <div class="field"><label>Retained height H (mm)</label><input type="number" id="inH" value="4000" step="100"></div>
+          <div class="field"><label>Backfill slope β (°)</label><input type="number" id="inBeta" value="0" step="1" min="0" max="40"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Stem thickness t (mm)</label><input type="number" id="inTstem" value="300" step="10"></div>
+          <div class="field"><label>Base thickness D (mm)</label><input type="number" id="inD" value="300" step="10"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Toe length (mm)</label><input type="number" id="inLtoe" value="600" step="50"></div>
+          <div class="field"><label>Heel length (mm)</label><input type="number" id="inLheel" value="2100" step="50"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Embedment (mm)</label><input type="number" id="inEmbed" value="600" step="50"></div>
+          <div class="field"><label>Stem batter (mm)</label><input type="number" id="inBatter" value="0" step="10"></div>
+        </div>
+        <div class="help">Base length L = toe + stem + heel = <span id="hLen">3000</span> mm · Total height H+D = <span id="hHt">4300</span> mm · L/H = <span id="hLH">0.75</span></div>
+      </div>
+    </div>
+
+    <!-- RETAINED SOIL CARD -->
+    <div class="card">
+      <div class="card-title">Retained Soil &amp; Backfill <span class="toggle-collapse" data-target="cardRet">−</span></div>
+      <div class="card-body" id="cardRet">
+        <div class="row">
+          <div class="field"><label>φ (°)</label>
+            <div class="chips" id="phiFillChips">
+              <button class="chip" data-phi="26">26</button>
+              <button class="chip" data-phi="28">28</button>
+              <button class="chip active" data-phi="30">30</button>
+              <button class="chip" data-phi="32">32</button>
+              <button class="chip" data-phi="34">34</button>
+              <button class="chip" data-phi="36">36</button>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field"><label>γ (kN/m³)</label><input type="number" id="inGammaFill" value="17" step="0.5" min="14" max="22"></div>
+          <div class="field"><label>c (kPa)</label><input type="number" id="inCFill" value="0" step="1" min="0"></div>
+          <div class="field"><label>Surcharge s (kPa)</label><input type="number" id="inSurch" value="5" step="0.5"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Pressure mode</label>
+            <div class="chips" id="pressModeChips">
+              <button class="chip active" data-mode="active">Active (kₐ)</button>
+              <button class="chip" data-mode="atrest">At-rest (k₀)</button>
+            </div>
+          </div>
+        </div>
+        <div class="help">Use at-rest for basement / propped walls (no movement). kₐ = <span id="hKa">0.33</span> · k₀ = <span id="hKo">1.00</span></div>
+      </div>
+    </div>
+
+    <!-- BASE SOIL CARD -->
+    <div class="card">
+      <div class="card-title">Base / Foundation Soil <span class="toggle-collapse" data-target="cardBase">−</span></div>
+      <div class="card-body" id="cardBase">
+        <div class="row">
+          <div class="field"><label>φ_base (°)</label>
+            <div class="chips" id="phiBaseChips">
+              <button class="chip" data-phi="22">22</button>
+              <button class="chip" data-phi="26">26</button>
+              <button class="chip active" data-phi="30">30</button>
+              <button class="chip" data-phi="33">33</button>
+              <button class="chip" data-phi="36">36</button>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field"><label>γ_base (kN/m³)</label><input type="number" id="inGammaBase" value="18" step="0.5" min="14" max="22"></div>
+          <div class="field"><label>c_base (kPa)</label><input type="number" id="inCBase" value="5" step="1" min="0"></div>
+          <div class="field"><label>q_a allowable (kPa)</label><input type="number" id="inQa" value="250" step="25"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>δ / φ ratio</label>
+            <div class="chips" id="deltaRatioChips">
+              <button class="chip" data-r="0.5">½</button>
+              <button class="chip" data-r="0.667">⅔</button>
+              <button class="chip active" data-r="0.75">¾</button>
+              <button class="chip" data-r="1.0">1.0</button>
+            </div>
+          </div>
+        </div>
+        <div class="help">δ (base–soil friction angle) = <span id="hDelta">22.5</span>° · F = R·tan δ + c·a</div>
+      </div>
+    </div>
+
+    <!-- LOADS / CLASSIFICATION CARD -->
+    <div class="card">
+      <div class="card-title">Stability Combination Factors <span class="toggle-collapse" data-target="cardLoads">−</span></div>
+      <div class="card-body" id="cardLoads">
+        <div class="row">
+          <div class="field"><label>AS 4678 Class</label>
+            <div class="chips" id="classChips">
+              <button class="chip" data-c="A">A (low risk)</button>
+              <button class="chip active" data-c="B">B (medium)</button>
+              <button class="chip" data-c="C">C (high)</button>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field"><label>γ_stb (favourable G)</label><input type="number" id="inGammaStb" value="0.9" step="0.05" min="0.7" max="1.0"></div>
+          <div class="field"><label>γ_e (earth pressure)</label><input type="number" id="inGammaE" value="1.5" step="0.1" min="1.0" max="2.0"></div>
+          <div class="field"><label>ψ_c (surcharge combo)</label><input type="number" id="inPsiC" value="1.0" step="0.1" min="0" max="1.5"></div>
+        </div>
+        <div class="help">Eq 6.20 (simplified): 0.9·G_stb ≥ 1.5·F_e + ψ_c·Q_d,dst. Class B → min surcharge ≈ 2.5 kPa.</div>
+      </div>
+    </div>
+
+    <!-- MATERIALS CARD -->
+    <div class="card">
+      <div class="card-title">Concrete &amp; Reinforcement <span class="toggle-collapse" data-target="cardMat">−</span></div>
+      <div class="card-body" id="cardMat">
+        <div class="row">
+          <div class="field"><label>fc′ (MPa)</label>
+            <div class="chips" id="fcChips">
+              <button class="chip active" data-fc="25">25</button>
+              <button class="chip" data-fc="32">32</button>
+              <button class="chip" data-fc="40">40</button>
+              <button class="chip" data-fc="50">50</button>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field"><label>fsy (MPa)</label>
+            <select id="inFsy"><option value="500" selected>500 (N grade)</option><option value="250">250 (R grade)</option></select>
+          </div>
+          <div class="field"><label>Cover wall (mm)</label><input type="number" id="inCoverWall" value="50" step="5"></div>
+          <div class="field"><label>Cover base (mm)</label><input type="number" id="inCoverBase" value="75" step="5"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Exposure</label>
+            <select id="inExposure">
+              <option value="A1">A1 (interior)</option>
+              <option value="A2">A2 (mild)</option>
+              <option value="B1" selected>B1 (above grnd)</option>
+              <option value="B2">B2 (coastal)</option>
+              <option value="C1">C1 (saline)</option>
+              <option value="C2">C2 (splash)</option>
+            </select>
+          </div>
+          <div class="field"><label>Concrete γ (kN/m³)</label><input type="number" id="inGammaC" value="25" step="0.5" min="22" max="28"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEM REINFORCEMENT CARD -->
+    <div class="card">
+      <div class="card-title">Stem Reinforcement <span class="toggle-collapse" data-target="cardStem">−</span></div>
+      <div class="card-body" id="cardStem">
+        <div class="row">
+          <div class="field"><label>Vertical bar (back face)</label>
+            <div class="chips" id="stemBarChips">
+              <button class="chip" data-bar="12">N12</button>
+              <button class="chip" data-bar="16">N16</button>
+              <button class="chip active" data-bar="20">N20</button>
+              <button class="chip" data-bar="24">N24</button>
+              <button class="chip" data-bar="28">N28</button>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Spacing (mm)</label><input type="number" id="inStemSp" value="260" step="10"></div>
+          <div class="field"><label>Horiz. shrink. bar</label>
+            <select id="inStemHorBar">
+              <option value="12">N12</option>
+              <option value="16" selected>N16</option>
+              <option value="20">N20</option>
+            </select>
+          </div>
+          <div class="field"><label>Horiz. spacing (mm)</label><input type="number" id="inStemHorSp" value="250" step="10"></div>
+        </div>
+        <div class="help">A_st provided = <span id="hStemAst">1208</span> mm²/m · ρ = <span id="hStemRho">0.50</span>%</div>
+      </div>
+    </div>
+
+    <!-- BASE REINFORCEMENT CARD -->
+    <div class="card">
+      <div class="card-title">Base (Toe / Heel) Reinforcement <span class="toggle-collapse" data-target="cardBaseR">−</span></div>
+      <div class="card-body" id="cardBaseR">
+        <div class="row">
+          <div class="field"><label>Heel top bars</label>
+            <div class="chips" id="heelBarChips">
+              <button class="chip" data-bar="12">N12</button>
+              <button class="chip" data-bar="16">N16</button>
+              <button class="chip active" data-bar="20">N20</button>
+              <button class="chip" data-bar="24">N24</button>
+            </div>
+          </div>
+          <div class="field"><label>Spacing (mm)</label><input type="number" id="inHeelSp" value="260" step="10"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Toe bottom bars</label>
+            <div class="chips" id="toeBarChips">
+              <button class="chip" data-bar="12">N12</button>
+              <button class="chip active" data-bar="16">N16</button>
+              <button class="chip" data-bar="20">N20</button>
+              <button class="chip" data-bar="24">N24</button>
+            </div>
+          </div>
+          <div class="field"><label>Spacing (mm)</label><input type="number" id="inToeSp" value="260" step="10"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Long. shrinkage bar</label>
+            <select id="inLongBar">
+              <option value="10">N10</option>
+              <option value="12" selected>N12</option>
+              <option value="16">N16</option>
+            </select>
+          </div>
+          <div class="field"><label>Long. spacing (mm)</label><input type="number" id="inLongSp" value="200" step="10"></div>
+        </div>
+        <div class="help">Heel A_st = <span id="hHeelAst">1208</span> mm²/m · Toe A_st = <span id="hToeAst">774</span> mm²/m</div>
+      </div>
+    </div>
+
+    <!-- SHEAR KEY CARD -->
+    <div class="card collapsed">
+      <div class="card-title">
+        Shear Key (optional)
+        <span class="toggle-collapse" data-target="cardKey">+</span>
+      </div>
+      <div class="card-body" id="cardKey">
+        <div class="row">
+          <div class="toggle-row">
+            <input type="checkbox" id="inKeyOn">
+            <label for="inKeyOn">Include passive resistance from shear key</label>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field"><label>Key depth (mm)</label><input type="number" id="inKeyDepth" value="300" step="50"></div>
+          <div class="field"><label>Key thickness (mm)</label><input type="number" id="inKeyThick" value="300" step="50"></div>
+          <div class="field"><label>Position from toe (mm)</label><input type="number" id="inKeyPos" value="2000" step="100"></div>
+        </div>
+        <div class="help">Key bears on undisturbed soil. Passive force per Rankine: P_p = ½·k_p·γ_base·(d_embed+d_key)² − ½·k_p·γ_base·d_embed²</div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- OUTPUTS PANE -->
+  <main class="outputs-pane">
+
+    <!-- HERO STRIP -->
+    <div class="hero-strip">
+      <div class="util-ring-wrap">
+        <svg viewBox="0 0 100 100">
+          <circle class="util-ring-bg" cx="50" cy="50" r="42"/>
+          <circle class="util-ring-fg" id="utilRingFg" cx="50" cy="50" r="42"
+                  stroke-dasharray="263.9" stroke-dashoffset="263.9"/>
+        </svg>
+        <div class="util-ring-text">
+          <div class="util-num" id="utilNum">—</div>
+          <div class="util-pct">UTIL</div>
+        </div>
+      </div>
+      <div class="hero-info">
+        <div class="hero-status pass" id="heroStatus">computing…</div>
+        <div class="hero-headline" id="heroHeadline">Wall adequate for stability and component design</div>
+        <div class="hero-meta" id="heroMeta">
+          <span><strong>Governing:</strong> sliding</span>
+          <span><strong>kₐ:</strong> 0.33</span>
+          <span><strong>R:</strong> 206 kN/m</span>
+          <span><strong>q_max:</strong> 97 kPa</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- VISUALS -->
+    <div class="visuals">
+
+      <!-- SECTION / FORCES tabs -->
+      <div class="visual">
+        <div class="visual-head">
+          <div class="visual-title">Wall Geometry</div>
+          <div class="tabs" id="geomTabs">
+            <button class="tab active" data-view="section">Section</button>
+            <button class="tab" data-view="forces">Forces</button>
+            <button class="tab" data-view="reinf">Reinforcement</button>
+          </div>
+        </div>
+        <div class="visual-body">
+          <canvas class="visual-canvas" id="canvasMain"></canvas>
+        </div>
+      </div>
+
+      <!-- PRESSURE / BEARING / INTERACTION -->
+      <div class="visual">
+        <div class="visual-head">
+          <div class="visual-title">Pressures &amp; Bearing</div>
+          <div class="tabs" id="chartTabs">
+            <button class="tab active" data-chart="bearing">Bearing</button>
+            <button class="tab" data-chart="active">Active</button>
+            <button class="tab" data-chart="moment">Stem M</button>
+          </div>
+        </div>
+        <div class="visual-body">
+          <div class="visual-canvas" style="padding: 10px;">
+            <canvas id="chartCanvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CHECKS GRID -->
+    <div class="checks" id="checksGrid">
+      <div class="check-tile" data-check="overturn">
+        <div class="check-tile-head"><span class="check-label">Overturning</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">M_dst / 0.9·M_stb</div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="sliding">
+        <div class="check-tile-head"><span class="check-label">Sliding</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">F_dst / 0.9·F_stb</div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="bearing">
+        <div class="check-tile-head"><span class="check-label">Bearing q_max</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">q_max / q_a</div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="eccen">
+        <div class="check-tile-head"><span class="check-label">Eccentricity</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">e vs L/6 (kern)</div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="stemFlex">
+        <div class="check-tile-head"><span class="check-label">Stem Flexure</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">A_req / A_prov</div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="stemShear">
+        <div class="check-tile-head"><span class="check-label">Stem Shear</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">V* / φV_uc</div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="heelFlex">
+        <div class="check-tile-head"><span class="check-label">Heel Flexure</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">A_req / A_prov</div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+      <div class="check-tile" data-check="toeFlex">
+        <div class="check-tile-head"><span class="check-label">Toe Flexure</span><span class="check-status-dot"></span></div>
+        <div class="check-value">—</div>
+        <div class="check-detail">A_req / A_prov</div>
+        <div class="check-bar"><div class="check-bar-fill" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <!-- FORCES SUMMARY TABLE -->
+    <div class="card" style="padding:10px 14px;">
+      <div class="card-title">Free-Body Forces (per 1 m run, service condition)</div>
+      <div class="force-table-wrap">
+        <table class="force-table" id="forceTable">
+          <thead><tr>
+            <th>Force / Moment</th>
+            <th>Magnitude</th>
+            <th>Lever (toe)</th>
+            <th>Moment about toe</th>
+            <th>Sense</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+</div>
+
+<!-- Hidden PDF root -->
+<div id="pdfRoot"></div>
+
+<!-- Error overlay -->
+<div id="globalErrors"></div>
+
+<script>
+'use strict';
+
+// ════════════════════════════════════════════════════════════════════════
+// RETAINING WALL ENGINE — AS 4678 / AS/NZS 1170.0 / AS 3600
+// Theory per Foster, Kilpatrick & Warner, RCB 3e §6.3 (pp 412–428)
+// Validated against Worked Example 6.3 (4 m cantilever, gravelly clay base)
+// ════════════════════════════════════════════════════════════════════════
+
+const ENGINE_VERSION = '1.0.0';
+
+const BAR_AREAS = {
+  10: 78.5, 12: 113.1, 16: 201.1, 20: 314.2,
+  24: 452.4, 28: 615.8, 32: 804.2, 36: 1017.9
+};
+
+// ───── EARTH PRESSURE COEFFICIENTS ─────
+// Rankine–Bell active coefficient with backfill slope β (Eq 6.8/6.9)
+function ka(phiDeg, betaDeg) {
+  const phi = phiDeg * Math.PI / 180;
+  const beta = (betaDeg || 0) * Math.PI / 180;
+  if (Math.abs(beta) < 1e-9) {
+    // Eq 6.9 simplified for level fill: ka = tan²(45 − φ/2)
+    const t = Math.tan(Math.PI/4 - phi/2);
+    return t * t;
+  }
+  // Eq 6.8 general form
+  const cb = Math.cos(beta);
+  const cp = Math.cos(phi);
+  const sq = Math.sqrt(Math.max(0, cb*cb - cp*cp));
+  if (cb*cb < cp*cp) return Infinity; // β > φ — wedge unstable
+  return cb * (cb - sq) / (cb + sq);
+}
+function kp(phiDeg) {
+  const phi = phiDeg * Math.PI / 180;
+  const t = Math.tan(Math.PI/4 + phi/2);
+  return t * t;
+}
+function ko() { return 1.0; }  // text default for at-rest, conservative
+
+// ───── REINFORCEMENT HELPERS ─────
+function pFromMShortcut(MStar_kNm_per_m, d_mm) {
+  // Empirical p ≈ 2.5 M*/d² used throughout RCB 3e for first-pass sizing
+  return 2.5 * MStar_kNm_per_m / (d_mm * d_mm);
+}
+function pMin(D_mm, d_mm, fc_MPa, fsy_MPa) {
+  const fctf = 0.6 * Math.sqrt(fc_MPa);
+  return 0.20 * Math.pow(D_mm/d_mm, 2) * fctf / fsy_MPa;
+}
+function pShrinkageModerate() { return 0.0035; } // moderate crack control B1/B2/C
+function AstFromBarSpacing(barDia_mm, spacing_mm, b_mm) {
+  if (!spacing_mm || spacing_mm <= 0) return 0;
+  const Ab = BAR_AREAS[barDia_mm] || 0;
+  return Ab * b_mm / spacing_mm;
+}
+
+// Concrete shear capacity for one-way slab/wall element, simplified per AS 3600.
+// Uses concrete-only contribution; no shear reinforcement assumed.
+function phiVuc(b_mm, d_mm, fc_MPa, As_mm2) {
+  // β1 size factor (AS 3600 Cl 8.2.4.1, simplified):
+  const beta1 = Math.max(1.1 * (1.6 - d_mm/1000), 1.1);
+  const rho_w = Math.max(0.0015, As_mm2 / (b_mm * d_mm));
+  // f'cv = 0.17·√f'c (basic, no axial / no prestress)
+  const fcv = 0.17 * Math.sqrt(fc_MPa);
+  // V_uc = β1 · b · d · f'cv · (ρ_w · fc)^(1/3)/(0.005·fc)^(1/3)  [AS 3600 simplified]
+  // For typical retaining-wall ρ ≈ 0.005, the (ρ·fc/0.005·fc)^(1/3) ≈ 1, so:
+  const Vuc = beta1 * b_mm * d_mm * fcv * Math.pow(rho_w * fc_MPa / 0.5, 1/3);
+  return 0.7 * Vuc / 1000; // convert to kN
+}
+
+// ────── BEARING-PRESSURE DISTRIBUTION ──────
+// Returns {qmax, qmin, e, kern, mode, contactLength, qAtX(x)}
+function bearingPressure(N_kN, M_about_centroid_kNm, L_m, W_m) {
+  W_m = W_m || 1;
+  if (N_kN <= 0) return { qmax: 0, qmin: 0, e: 0, kern: L_m/6, mode: 'tipping', contactLength: 0, qAtX: () => 0 };
+  const e = Math.abs(M_about_centroid_kNm) / N_kN;
+  const kern = L_m / 6;
+  const sign = Math.sign(M_about_centroid_kNm); // +ve if moment tends to load toe more (toe at x=0)
+  if (e <= kern + 1e-9) {
+    const qAvg = N_kN / (W_m * L_m);
+    const qBend = 6 * Math.abs(M_about_centroid_kNm) / (W_m * L_m * L_m);
+    const qToe   = qAvg + qBend; // moment tilts pressure toward toe
+    const qHeel  = qAvg - qBend;
+    const qmax = Math.max(qToe, qHeel);
+    const qmin = Math.min(qToe, qHeel);
+    return {
+      qmax, qmin, e, kern, mode: 'trapezoidal', contactLength: L_m,
+      qAtX: x => {
+        // x measured from toe (0) to heel end (L)
+        const ratio = x / L_m;
+        return qToe + (qHeel - qToe) * ratio;
+      },
+    };
+  } else {
+    // Triangular partial contact — resultant inside the heel-side or toe-side third
+    const a = L_m/2 - e;
+    if (a <= 0) {
+      return { qmax: Infinity, qmin: 0, e, kern, mode: 'tipping', contactLength: 0, qAtX: () => 0 };
+    }
+    const contact = 3 * a;
+    const qmax = 2 * N_kN / (W_m * contact);
+    return {
+      qmax, qmin: 0, e, kern, mode: 'triangular', contactLength: contact,
+      qAtX: x => {
+        // Triangle has its base at the toe (compressed) end.
+        if (x <= contact) return qmax * (1 - x / contact);
+        return 0;
+      },
+    };
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// MAIN COMPUTE — orchestrates one full design check
+// ════════════════════════════════════════════════════════════════════════
+
+function compute() {
+  // ─── INPUTS ───
+  const $ = id => document.getElementById(id);
+  const num = id => parseFloat($(id).value);
+  const H = num('inH') / 1000;            // m
+  const t = num('inTstem') / 1000;        // stem thickness
+  const D = num('inD') / 1000;            // base thickness
+  const Lt = num('inLtoe') / 1000;        // toe length
+  const Lh = num('inLheel') / 1000;       // heel length
+  const L = Lt + t + Lh;                  // total base length
+  const beta = num('inBeta');             // backfill slope deg
+  const Dembed = num('inEmbed') / 1000;
+  const batter = num('inBatter') / 1000;
+
+  const phiF = S.phiFill;
+  const gF = num('inGammaFill');
+  const cF = num('inCFill');
+  const s = num('inSurch');
+  const phiB = S.phiBase;
+  const gB = num('inGammaBase');
+  const cB = num('inCBase');
+  const qa = num('inQa');
+  const dRatio = S.deltaRatio;
+  const delta = phiB * dRatio;
+  const fc = S.fc;
+  const fsy = parseFloat($('inFsy').value);
+  const coverW = num('inCoverWall');
+  const coverB = num('inCoverBase');
+  const gC = num('inGammaC');
+  const psiC = num('inPsiC');
+  const gStb = num('inGammaStb');
+  const gE = num('inGammaE');
+  const stemBar = S.stemBar;
+  const stemSp = num('inStemSp');
+  const heelBar = S.heelBar;
+  const heelSp = num('inHeelSp');
+  const toeBar = S.toeBar;
+  const toeSp = num('inToeSp');
+  const keyOn = $('inKeyOn').checked;
+  const keyD = num('inKeyDepth') / 1000;
+  const keyTh = num('inKeyThick') / 1000;
+  const keyPos = num('inKeyPos') / 1000;
+  const pressMode = S.pressMode;
+
+  // ─── EARTH PRESSURE COEFFICIENT ───
+  const Ka = (pressMode === 'atrest') ? ko() : ka(phiF, beta);
+  const Kp = kp(phiB);
+  const Ko = ko();
+
+  // ─── GEOMETRY HEIGHTS ───
+  const Ht = H + D;        // total height to underside of base (m) — lever for active pressure
+  const betaR = beta * Math.PI / 180;
+
+  // ─── FREE-BODY FORCES (per 1 m run) ───
+  // Lever arms measured from toe (origin at front face of toe, ground line)
+  // Stabilising components first
+  const W1 = t * H * gC;                              // stem self-weight (kN/m)
+  const W1_arm = Lt + t/2;                            // centroid of stem
+  const W2 = L * D * gC;                              // base self-weight
+  const W2_arm = L/2;
+  const W3 = Lh * H * gF;                             // soil over heel
+  const W3_arm = Lt + t + Lh/2;
+  const Sv_force = s * Lh;                            // surcharge over heel (vertical)
+  const Sv_arm = Lt + t + Lh/2;
+  // P_AV — vertical component of active force on sloping fill
+  const PA1 = 0.5 * Ka * gF * Ht * Ht;                // active from fill (Eq 6.13)
+  const PA2 = Ka * s * Ht;                            // active from surcharge (Eq 6.14)
+  const PAtotal = PA1 + PA2;
+  const PAH = PAtotal * Math.cos(betaR);              // horizontal component
+  const PAV = PAtotal * Math.sin(betaR);              // vertical down on heel side
+  // Lever arm for vertical PAV (acts at back face of base, x = L)
+  const PAV_arm = L;
+  // Active forces' line-of-action heights above base underside
+  const PA1_h = Ht / 3;
+  const PA2_h = Ht / 2;
+  // Horizontal components for sliding/overturning
+  const PA1H = PA1 * Math.cos(betaR);
+  const PA2H = PA2 * Math.cos(betaR);
+  // Vertical components (added to N for bearing if β > 0)
+  const PA1V = PA1 * Math.sin(betaR);
+  const PA2V = PA2 * Math.sin(betaR);
+
+  // ─── RESULTANT VERTICAL R (service) ───
+  const R = W1 + W2 + W3 + Sv_force + PAV;            // kN/m
+  // Sum of permanent stabilising verticals (excludes surcharge for stability)
+  const R_perm = W1 + W2 + W3 + PAV;
+
+  // ─── MOMENTS ABOUT TOE (service) ───
+  // Stabilising (anti-clockwise about toe, prevents tipping forward)
+  const M_W1   = W1 * W1_arm;
+  const M_W2   = W2 * W2_arm;
+  const M_W3   = W3 * W3_arm;
+  const M_Sv   = Sv_force * Sv_arm;
+  const M_PAV  = PAV * PAV_arm;
+  // Stabilising = permanent gravity over base + soil over heel + PAV
+  const M_stb_perm = M_W1 + M_W2 + M_W3 + M_PAV;
+  const M_stb_live = M_Sv;
+  // Destabilising (clockwise about toe, tips wall forward over toe)
+  const M_dst_e = PA1H * PA1_h;                        // earth pressure
+  const M_dst_q = PA2H * PA2_h;                        // surcharge
+
+  // ─── STABILITY: OVERTURNING (Eq 6.20) ───
+  // Book convention: surcharge OVER heel is included in M_stb (lumped with G factor 0.9),
+  //   while the surcharge's destabilising part (P_A2 active component) gets factor ψc.
+  // This matches the worked example exactly. (Strict AS 1170.0 would treat live separately.)
+  const M_stb_total = M_stb_perm + M_stb_live;            // includes surcharge over heel
+  const M_stb_factored = gStb * M_stb_total;
+  const M_dst_factored = gE * M_dst_e + psiC * M_dst_q;
+  const overturnUtil = M_dst_factored / Math.max(1e-9, M_stb_factored);
+
+  // ─── BEARING ───
+  // Use SERVICE forces & moments (book uses unfactored for bearing check).
+  // Take moments about base CENTROID (x = L/2). Convention: +ve M tilts pressure to TOE.
+  // M_about_centroid (toe-tilting positive): = sum of (lever_from_centroid × force, signed)
+  // For each vertical force at lever_from_toe x: lever_from_centroid = (L/2 − x)
+  // Vertical forces and their toe-side lever (positive distance; centroid lever = L/2 − x):
+  // Note: PA1H/PA2H tilt pressure toward toe (clockwise about centroid)
+  const M_centroid_v = (W1*(L/2 - W1_arm) + W2*(L/2 - W2_arm) + W3*(L/2 - W3_arm)
+                       + Sv_force*(L/2 - Sv_arm) + PAV*(L/2 - PAV_arm));
+  // Horizontal active forces tilt pressure toe-wards. Their moment about base centre:
+  const M_centroid_h = PA1H * PA1_h + PA2H * PA2_h;
+  // Net moment about centroid causing toe-side tilt (positive). Sign convention:
+  //   M_centroid_v positive when W on toe side (L/2 - W_arm > 0) → tips toe-wards
+  //   M_centroid_h positive (active forces tip wall toward toe)
+  const M_centroid = M_centroid_v + M_centroid_h;
+  const N_bearing = R;
+  const bp = bearingPressure(N_bearing, M_centroid, L, 1);
+  const bearingUtil = bp.qmax / Math.max(1, qa);
+
+  // ─── ECCENTRICITY ───
+  const eUtil = bp.e / (L/6);
+  // Excess eccentricity (e > L/6) is a flag, even if q_max ≤ q_a
+  const eClass = bp.e <= L/6 ? 'pass' : (bp.e <= L/2 ? 'warn' : 'fail');
+
+  // ─── SLIDING ───
+  // Stabilising base friction + base cohesion + (optional) shear-key passive.
+  // Book uses R = ΣV (includes surcharge over heel) for friction — surcharge weight
+  // is "there" providing friction. Conservative practice would exclude it; we match
+  // the book to reproduce Worked Example 6.3 (F_stb = 98 kN/m).
+  const F_friction = R * Math.tan(delta * Math.PI/180);
+  const F_cohesion = cB * Math.min(L, bp.contactLength || L);
+  let F_passiveKey = 0;
+  if (keyOn && keyD > 0) {
+    // Passive resistance from key bearing on undisturbed soil between depths
+    // d_top = Dembed (top of key = under base); d_bot = Dembed + keyD
+    const dTop = Dembed;
+    const dBot = Dembed + keyD;
+    F_passiveKey = 0.5 * Kp * gB * (dBot*dBot - dTop*dTop);
+  }
+  const F_stb = F_friction + F_cohesion + F_passiveKey;
+  const F_dst_e = PA1H;
+  const F_dst_q = PA2H;
+  const F_stb_factored = gStb * F_stb;
+  const F_dst_factored = gE * F_dst_e + psiC * F_dst_q;
+  const slidingUtil = F_dst_factored / Math.max(1e-9, F_stb_factored);
+
+  // ════════════════════════════════════════════════════════════════════════
+  // COMPONENT STRENGTH DESIGN — multiply service pressures by 1.5 for ULS
+  // ════════════════════════════════════════════════════════════════════════
+
+  // ─── STEM FLEXURE ───
+  // Service active on stem: triangular ½·Ka·γ·H² + rectangular Ka·s·H over H
+  // Lever arms to base of stem: H/3 and H/2 respectively
+  const M_stem_e_serv = Ka * gF * Math.pow(H,3) / 6;        // = (½ Ka γ H²)·(H/3)
+  const M_stem_q_serv = Ka * s * H * H / 2;                 // = (Ka s H)·(H/2)
+  const M_stem_serv = M_stem_e_serv + M_stem_q_serv;
+  const M_stem_star = 1.5 * M_stem_serv;                    // book convention: 1.5× service
+  const dStem = (t*1000) - coverW - stemBar/2;              // effective depth (mm)
+  const p_stem_req = pFromMShortcut(M_stem_star, dStem);
+  const p_stem_min = pMin(t*1000, dStem, fc, fsy);
+  const p_stem_used = Math.max(p_stem_req, p_stem_min);
+  const Ast_stem_req = p_stem_used * 1000 * dStem;          // mm²/m
+  const Ast_stem_prov = AstFromBarSpacing(stemBar, stemSp, 1000);
+  const stemFlexUtil = Ast_stem_req / Math.max(1, Ast_stem_prov);
+
+  // Stem shear at base
+  const V_stem_serv = 0.5 * Ka * gF * H * H + Ka * s * H;
+  const V_stem_star = 1.5 * V_stem_serv;
+  const phiVuc_stem = phiVuc(1000, dStem, fc, Ast_stem_prov);
+  const stemShearUtil = V_stem_star / Math.max(1e-9, phiVuc_stem);
+
+  // ─── HEEL FLEXURE ───
+  // Take moments at face of stem (heel side). Pressures vary along base.
+  // q at face of stem on heel side: q_face_heel
+  const x_face_heel = Lt + t;
+  const q_face_heel = bp.qAtX(x_face_heel);
+  const q_at_heel_end = bp.qAtX(L);
+  // Service moments at face of stem on heel:
+  // DOWN (top tension): soil + surcharge + base self over heel cantilever
+  const M_heel_soil = gF * H * Lh * Lh / 2;
+  const M_heel_surch = s * Lh * Lh / 2;
+  const M_heel_base = gC * D * Lh * Lh / 2;
+  // UP (bottom tension): bearing pressure trapezoid q_face_heel → q_at_heel_end
+  // Moment about face of stem: ∫ q(x_h)·x_h dx_h  (x_h = 0 at face, L_heel at end)
+  // q linear from a=q_face_heel to b=q_at_heel_end → M_up = L_heel² · (a + 2b)/6
+  const M_heel_up = Lh * Lh * (q_face_heel + 2*q_at_heel_end) / 6;
+  const M_heel_serv = (M_heel_soil + M_heel_surch + M_heel_base) - M_heel_up;
+  const M_heel_star = 1.5 * Math.max(0, M_heel_serv);
+  const dHeel = (D*1000) - coverB - heelBar/2;
+  const p_heel_req = pFromMShortcut(M_heel_star, dHeel);
+  const p_heel_min = pMin(D*1000, dHeel, fc, fsy);
+  const p_heel_used = Math.max(p_heel_req, p_heel_min);
+  const Ast_heel_req = p_heel_used * 1000 * dHeel;
+  const Ast_heel_prov = AstFromBarSpacing(heelBar, heelSp, 1000);
+  const heelFlexUtil = Ast_heel_req / Math.max(1, Ast_heel_prov);
+
+  // ─── TOE FLEXURE ───
+  // Take moments at face of stem (toe side).
+  // x in bearing function is from toe (0). At toe: q_toe = bp.qAtX(0). At face: q_face_toe = bp.qAtX(Lt)
+  const q_toe_end = bp.qAtX(0);
+  const q_face_toe = bp.qAtX(Lt);
+  // Bearing pressure trapezoid from face (a = q_face_toe) to toe (b = q_toe_end), over Lt
+  // Moment of upward bearing about face of stem: M_up = L_toe² · (a + 2b)/6
+  const M_toe_up = Lt * Lt * (q_face_toe + 2*q_toe_end) / 6;
+  // Self-weight of base portion above toe (acts down, reduces moment)
+  const M_toe_base_down = gC * D * Lt * Lt / 2;
+  const M_toe_serv = Math.max(0, M_toe_up - M_toe_base_down);
+  const M_toe_star = 1.5 * M_toe_serv;
+  const dToe = (D*1000) - coverB - toeBar/2;
+  const p_toe_req = pFromMShortcut(M_toe_star, dToe);
+  const p_toe_min = pMin(D*1000, dToe, fc, fsy);
+  const p_toe_used = Math.max(p_toe_req, p_toe_min);
+  const Ast_toe_req = p_toe_used * 1000 * dToe;
+  const Ast_toe_prov = AstFromBarSpacing(toeBar, toeSp, 1000);
+  const toeFlexUtil = Ast_toe_req / Math.max(1, Ast_toe_prov);
+
+  // ─── GOVERNING ───
+  const checks = [
+    { key: 'overturn', label: 'Overturning', util: overturnUtil },
+    { key: 'sliding', label: 'Sliding', util: slidingUtil },
+    { key: 'bearing', label: 'Bearing', util: bearingUtil },
+    { key: 'eccen', label: 'Eccentricity', util: eUtil, cls: eClass },
+    { key: 'stemFlex', label: 'Stem flexure', util: stemFlexUtil },
+    { key: 'stemShear', label: 'Stem shear', util: stemShearUtil },
+    { key: 'heelFlex', label: 'Heel flexure', util: heelFlexUtil },
+    { key: 'toeFlex', label: 'Toe flexure', util: toeFlexUtil },
+  ];
+  let governing = checks[0];
+  for (const c of checks) if (c.util > governing.util) governing = c;
+
+  return {
+    // inputs (echo for rendering)
+    H, t, D, Lt, Lh, L, beta, Dembed,
+    phiF, gF, cF, s, phiB, gB, cB, qa, dRatio, delta,
+    fc, fsy, coverW, coverB, gC, psiC, gStb, gE,
+    stemBar, stemSp, heelBar, heelSp, toeBar, toeSp,
+    keyOn, keyD, keyTh, keyPos, pressMode,
+    Ka, Kp, Ko, Ht,
+    // forces
+    W1, W1_arm, W2, W2_arm, W3, W3_arm, Sv_force, Sv_arm,
+    PA1, PA2, PAH, PAV, PA1H, PA2H, PA1V, PA2V, PA1_h, PA2_h, PAV_arm,
+    R, R_perm,
+    // moments
+    M_W1, M_W2, M_W3, M_Sv, M_PAV,
+    M_stb_perm, M_stb_live, M_dst_e, M_dst_q,
+    M_stb_factored, M_dst_factored, overturnUtil,
+    // bearing
+    bp, M_centroid, bearingUtil, eUtil, eClass,
+    // sliding
+    F_friction, F_cohesion, F_passiveKey, F_stb, F_dst_e, F_dst_q,
+    F_stb_factored, F_dst_factored, slidingUtil,
+    // stem
+    M_stem_e_serv, M_stem_q_serv, M_stem_serv, M_stem_star, dStem,
+    p_stem_req, p_stem_min, p_stem_used, Ast_stem_req, Ast_stem_prov, stemFlexUtil,
+    V_stem_serv, V_stem_star, phiVuc_stem, stemShearUtil,
+    // heel
+    q_face_heel, q_at_heel_end,
+    M_heel_soil, M_heel_surch, M_heel_base, M_heel_up,
+    M_heel_serv, M_heel_star, dHeel,
+    p_heel_req, p_heel_min, p_heel_used, Ast_heel_req, Ast_heel_prov, heelFlexUtil,
+    // toe
+    q_toe_end, q_face_toe, M_toe_up, M_toe_base_down,
+    M_toe_serv, M_toe_star, dToe,
+    p_toe_req, p_toe_min, p_toe_used, Ast_toe_req, Ast_toe_prov, toeFlexUtil,
+    // summary
+    checks, governing,
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// STATE + RENDERING
+// ════════════════════════════════════════════════════════════════════════
+
+const S = {
+  phiFill: 30, phiBase: 30, deltaRatio: 0.75,
+  fc: 25, stemBar: 20, heelBar: 20, toeBar: 16,
+  cls: 'B', pressMode: 'active',
+  geomTab: 'section', chartTab: 'bearing',
+  result: null,
+};
+
+function fmt(v, dp=0, unit='') {
+  if (v == null || !isFinite(v)) return '—';
+  return v.toFixed(dp) + (unit ? ' ' + unit : '');
+}
+function classifyUtil(u, override) {
+  if (override) return override;
+  if (!isFinite(u)) return 'fail';
+  if (u > 1.0) return 'fail';
+  if (u >= 0.95) return 'warn';
+  return 'pass';
+}
+function getCSS(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function colourFromClass(c) {
+  return c === 'pass' ? getCSS('--green') : c === 'warn' ? getCSS('--orange') : getCSS('--rust');
+}
+
+// ─── HERO STRIP ───
+function renderHero(r) {
+  const u = r.governing.util;
+  const cls = classifyUtil(u, r.governing.cls);
+  document.getElementById('utilNum').textContent = isFinite(u) ? u.toFixed(2) : '∞';
+  const ring = document.getElementById('utilRingFg');
+  const C = 263.9;
+  const filled = Math.min(1, isFinite(u) ? u : 1);
+  ring.style.strokeDashoffset = C * (1 - filled);
+  ring.style.stroke = colourFromClass(cls);
+  const status = document.getElementById('heroStatus');
+  status.className = 'hero-status ' + cls;
+  status.textContent = cls === 'pass' ? 'PASS' : cls === 'warn' ? 'CHECK' : 'FAIL';
+  document.getElementById('heroHeadline').innerHTML =
+    cls === 'pass' ? `Wall <strong>adequate</strong> — governing: ${r.governing.label.toLowerCase()}` :
+    cls === 'warn' ? `Wall <strong>marginal</strong> — review ${r.governing.label.toLowerCase()}` :
+                     `Wall <strong>insufficient</strong> — fails ${r.governing.label.toLowerCase()}`;
+  document.getElementById('heroMeta').innerHTML =
+    `<span><strong>kₐ:</strong> ${r.Ka.toFixed(3)}</span>`+
+    `<span><strong>R:</strong> ${fmt(r.R, 0, 'kN/m')}</span>`+
+    `<span><strong>q_max:</strong> ${fmt(r.bp.qmax, 0, 'kPa')}</span>`+
+    `<span><strong>e:</strong> ${fmt(r.bp.e*1000, 0, 'mm')}</span>`+
+    `<span><strong>L/H:</strong> ${(r.L/r.H).toFixed(2)}</span>`;
+}
+
+// ─── CHECK TILES ───
+function setTile(name, value, detail, util, classOverride) {
+  const tile = document.querySelector(`[data-check="${name}"]`);
+  if (!tile) return;
+  tile.querySelector('.check-value').textContent = value;
+  tile.querySelector('.check-detail').textContent = detail;
+  const cls = classOverride || classifyUtil(util);
+  tile.className = 'check-tile ' + cls;
+  const dot = tile.querySelector('.check-status-dot');
+  dot.className = 'check-status-dot ' + (cls === 'pass' ? '' : cls);
+  const fillPct = Math.min(100, Math.max(0, (isFinite(util) ? util : 1) * 100));
+  const fill = tile.querySelector('.check-bar-fill');
+  fill.style.width = fillPct + '%';
+}
+function renderChecks(r) {
+  setTile('overturn', r.overturnUtil.toFixed(2),
+    `${fmt(r.M_dst_factored,0)}/${fmt(r.M_stb_factored,0)} kNm`,
+    r.overturnUtil);
+  setTile('sliding', r.slidingUtil.toFixed(2),
+    `${fmt(r.F_dst_factored,0)}/${fmt(r.F_stb_factored,0)} kN`,
+    r.slidingUtil);
+  setTile('bearing', fmt(r.bp.qmax,0)+' kPa',
+    `q_a = ${fmt(r.qa,0)} · ${r.bp.mode}`,
+    r.bearingUtil);
+  setTile('eccen', fmt(r.bp.e*1000,0)+' mm',
+    `L/6 = ${fmt(r.L*1000/6, 0)} mm`,
+    r.eUtil, r.eClass);
+  setTile('stemFlex',
+    fmt(r.Ast_stem_req,0)+' mm²',
+    `prov ${fmt(r.Ast_stem_prov,0)} · M*=${fmt(r.M_stem_star,0)}`,
+    r.stemFlexUtil);
+  setTile('stemShear',
+    fmt(r.V_stem_star,0)+' kN',
+    `φV_uc = ${fmt(r.phiVuc_stem,0)} kN`,
+    r.stemShearUtil);
+  setTile('heelFlex',
+    fmt(r.Ast_heel_req,0)+' mm²',
+    `prov ${fmt(r.Ast_heel_prov,0)} · M*=${fmt(r.M_heel_star,0)}`,
+    r.heelFlexUtil);
+  setTile('toeFlex',
+    fmt(r.Ast_toe_req,0)+' mm²',
+    `prov ${fmt(r.Ast_toe_prov,0)} · M*=${fmt(r.M_toe_star,0)}`,
+    r.toeFlexUtil);
+}
+
+// ─── HELPERS UPDATE ───
+function renderHelpers(r) {
+  document.getElementById('hLen').textContent = Math.round(r.L*1000);
+  document.getElementById('hHt').textContent = Math.round(r.Ht*1000);
+  document.getElementById('hLH').textContent = (r.L/r.H).toFixed(2);
+  document.getElementById('hKa').textContent = r.Ka.toFixed(3);
+  document.getElementById('hKo').textContent = r.Ko.toFixed(2);
+  document.getElementById('hDelta').textContent = r.delta.toFixed(1);
+  document.getElementById('hStemAst').textContent = Math.round(r.Ast_stem_prov);
+  document.getElementById('hStemRho').textContent =
+    (r.Ast_stem_prov / (r.t*1000*1000) * 100).toFixed(2);
+  document.getElementById('hHeelAst').textContent = Math.round(r.Ast_heel_prov);
+  document.getElementById('hToeAst').textContent = Math.round(r.Ast_toe_prov);
+}
+
+// ─── FORCE TABLE ───
+function renderForceTable(r) {
+  const tbody = document.querySelector('#forceTable tbody');
+  const rows = [];
+  rows.push(['<tr class="section-row"><td colspan="5">Stabilising (gravity, vertical)</td></tr>']);
+  rows.push(`<tr><td>W₁ stem self-weight</td><td>${fmt(r.W1,1,'kN')}</td><td>${fmt(r.W1_arm,3,'m')}</td><td>${fmt(r.W1*r.W1_arm,1,'kNm')}</td><td>↻</td></tr>`);
+  rows.push(`<tr><td>W₂ base self-weight</td><td>${fmt(r.W2,1,'kN')}</td><td>${fmt(r.W2_arm,3,'m')}</td><td>${fmt(r.W2*r.W2_arm,1,'kNm')}</td><td>↻</td></tr>`);
+  rows.push(`<tr><td>W₃ soil over heel</td><td>${fmt(r.W3,1,'kN')}</td><td>${fmt(r.W3_arm,3,'m')}</td><td>${fmt(r.W3*r.W3_arm,1,'kNm')}</td><td>↻</td></tr>`);
+  if (r.PAV > 0.01)
+    rows.push(`<tr><td>P_AV vert. component</td><td>${fmt(r.PAV,1,'kN')}</td><td>${fmt(r.PAV_arm,3,'m')}</td><td>${fmt(r.PAV*r.PAV_arm,1,'kNm')}</td><td>↻</td></tr>`);
+  rows.push('<tr class="section-row"><td colspan="5">Stabilising (live, vertical)</td></tr>');
+  rows.push(`<tr><td>S surcharge over heel</td><td>${fmt(r.Sv_force,1,'kN')}</td><td>${fmt(r.Sv_arm,3,'m')}</td><td>${fmt(r.Sv_force*r.Sv_arm,1,'kNm')}</td><td>↻</td></tr>`);
+  rows.push('<tr class="section-row"><td colspan="5">Destabilising (lateral)</td></tr>');
+  rows.push(`<tr><td>P_A1 active fill</td><td>${fmt(r.PA1H,1,'kN')}</td><td>${fmt(r.PA1_h,3,'m')}</td><td>${fmt(r.PA1H*r.PA1_h,1,'kNm')}</td><td>↺ tip</td></tr>`);
+  rows.push(`<tr><td>P_A2 active surcharge</td><td>${fmt(r.PA2H,1,'kN')}</td><td>${fmt(r.PA2_h,3,'m')}</td><td>${fmt(r.PA2H*r.PA2_h,1,'kNm')}</td><td>↺ tip</td></tr>`);
+  rows.push('<tr class="section-row"><td colspan="5">Resultants &amp; checks</td></tr>');
+  rows.push(`<tr><td><strong>R = ΣV</strong></td><td><strong>${fmt(r.R,1,'kN')}</strong></td><td>—</td><td>—</td><td>—</td></tr>`);
+  rows.push(`<tr><td>F_stb = R·tan δ + c·a + key</td><td>${fmt(r.F_stb,1,'kN')}</td><td>—</td><td>—</td><td>—</td></tr>`);
+  rows.push(`<tr><td>e about centroid</td><td>${fmt(r.bp.e*1000,0,'mm')}</td><td>kern L/6</td><td>${fmt(r.L*1000/6,0,'mm')}</td><td class="${r.bp.e<=r.L/6?'':'muted'}">${r.bp.mode}</td></tr>`);
+  rows.push(`<tr><td>q_max / q_min</td><td>${fmt(r.bp.qmax,1,'kPa')}</td><td>—</td><td>${fmt(r.bp.qmin,1,'kPa')}</td><td>q_a ${fmt(r.qa,0)}</td></tr>`);
+  tbody.innerHTML = rows.join('');
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// CANVAS DRAWING — Section, Forces, Reinforcement
+// ════════════════════════════════════════════════════════════════════════
+
+function setupCanvas(cv) {
+  const W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = W * devicePixelRatio;
+  cv.height = H * devicePixelRatio;
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  ctx.clearRect(0,0,W,H);
+  return { ctx, W, H };
+}
+
+function fitWallScale(W, H, r, padding) {
+  // Wall geometry envelope (m): width = max(L, L + extra back projection); height = H + D + Dembed (top to founding)
+  const totalW = r.L + r.H * 0.45;       // include some backfill region for the active prism
+  const totalH = r.H + r.D + r.Dembed + 0.4;
+  const scaleX = (W - padding*2) / totalW;
+  const scaleY = (H - padding*2) / totalH;
+  return Math.min(scaleX, scaleY);
+}
+
+// All drawings use a coordinate system anchored at the TOE FRONT EDGE,
+// with x increasing toward the heel (right) and y increasing UP into the wall.
+function makeProjector(r, W, H, padding) {
+  const scale = fitWallScale(W, H, r, padding);
+  // Place toe front edge: x_screen = padding + 100 (leave room for soil in front)
+  const x0 = padding + 80;
+  // Top of fill (at top of stem) at y_screen = padding + 30
+  const y0 = padding + 30 + r.H * scale;        // ground level (top of base on toe side) y-screen
+  // Note: y_world = 0 is at top of base = ground level on toe side. Up is +.
+  // For drawing, toe and stem extend up from y0; base extends down from y0.
+  return {
+    scale,
+    toScreen: (xw, yw) => [x0 + xw * scale, y0 - yw * scale],
+    x0, y0,
+  };
+}
+
+function drawSection(r, cv) {
+  const { ctx, W, H } = setupCanvas(cv);
+  ctx.fillStyle = getCSS('--cream');
+  ctx.fillRect(0,0,W,H);
+  const proj = makeProjector(r, W, H, 30);
+  const { scale, x0, y0 } = proj;
+
+  // ─── Backfill (soil behind wall) ───
+  // Fill from back face of stem (x = Lt + t) to back of heel and beyond, top at y = H
+  const xBackStem = r.Lt + r.t;
+  ctx.beginPath();
+  // Top surface of fill — sloped if β > 0
+  const betaR = r.beta * Math.PI / 180;
+  const fillExtra = r.H * 0.40;        // extend backfill behind for visual context
+  const xFillR = r.L + fillExtra;
+  const yTopBack = r.H + fillExtra * Math.tan(betaR);
+  const [pxA, pyA] = proj.toScreen(xBackStem, r.H);
+  const [pxB, pyB] = proj.toScreen(xFillR, yTopBack);
+  const [pxC, pyC] = proj.toScreen(xFillR, -r.D);
+  const [pxD, pyD] = proj.toScreen(r.L, -r.D);
+  const [pxE, pyE] = proj.toScreen(r.L, 0);
+  const [pxF, pyF] = proj.toScreen(xBackStem, 0);
+  ctx.moveTo(pxA, pyA); ctx.lineTo(pxB, pyB);
+  ctx.lineTo(pxC, pyC); ctx.lineTo(pxD, pyD);
+  ctx.lineTo(pxE, pyE); ctx.lineTo(pxF, pyF);
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0, pyA, 0, pyD);
+  grad.addColorStop(0, '#d4ba93'); grad.addColorStop(1, '#9a7f5a');
+  ctx.fillStyle = grad; ctx.fill();
+  // Soil hatch
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(pxA, pyA); ctx.lineTo(pxB, pyB);
+  ctx.lineTo(pxC, pyC); ctx.lineTo(pxD, pyD);
+  ctx.lineTo(pxE, pyE); ctx.lineTo(pxF, pyF);
+  ctx.closePath(); ctx.clip();
+  ctx.strokeStyle = 'rgba(80,55,30,0.25)'; ctx.lineWidth = 0.6;
+  for (let i = -W; i < W*2; i += 8) {
+    ctx.beginPath();
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i + H, H);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // ─── Native ground in front of toe and below base ───
+  ctx.fillStyle = '#a89678';
+  const [xL0, yL0] = proj.toScreen(-r.H*0.5, -r.D);
+  const [xR0, yR0] = proj.toScreen(0, -r.D);
+  ctx.fillRect(xL0, yL0, xR0 - xL0, H - yL0);
+  // Embedment ground in front (toe is recessed into ground)
+  const [xT0, yT0] = proj.toScreen(0, 0);
+  const [xT1, yT1] = proj.toScreen(0, -r.Dembed);
+  ctx.fillStyle = '#9a8060';
+  ctx.fillRect(xL0, yT0, xT0 - xL0, yT1 - yT0);
+
+  // Native ground hatch
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(xL0, yT0, xT0 - xL0, H - yT0);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(60,40,20,0.20)'; ctx.lineWidth = 0.5;
+  for (let i = -W; i < W*2; i += 6) {
+    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i + H, H); ctx.stroke();
+  }
+  ctx.restore();
+
+  // ─── Concrete wall ───
+  // Stem: rectangle (or trapezoid if batter)
+  ctx.fillStyle = '#e8e6dc';
+  ctx.strokeStyle = '#141413';
+  ctx.lineWidth = 1.5;
+  // Stem: front face at x = Lt, back face at x = Lt + t (no batter for simplicity)
+  ctx.beginPath();
+  const [sx1, sy1] = proj.toScreen(r.Lt, r.H);
+  const [sx2, sy2] = proj.toScreen(r.Lt + r.t, r.H);
+  const [sx3, sy3] = proj.toScreen(r.Lt + r.t, 0);
+  const [sx4, sy4] = proj.toScreen(r.Lt, 0);
+  ctx.moveTo(sx1, sy1); ctx.lineTo(sx2, sy2);
+  ctx.lineTo(sx3, sy3); ctx.lineTo(sx4, sy4); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  // Base
+  ctx.beginPath();
+  const [bx1, by1] = proj.toScreen(0, 0);
+  const [bx2, by2] = proj.toScreen(r.L, 0);
+  const [bx3, by3] = proj.toScreen(r.L, -r.D);
+  const [bx4, by4] = proj.toScreen(0, -r.D);
+  ctx.moveTo(bx1, by1); ctx.lineTo(bx2, by2);
+  ctx.lineTo(bx3, by3); ctx.lineTo(bx4, by4); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+
+  // Shear key (if enabled)
+  if (r.keyOn) {
+    ctx.beginPath();
+    const xKeyL = r.keyPos - r.keyTh/2;
+    const xKeyR = r.keyPos + r.keyTh/2;
+    const [k1x, k1y] = proj.toScreen(xKeyL, -r.D);
+    const [k2x, k2y] = proj.toScreen(xKeyR, -r.D);
+    const [k3x, k3y] = proj.toScreen(xKeyR, -r.D - r.keyD);
+    const [k4x, k4y] = proj.toScreen(xKeyL, -r.D - r.keyD);
+    ctx.moveTo(k1x, k1y); ctx.lineTo(k2x, k2y);
+    ctx.lineTo(k3x, k3y); ctx.lineTo(k4x, k4y); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+  }
+
+  // ─── Surcharge arrows on top of fill ───
+  if (r.s > 0) {
+    ctx.strokeStyle = getCSS('--orange'); ctx.lineWidth = 1.3;
+    ctx.fillStyle = getCSS('--orange');
+    const nArr = 6;
+    for (let i = 0; i <= nArr; i++) {
+      const xa = xBackStem + (xFillR - xBackStem) * (i / nArr);
+      const ya = r.H + (xa - xBackStem) * Math.tan(betaR);
+      const [px, py] = proj.toScreen(xa, ya);
+      ctx.beginPath();
+      ctx.moveTo(px, py - 14);
+      ctx.lineTo(px, py - 2);
+      ctx.stroke();
+      // Arrowhead
+      ctx.beginPath();
+      ctx.moveTo(px, py); ctx.lineTo(px - 3, py - 4); ctx.lineTo(px + 3, py - 4); ctx.closePath();
+      ctx.fill();
+    }
+    ctx.fillStyle = getCSS('--orange'); ctx.font = '600 10px Poppins';
+    const [labX, labY] = proj.toScreen(xBackStem + (xFillR - xBackStem)/2, r.H + 0.2);
+    ctx.textAlign = 'center';
+    ctx.fillText(`s = ${r.s} kPa`, labX, labY - 18);
+  }
+
+  // ─── Dimensions ───
+  ctx.strokeStyle = '#4a4a47'; ctx.lineWidth = 0.6;
+  ctx.fillStyle = '#141413'; ctx.font = '500 10px Poppins';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+  // Vertical: H
+  const [dHx, dHy1] = proj.toScreen(-0.35, r.H);
+  const [, dHy2] = proj.toScreen(-0.35, 0);
+  ctx.beginPath(); ctx.moveTo(dHx, dHy1); ctx.lineTo(dHx, dHy2); ctx.stroke();
+  // Tick marks
+  ctx.beginPath(); ctx.moveTo(dHx-3, dHy1); ctx.lineTo(dHx+3, dHy1);
+  ctx.moveTo(dHx-3, dHy2); ctx.lineTo(dHx+3, dHy2); ctx.stroke();
+  ctx.save(); ctx.translate(dHx - 8, (dHy1+dHy2)/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText(`H = ${Math.round(r.H*1000)}`, 0, 0); ctx.restore();
+
+  // Vertical: D
+  const [dDx, dDy1] = proj.toScreen(-0.35, 0);
+  const [, dDy2] = proj.toScreen(-0.35, -r.D);
+  ctx.beginPath(); ctx.moveTo(dDx, dDy1); ctx.lineTo(dDx, dDy2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(dDx-3, dDy2); ctx.lineTo(dDx+3, dDy2); ctx.stroke();
+  ctx.save(); ctx.translate(dDx - 8, (dDy1+dDy2)/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText(`D = ${Math.round(r.D*1000)}`, 0, 0); ctx.restore();
+
+  // Horizontal: Lt, t, Lh
+  const yDimH = r.D + 0.25;
+  function dimX(x1, x2, label) {
+    const [px1, py] = proj.toScreen(x1, -r.D - 0.25);
+    const [px2,  ] = proj.toScreen(x2, -r.D - 0.25);
+    ctx.beginPath(); ctx.moveTo(px1, py); ctx.lineTo(px2, py); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(px1, py-3); ctx.lineTo(px1, py+3);
+    ctx.moveTo(px2, py-3); ctx.lineTo(px2, py+3); ctx.stroke();
+    ctx.fillText(label, (px1+px2)/2, py + 12);
+  }
+  dimX(0, r.Lt, `${Math.round(r.Lt*1000)}`);
+  dimX(r.Lt, r.Lt + r.t, `${Math.round(r.t*1000)}`);
+  dimX(r.Lt + r.t, r.L, `${Math.round(r.Lh*1000)}`);
+  // Total L below
+  const [dLx1, dLy] = proj.toScreen(0, -r.D - 0.5);
+  const [dLx2, ] = proj.toScreen(r.L, -r.D - 0.5);
+  ctx.beginPath(); ctx.moveTo(dLx1, dLy); ctx.lineTo(dLx2, dLy); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(dLx1, dLy-3); ctx.lineTo(dLx1, dLy+3);
+  ctx.moveTo(dLx2, dLy-3); ctx.lineTo(dLx2, dLy+3); ctx.stroke();
+  ctx.fillText(`L = ${Math.round(r.L*1000)} mm`, (dLx1+dLx2)/2, dLy + 12);
+
+  // Header label
+  ctx.fillStyle = getCSS('--mute'); ctx.font = '600 9.5px Poppins';
+  ctx.textAlign = 'left';
+  ctx.fillText(`fc′ ${r.fc} MPa · γ_fill ${r.gF} · φ ${r.phiF}° · kₐ = ${r.Ka.toFixed(3)}`, 12, 14);
+}
+
+function drawForces(r, cv) {
+  drawSection(r, cv); // start with the section
+  const ctx = cv.getContext('2d');
+  const W = cv.clientWidth, H = cv.clientHeight;
+  const proj = makeProjector(r, W, H, 30);
+
+  function arrow(x1, y1, x2, y2, colour, label, weight) {
+    ctx.strokeStyle = colour; ctx.fillStyle = colour;
+    ctx.lineWidth = weight || 2;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    // head
+    const ang = Math.atan2(y2-y1, x2-x1);
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - 8*Math.cos(ang - Math.PI/7), y2 - 8*Math.sin(ang - Math.PI/7));
+    ctx.lineTo(x2 - 8*Math.cos(ang + Math.PI/7), y2 - 8*Math.sin(ang + Math.PI/7));
+    ctx.closePath(); ctx.fill();
+    if (label) {
+      ctx.fillStyle = colour; ctx.font = '600 10px Poppins';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(label, x2 + 6, y2);
+    }
+  }
+  // Draw vertical weights at their centroids
+  const orange = getCSS('--orange');
+  const blue = getCSS('--blue');
+  const green = getCSS('--green');
+  const rust = getCSS('--rust');
+
+  // W1 at stem centroid (downward)
+  const [wx1, wy1] = proj.toScreen(r.W1_arm, r.H/2);
+  arrow(wx1, wy1 - 18, wx1, wy1 + 8, blue, `W₁=${r.W1.toFixed(0)}`);
+  // W2 at base centroid
+  const [wx2, wy2] = proj.toScreen(r.W2_arm, -r.D/2);
+  arrow(wx2, wy2 - 22, wx2, wy2 - 4, blue, `W₂=${r.W2.toFixed(0)}`);
+  // W3 over heel
+  const [wx3, wy3] = proj.toScreen(r.W3_arm, r.H/2);
+  arrow(wx3, wy3 - 22, wx3, wy3 - 4, blue, `W₃=${r.W3.toFixed(0)}`);
+  // S surcharge (smaller arrow)
+  if (r.Sv_force > 0.01) {
+    const [sx, sy] = proj.toScreen(r.Sv_arm, r.H + 0.05);
+    arrow(sx, sy - 18, sx, sy - 2, orange, `S=${r.Sv_force.toFixed(0)}`);
+  }
+  // P_A1 active force horizontal at H_t/3 above base underside
+  // Acts at x = back face of stem (Lt + t), pushing toward toe (left in our drawing)
+  const [pa1x1, pa1y1] = proj.toScreen(r.Lt + r.t + 0.4, r.PA1_h - r.D);
+  const [pa1x2, pa1y2] = proj.toScreen(r.Lt + r.t + 0.05, r.PA1_h - r.D);
+  arrow(pa1x1, pa1y1, pa1x2, pa1y2, rust, `P_A1=${r.PA1.toFixed(0)}`);
+  // P_A2 at H_t/2
+  const [pa2x1, pa2y1] = proj.toScreen(r.Lt + r.t + 0.4, r.PA2_h - r.D);
+  const [pa2x2, pa2y2] = proj.toScreen(r.Lt + r.t + 0.05, r.PA2_h - r.D);
+  arrow(pa2x1, pa2y1, pa2x2, pa2y2, orange, `P_A2=${r.PA2.toFixed(0)}`);
+
+  // R reaction at base (resultant of bearing pressure)
+  // Position the resultant along base offset from centroid by e, biased toward toe side
+  // (sign: large M about centroid → resultant moves toward toe)
+  const e_signed = r.bp.e; // already positive; assume to toe side (typical)
+  const xR = Math.max(0, r.L/2 - e_signed);
+  const [rx, ry] = proj.toScreen(xR, -r.D - 0.05);
+  arrow(rx, ry + 28, rx, ry + 4, green, `R=${r.R.toFixed(0)}`);
+
+  // F friction at base
+  const [fx1, fy1] = proj.toScreen(r.L/2, -r.D - 0.18);
+  const [fx2, fy2] = proj.toScreen(r.L/2 + 0.4, -r.D - 0.18);
+  arrow(fx1, fy1, fx2, fy2, green, `F=${r.F_stb.toFixed(0)}`);
+
+  // Title overlay
+  ctx.fillStyle = getCSS('--ink'); ctx.font = '600 10px Poppins';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillText(`Service forces (per 1 m run, kN)`, 12, 30);
+}
+
+function drawReinforcement(r, cv) {
+  drawSection(r, cv);
+  const ctx = cv.getContext('2d');
+  const W = cv.clientWidth, H = cv.clientHeight;
+  const proj = makeProjector(r, W, H, 30);
+
+  // Stem vertical bars on retained (back) face
+  ctx.strokeStyle = getCSS('--orange');
+  ctx.lineWidth = Math.max(1.5, (r.stemBar/1000) * proj.scale * 1.3);
+  // Single line representing the bar — at face inset by cover
+  const xBackBar = r.Lt + r.t - r.coverW/1000;
+  const [bx1, by1] = proj.toScreen(xBackBar, r.H);
+  const [bx2, by2] = proj.toScreen(xBackBar, -r.D + r.coverB/1000);
+  ctx.beginPath(); ctx.moveTo(bx1, by1); ctx.lineTo(bx2, by2); ctx.stroke();
+  // 90° hook into base
+  const [bxh, byh] = proj.toScreen(xBackBar - 0.6, -r.D + r.coverB/1000);
+  ctx.beginPath(); ctx.moveTo(bx2, by2); ctx.lineTo(bxh, byh); ctx.stroke();
+
+  // Heel top bars
+  const [hb1x, hb1y] = proj.toScreen(r.Lt + r.t, -r.coverB/1000);
+  const [hb2x, hb2y] = proj.toScreen(r.L - r.coverB/1000, -r.coverB/1000);
+  ctx.lineWidth = Math.max(1.5, (r.heelBar/1000) * proj.scale * 1.3);
+  ctx.beginPath(); ctx.moveTo(hb1x, hb1y); ctx.lineTo(hb2x, hb2y); ctx.stroke();
+
+  // Toe bottom bars
+  const [tb1x, tb1y] = proj.toScreen(r.coverB/1000, -r.D + r.coverB/1000);
+  const [tb2x, tb2y] = proj.toScreen(r.Lt, -r.D + r.coverB/1000);
+  ctx.lineWidth = Math.max(1.5, (r.toeBar/1000) * proj.scale * 1.3);
+  ctx.beginPath(); ctx.moveTo(tb1x, tb1y); ctx.lineTo(tb2x, tb2y); ctx.stroke();
+
+  // Front face stem shrinkage (lighter)
+  ctx.strokeStyle = '#c5663b'; ctx.lineWidth = 1.4;
+  const xFrontBar = r.Lt + r.coverW/1000;
+  const [fb1x, fb1y] = proj.toScreen(xFrontBar, r.H);
+  const [fb2x, fb2y] = proj.toScreen(xFrontBar, 0);
+  ctx.beginPath(); ctx.moveTo(fb1x, fb1y); ctx.lineTo(fb2x, fb2y); ctx.stroke();
+
+  // Reinforcement labels
+  ctx.fillStyle = getCSS('--ink'); ctx.font = '600 10px Poppins';
+  ctx.textAlign = 'left';
+  const labels = [
+    `Stem: N${r.stemBar}@${r.stemSp} (back)`,
+    `Heel: N${r.heelBar}@${r.heelSp} (top)`,
+    `Toe: N${r.toeBar}@${r.toeSp} (bottom)`,
+  ];
+  labels.forEach((t, i) => ctx.fillText(t, 12, 30 + i*14));
+}
+
+function drawMain(r) {
+  const cv = document.getElementById('canvasMain');
+  if (!cv) return;
+  if (S.geomTab === 'section') drawSection(r, cv);
+  else if (S.geomTab === 'forces') drawForces(r, cv);
+  else if (S.geomTab === 'reinf') drawReinforcement(r, cv);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// CHARTS — bearing pressure, active pressure, stem moment
+// ════════════════════════════════════════════════════════════════════════
+let chart = null;
+
+function renderChart(r) {
+  if (typeof Chart === 'undefined') return;
+  const cv = document.getElementById('chartCanvas');
+  if (!cv) return;
+  const ctx = cv.getContext('2d');
+  if (chart) { try { chart.destroy(); } catch(_){} chart = null; }
+  if (S.chartTab === 'bearing') renderBearingChart(ctx, r);
+  else if (S.chartTab === 'active') renderActiveChart(ctx, r);
+  else if (S.chartTab === 'moment') renderMomentChart(ctx, r);
+}
+
+function renderBearingChart(ctx, r) {
+  const N = 40;
+  const data = [];
+  for (let i = 0; i <= N; i++) {
+    const x = (r.L * i) / N;
+    data.push({ x: x*1000, y: r.bp.qAtX(x) });
+  }
+  const allowable = [{x:0, y:r.qa}, {x:r.L*1000, y:r.qa}];
+  // Vertical reference lines at toe / heel face / centroid
+  chart = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [
+        { label: 'q(x) bearing pressure', data, type: 'line', showLine: true,
+          borderColor: getCSS('--orange'), borderWidth: 2, pointRadius: 0,
+          backgroundColor: 'rgba(217,119,87,0.18)', fill: true, tension: 0.0 },
+        { label: 'q_a allowable', data: allowable, type: 'line', showLine: true,
+          borderColor: getCSS('--rust'), borderWidth: 1.5, borderDash: [5,4],
+          pointRadius: 0, fill: false },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
+      plugins: {
+        legend: { display: true, position: 'bottom', labels: { boxWidth: 14, font: { family: 'Poppins', size: 10 } } },
+        title: { display: true, text:
+          `Base bearing pressure · ${r.bp.mode} · q_max = ${r.bp.qmax.toFixed(0)} kPa · q_min = ${r.bp.qmin.toFixed(0)} kPa · e = ${(r.bp.e*1000).toFixed(0)} mm`,
+          font: { family: 'Poppins', size: 11, weight: 600 } },
+      },
+      scales: {
+        x: { title: { display: true, text: 'Distance from toe (mm)', font: { family: 'Poppins', size: 10 } },
+             min: 0, max: r.L*1000 },
+        y: { title: { display: true, text: 'Pressure (kPa)', font: { family: 'Poppins', size: 10 } },
+             min: 0 },
+      },
+    },
+  });
+}
+
+function renderActiveChart(ctx, r) {
+  // Active pressure prism behind wall (over total height H+D)
+  const N = 40;
+  const data = [];
+  for (let i = 0; i <= N; i++) {
+    const z = (r.Ht * i) / N;       // depth from top of fill
+    const p = r.Ka * (r.gF * z + r.s);  // includes surcharge
+    data.push({ x: p, y: z*1000 });
+  }
+  const fillOnly = [];
+  for (let i = 0; i <= N; i++) {
+    const z = (r.Ht * i) / N;
+    fillOnly.push({ x: r.Ka * r.gF * z, y: z*1000 });
+  }
+  chart = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [
+        { label: 'fill γ·z·kₐ', data: fillOnly, type: 'line', showLine: true,
+          borderColor: getCSS('--orange'), borderWidth: 2, pointRadius: 0,
+          backgroundColor: 'rgba(217,119,87,0.20)', fill: 'origin', tension: 0 },
+        { label: '+ surcharge kₐ·s', data, type: 'line', showLine: true,
+          borderColor: getCSS('--rust'), borderDash: [4,3], borderWidth: 1.8, pointRadius: 0,
+          fill: false, tension: 0 },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: 'bottom', labels: { boxWidth: 14, font: { family: 'Poppins', size: 10 } } },
+        title: { display: true, text:
+          `Active pressure on back of wall · P_A1 = ${r.PA1.toFixed(1)} kN/m, P_A2 = ${r.PA2.toFixed(1)} kN/m`,
+          font: { family: 'Poppins', size: 11, weight: 600 } },
+      },
+      scales: {
+        x: { title: { display: true, text: 'Pressure (kPa)', font: { family: 'Poppins', size: 10 } } },
+        y: { reverse: true, title: { display: true, text: 'Depth from top of fill (mm)', font: { family: 'Poppins', size: 10 } } },
+      },
+    },
+  });
+}
+
+function renderMomentChart(ctx, r) {
+  // Service moment in stem vs height (z = 0 at top of stem, z = H at base of stem)
+  const N = 40;
+  const data = [];
+  for (let i = 0; i <= N; i++) {
+    const z = (r.H * i) / N;
+    // Moment at depth z from top of stem
+    const M_e = r.Ka * r.gF * Math.pow(z,3) / 6;
+    const M_q = r.Ka * r.s * z * z / 2;
+    const M_serv = M_e + M_q;
+    data.push({ x: M_serv, y: z*1000 });
+  }
+  const ULS = data.map(p => ({ x: p.x*1.5, y: p.y }));
+  // Capacity (provided) line at base of stem
+  // φM_uc derived from p_provided × d² × something — for visual purposes plot constant capacity at the stem base
+  const phiM_cap = r.Ast_stem_prov * r.fsy * (r.dStem - 0.4 * r.dStem) / 1e6 * 0.85; // crude lever-arm 0.85d
+  const cap = [{x: phiM_cap, y: 0}, {x: phiM_cap, y: r.H*1000}];
+  chart = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [
+        { label: 'M service', data, type: 'line', showLine: true,
+          borderColor: getCSS('--blue'), borderWidth: 1.6, pointRadius: 0,
+          fill: false, tension: 0.0 },
+        { label: 'M* (1.5×service)', data: ULS, type: 'line', showLine: true,
+          borderColor: getCSS('--orange'), borderWidth: 2.2, pointRadius: 0,
+          backgroundColor: 'rgba(217,119,87,0.15)', fill: 'origin', tension: 0 },
+        { label: 'φM_u provided', data: cap, type: 'line', showLine: true,
+          borderColor: getCSS('--green'), borderWidth: 1.5, borderDash: [5,4],
+          pointRadius: 0, fill: false },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: 'bottom', labels: { boxWidth: 14, font: { family: 'Poppins', size: 10 } } },
+        title: { display: true, text:
+          `Stem flexural demand · M*_base = ${r.M_stem_star.toFixed(0)} kNm/m · A_st req ${r.Ast_stem_req.toFixed(0)} / prov ${r.Ast_stem_prov.toFixed(0)}`,
+          font: { family: 'Poppins', size: 11, weight: 600 } },
+      },
+      scales: {
+        x: { title: { display: true, text: 'Moment (kNm/m)', font: { family: 'Poppins', size: 10 } } },
+        y: { reverse: true, title: { display: true, text: 'Depth from top of stem (mm)', font: { family: 'Poppins', size: 10 } } },
+      },
+    },
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// PDF EXPORT
+// ════════════════════════════════════════════════════════════════════════
+async function generatePDF(r) {
+  const root = document.getElementById('pdfRoot');
+  root.innerHTML = pdfBuildHTML(r);
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
+  const pages = root.querySelectorAll('.pdf-page');
+  for (let i=0;i<pages.length;i++) {
+    const canvas = await html2canvas(pages[i], { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const img = canvas.toDataURL('image/png');
+    if (i > 0) pdf.addPage();
+    pdf.addImage(img, 'PNG', 0, 0, 595, 842);
+  }
+  const projectName = (document.getElementById('projectName').value || 'Retaining Wall').trim();
+  pdf.save(`${projectName.replace(/[^\w-]+/g,'_')}_RW_calc.pdf`);
+}
+
+function pdfKV(rows) {
+  return rows.map(([k,v]) => `<tr><td style="width:240px;color:#777;">${k}</td><td>${v}</td></tr>`).join('');
+}
+
+function pdfBuildHTML(r) {
+  const projectName = document.getElementById('projectName').value || 'Untitled wall';
+  const date = new Date().toLocaleDateString('en-AU', { year: 'numeric', month: 'short', day: 'numeric' });
+  const inputsStr = JSON.stringify(getAllInputs());
+  let hash = 0;
+  for (let i=0;i<inputsStr.length;i++) hash = ((hash<<5) - hash + inputsStr.charCodeAt(i)) | 0;
+  const hashHex = (hash >>> 0).toString(16).padStart(8, '0');
+
+  function header() {
+    return `<div class="pdf-header">
+      <div class="pdf-header-l">
+        <div class="pdf-mark">BT</div>
+        <div>
+          <h1>Retaining Wall Design — AS 4678 / AS 3600</h1>
+          <div class="sub">Engine v${ENGINE_VERSION} · Theory per RCB 3e §6.3 · Validated against Worked Example 6.3</div>
+        </div>
+      </div>
+      <div class="pdf-header-r">
+        <strong>${projectName}</strong><br>
+        Date: ${date}<br>
+        Hash: ${hashHex}
+      </div>
+    </div>`;
+  }
+  function footer(n) {
+    return `<div class="pdf-footer">
+      <span>Retaining Wall Designer · Bligh Tanner</span>
+      <span>Page ${n}</span>
+    </div>`;
+  }
+
+  const verdict = (u, cls) => {
+    const c = cls || classifyUtil(u);
+    return c === 'pass' ? `<span class="pdf-pass">PASS</span>` :
+           c === 'warn' ? `<span class="pdf-warn">CHECK</span>` :
+                        `<span class="pdf-fail">FAIL</span>`;
+  };
+
+  const p1 = `<div class="pdf-page">${header()}
+    <div class="pdf-title">${projectName}</div>
+    <div class="pdf-subtitle">Stability and component design of cantilever retaining wall to AS 4678 / AS 3600</div>
+
+    <div class="pdf-h2">1. Result Summary</div>
+    <div class="pdf-narrative">
+      <p>For a ${(r.H*1000).toFixed(0)} mm cantilever wall on
+      base length L = ${(r.L*1000).toFixed(0)} mm, the governing check is
+      <strong>${r.governing.label}</strong> with utilisation
+      <strong>${r.governing.util.toFixed(3)}</strong>.</p>
+    </div>
+    <table class="pdf-table">
+      <thead><tr><th>Check</th><th>Demand</th><th>Capacity</th><th>Util.</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr class="${r.governing.key==='overturn'?'gov':''}"><td>Overturning (about toe)</td>
+          <td>${r.M_dst_factored.toFixed(0)} kNm/m</td>
+          <td>${r.M_stb_factored.toFixed(0)} kNm/m</td>
+          <td>${r.overturnUtil.toFixed(3)}</td><td>${verdict(r.overturnUtil)}</td></tr>
+        <tr class="${r.governing.key==='sliding'?'gov':''}"><td>Sliding</td>
+          <td>${r.F_dst_factored.toFixed(1)} kN/m</td>
+          <td>${r.F_stb_factored.toFixed(1)} kN/m</td>
+          <td>${r.slidingUtil.toFixed(3)}</td><td>${verdict(r.slidingUtil)}</td></tr>
+        <tr class="${r.governing.key==='bearing'?'gov':''}"><td>Bearing q_max</td>
+          <td>${r.bp.qmax.toFixed(0)} kPa</td>
+          <td>${r.qa.toFixed(0)} kPa</td>
+          <td>${r.bearingUtil.toFixed(3)}</td><td>${verdict(r.bearingUtil)}</td></tr>
+        <tr class="${r.governing.key==='eccen'?'gov':''}"><td>Eccentricity</td>
+          <td>${(r.bp.e*1000).toFixed(0)} mm</td>
+          <td>${(r.L*1000/6).toFixed(0)} mm (kern)</td>
+          <td>${r.eUtil.toFixed(3)}</td><td>${verdict(r.eUtil, r.eClass)}</td></tr>
+        <tr class="${r.governing.key==='stemFlex'?'gov':''}"><td>Stem flexure</td>
+          <td>M* = ${r.M_stem_star.toFixed(0)} kNm/m</td>
+          <td>A_st = ${r.Ast_stem_prov.toFixed(0)} mm²/m</td>
+          <td>${r.stemFlexUtil.toFixed(3)}</td><td>${verdict(r.stemFlexUtil)}</td></tr>
+        <tr class="${r.governing.key==='stemShear'?'gov':''}"><td>Stem shear</td>
+          <td>V* = ${r.V_stem_star.toFixed(1)} kN/m</td>
+          <td>φV_uc = ${r.phiVuc_stem.toFixed(1)} kN/m</td>
+          <td>${r.stemShearUtil.toFixed(3)}</td><td>${verdict(r.stemShearUtil)}</td></tr>
+        <tr class="${r.governing.key==='heelFlex'?'gov':''}"><td>Heel flexure</td>
+          <td>M* = ${r.M_heel_star.toFixed(0)} kNm/m</td>
+          <td>A_st = ${r.Ast_heel_prov.toFixed(0)} mm²/m</td>
+          <td>${r.heelFlexUtil.toFixed(3)}</td><td>${verdict(r.heelFlexUtil)}</td></tr>
+        <tr class="${r.governing.key==='toeFlex'?'gov':''}"><td>Toe flexure</td>
+          <td>M* = ${r.M_toe_star.toFixed(0)} kNm/m</td>
+          <td>A_st = ${r.Ast_toe_prov.toFixed(0)} mm²/m</td>
+          <td>${r.toeFlexUtil.toFixed(3)}</td><td>${verdict(r.toeFlexUtil)}</td></tr>
+      </tbody>
+    </table>
+
+    <div class="pdf-h2">2. Geometry &amp; Soil Inputs</div>
+    <table class="pdf-table">
+      ${pdfKV([
+        ['Retained height H', `${(r.H*1000).toFixed(0)} mm`],
+        ['Base thickness D', `${(r.D*1000).toFixed(0)} mm`],
+        ['Stem thickness t', `${(r.t*1000).toFixed(0)} mm`],
+        ['Toe / Heel lengths', `${(r.Lt*1000).toFixed(0)} / ${(r.Lh*1000).toFixed(0)} mm (L = ${(r.L*1000).toFixed(0)} mm)`],
+        ['Backfill slope β', `${r.beta}°`],
+        ['Embedment in front of toe', `${(r.Dembed*1000).toFixed(0)} mm`],
+        ['Backfill: φ / γ / c / s', `${r.phiF}° / ${r.gF} kN/m³ / ${r.cF} kPa / ${r.s} kPa`],
+        ['Base soil: φ_b / γ_b / c_b / q_a', `${r.phiB}° / ${r.gB} kN/m³ / ${r.cB} kPa / ${r.qa} kPa`],
+        ['δ (base–soil friction)', `${r.delta.toFixed(1)}°  (= ${r.dRatio} × φ_base)`],
+        ['Active pressure coeff. kₐ', `<strong>${r.Ka.toFixed(3)}</strong> ${r.pressMode==='atrest'?'(at-rest k₀)':'(Rankine–Bell active)'}`],
+        ['Concrete fc′ / fsy / cover wall, base', `${r.fc} / ${r.fsy} MPa / ${r.coverW} / ${r.coverB} mm`],
+      ])}
+    </table>
+    ${footer(1)}</div>`;
+
+  const p2 = `<div class="pdf-page">${header()}
+    <div class="pdf-h2">3. Free-Body Forces (per 1 m run, service condition)</div>
+    <div class="pdf-narrative">
+      <p>Heights for active pressure use total height H + D = ${((r.H+r.D)*1000).toFixed(0)} mm
+      (top of fill to underside of base). <span class="as-ref">Eq 6.13 / 6.14</span></p>
+    </div>
+    <div class="pdf-eq">
+      P_A1 = ½ kₐ γ (H+D)² = 0.5 × ${r.Ka.toFixed(3)} × ${r.gF} × ${(r.Ht).toFixed(2)}² = <strong>${r.PA1.toFixed(1)} kN/m</strong>  (acts at H_t/3)<br>
+      P_A2 = kₐ s (H+D)   = ${r.Ka.toFixed(3)} × ${r.s} × ${(r.Ht).toFixed(2)} = <strong>${r.PA2.toFixed(1)} kN/m</strong>  (acts at H_t/2)
+    </div>
+    <table class="pdf-table">
+      <thead><tr><th>Force</th><th>Magnitude (kN/m)</th><th>Lever from toe (m)</th><th>Moment about toe (kNm/m)</th></tr></thead>
+      <tbody>
+        <tr><td>W₁ stem (${(r.t*1000).toFixed(0)}×${(r.H*1000).toFixed(0)}×${r.gC})</td><td>${r.W1.toFixed(1)}</td><td>${r.W1_arm.toFixed(3)}</td><td>${(r.W1*r.W1_arm).toFixed(1)}</td></tr>
+        <tr><td>W₂ base (${(r.L*1000).toFixed(0)}×${(r.D*1000).toFixed(0)}×${r.gC})</td><td>${r.W2.toFixed(1)}</td><td>${r.W2_arm.toFixed(3)}</td><td>${(r.W2*r.W2_arm).toFixed(1)}</td></tr>
+        <tr><td>W₃ soil over heel (${(r.Lh*1000).toFixed(0)}×${(r.H*1000).toFixed(0)}×${r.gF})</td><td>${r.W3.toFixed(1)}</td><td>${r.W3_arm.toFixed(3)}</td><td>${(r.W3*r.W3_arm).toFixed(1)}</td></tr>
+        <tr><td>S surcharge over heel</td><td>${r.Sv_force.toFixed(1)}</td><td>${r.Sv_arm.toFixed(3)}</td><td>${(r.Sv_force*r.Sv_arm).toFixed(1)}</td></tr>
+        <tr><td><strong>R = ΣV</strong></td><td><strong>${r.R.toFixed(1)}</strong></td><td>—</td><td>—</td></tr>
+      </tbody>
+    </table>
+
+    <div class="pdf-h2">4. Stability Checks (Eq 6.20 simplified)</div>
+    <div class="pdf-narrative">
+      <p>Apply <strong>0.9·G_stb ≥ ${r.gE.toFixed(1)}·F_e + ${r.psiC.toFixed(1)}·Q_d,dst</strong> as moments about the toe and as horizontal forces.</p>
+    </div>
+    <table class="pdf-table">
+      <thead><tr><th>Check</th><th>0.9 × Stabilising</th><th>Demand</th><th>Util.</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Overturning (about toe)</td>
+          <td>${r.M_stb_factored.toFixed(1)} kNm/m</td>
+          <td>${r.gE.toFixed(1)}×${r.M_dst_e.toFixed(1)} + ${r.psiC.toFixed(1)}×${r.M_dst_q.toFixed(1)} = ${r.M_dst_factored.toFixed(1)}</td>
+          <td>${r.overturnUtil.toFixed(3)}</td><td>${verdict(r.overturnUtil)}</td></tr>
+        <tr><td>Sliding (horizontal)</td>
+          <td>${r.F_stb_factored.toFixed(1)} kN/m  <span style="color:#777;">(F_stb = ${r.F_friction.toFixed(1)} fric + ${r.F_cohesion.toFixed(1)} coh + ${r.F_passiveKey.toFixed(1)} key)</span></td>
+          <td>${r.gE.toFixed(1)}×${r.F_dst_e.toFixed(1)} + ${r.psiC.toFixed(1)}×${r.F_dst_q.toFixed(1)} = ${r.F_dst_factored.toFixed(1)}</td>
+          <td>${r.slidingUtil.toFixed(3)}</td><td>${verdict(r.slidingUtil)}</td></tr>
+      </tbody>
+    </table>
+
+    <div class="pdf-h2">5. Bearing Pressure</div>
+    <div class="pdf-eq">
+      M about base centroid = ${r.M_centroid.toFixed(1)} kNm/m<br>
+      e = M / N = ${r.M_centroid.toFixed(1)} / ${r.R.toFixed(1)} = <strong>${(r.bp.e*1000).toFixed(0)} mm</strong> (kern L/6 = ${(r.L*1000/6).toFixed(0)} mm)<br>
+      Mode: ${r.bp.mode}<br>
+      ${r.bp.mode==='trapezoidal'
+        ? `q_max,min = N/(W·L) ± 6M/(W·L²) = ${(r.R/r.L).toFixed(1)} ± ${(6*Math.abs(r.M_centroid)/(r.L*r.L)).toFixed(1)} kPa  →  q_max = <strong>${r.bp.qmax.toFixed(1)} kPa</strong>, q_min = ${r.bp.qmin.toFixed(1)} kPa`
+        : `Triangular distribution: q_max = 2N/(3·W·a), a = L/2 − e = ${(r.L/2 - r.bp.e).toFixed(3)} m  →  q_max = <strong>${r.bp.qmax.toFixed(1)} kPa</strong>` }
+    </div>
+    <p>q_max ≤ q_a (${r.qa.toFixed(0)} kPa) ${verdict(r.bearingUtil)}</p>
+    ${footer(2)}</div>`;
+
+  const p3 = `<div class="pdf-page">${header()}
+    <div class="pdf-h2">6. Stem Reinforcement (vertical bars on retained face)</div>
+    <div class="pdf-narrative">
+      <p>Stem behaves as a cantilever from the base. Service moment at base of stem
+      from active pressure on stem height H only (not H+D).</p>
+    </div>
+    <div class="pdf-eq">
+      M_service = kₐ·γ·H³/6 + kₐ·s·H²/2 = ${r.M_stem_e_serv.toFixed(2)} + ${r.M_stem_q_serv.toFixed(2)} = ${r.M_stem_serv.toFixed(2)} kNm/m<br>
+      M* = 1.5 × M_service = <strong>${r.M_stem_star.toFixed(1)} kNm/m</strong><br>
+      d = ${r.t*1000} − ${r.coverW} − ${r.stemBar/2} = ${r.dStem.toFixed(0)} mm<br>
+      ρ ≈ 2.5·M*/d² = ${r.p_stem_req.toExponential(3)} (req); ρ_min = ${r.p_stem_min.toExponential(3)}<br>
+      A_st req = ${r.Ast_stem_req.toFixed(0)} mm²/m  · provided N${r.stemBar}@${r.stemSp} = ${r.Ast_stem_prov.toFixed(0)} mm²/m  ${verdict(r.stemFlexUtil)}
+    </div>
+
+    <div class="pdf-h3">Stem shear at base</div>
+    <div class="pdf-eq">
+      V_service = ½·kₐ·γ·H² + kₐ·s·H = ${r.V_stem_serv.toFixed(2)} kN/m<br>
+      V* = 1.5 × V_service = ${r.V_stem_star.toFixed(2)} kN/m<br>
+      φV_uc ≈ ${r.phiVuc_stem.toFixed(1)} kN/m  ${verdict(r.stemShearUtil)}
+    </div>
+
+    <div class="pdf-h2">7. Heel Reinforcement (top, transverse)</div>
+    <div class="pdf-eq">
+      M_down (per m) = (γH + s + γ_c·D)·L_heel²/2 = ${(r.M_heel_soil + r.M_heel_surch + r.M_heel_base).toFixed(1)} kNm/m<br>
+      M_up from bearing (trapezoid q_face=${r.q_face_heel.toFixed(1)} → q_min=${r.q_at_heel_end.toFixed(1)} over L_heel=${(r.Lh*1000).toFixed(0)} mm) = ${r.M_heel_up.toFixed(1)} kNm/m<br>
+      M_service_heel = ${r.M_heel_serv.toFixed(1)} kNm/m  →  M* = ${r.M_heel_star.toFixed(1)} kNm/m<br>
+      d = ${r.dHeel.toFixed(0)} mm; ρ req = ${r.p_heel_req.toExponential(3)}; ρ_min = ${r.p_heel_min.toExponential(3)}<br>
+      A_st req = ${r.Ast_heel_req.toFixed(0)} mm²/m  · provided N${r.heelBar}@${r.heelSp} = ${r.Ast_heel_prov.toFixed(0)} mm²/m  ${verdict(r.heelFlexUtil)}
+    </div>
+
+    <div class="pdf-h2">8. Toe Reinforcement (bottom, transverse)</div>
+    <div class="pdf-eq">
+      M_up from bearing (trapezoid q_face=${r.q_face_toe.toFixed(1)} → q_max=${r.q_toe_end.toFixed(1)} over L_toe=${(r.Lt*1000).toFixed(0)} mm) = ${r.M_toe_up.toFixed(1)} kNm/m<br>
+      Less self-weight = ${r.M_toe_base_down.toFixed(1)} kNm/m<br>
+      M_service_toe = ${r.M_toe_serv.toFixed(1)} kNm/m  →  M* = ${r.M_toe_star.toFixed(1)} kNm/m<br>
+      d = ${r.dToe.toFixed(0)} mm; ρ req = ${r.p_toe_req.toExponential(3)}; ρ_min = ${r.p_toe_min.toExponential(3)}<br>
+      A_st req = ${r.Ast_toe_req.toFixed(0)} mm²/m  · provided N${r.toeBar}@${r.toeSp} = ${r.Ast_toe_prov.toFixed(0)} mm²/m  ${verdict(r.toeFlexUtil)}
+    </div>
+
+    <div class="pdf-h2">9. Assumptions &amp; Limitations</div>
+    <div class="pdf-narrative">
+      <ul>
+        <li>Cantilever wall, isolated, low-seismicity zone, no groundwater (Eq 6.20 simplified form).</li>
+        <li>Drainage assumed adequate — granular drainage layer behind stem and weep holes provided.</li>
+        <li>Active pressure coefficient via Rankine–Bell, level fill simplification when β = 0.</li>
+        <li>Passive resistance in front of toe is <strong>ignored</strong> in stability per text recommendation.</li>
+        <li>Reinforcement sizing uses the empirical p ≈ 2.5 M*/d² shortcut from RCB 3e — verify with full AS 3600 strength analysis for final design.</li>
+        <li>Shear capacity uses simplified φV_uc with concrete-only contribution; detailed AS 3600 Cl 8.2.4 calculation recommended for high-shear cases.</li>
+        <li>Bearing capacity check is against a user-provided allowable q_a; bearing capacity calc per AS 5100/AS 4678 Annex F not performed.</li>
+        <li>Global slope-stability check is <strong>not</strong> performed — use a specialist tool (e.g. Aysen 2005 or Slide).</li>
+      </ul>
+    </div>
+    ${footer(3)}</div>`;
+
+  return p1 + p2 + p3;
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// SAVE / LOAD / EXAMPLE
+// ════════════════════════════════════════════════════════════════════════
+function getAllInputs() {
+  const inputs = {};
+  document.querySelectorAll('input, select').forEach(el => {
+    if (el.type === 'checkbox') inputs[el.id] = el.checked;
+    else inputs[el.id] = el.value;
+  });
+  inputs._S = { ...S, result: undefined };
+  return inputs;
+}
+function applyInputs(data) {
+  Object.entries(data).forEach(([k,v]) => {
+    if (k === '_S') return;
+    const el = document.getElementById(k);
+    if (!el) return;
+    if (el.type === 'checkbox') el.checked = !!v;
+    else el.value = v;
+  });
+  if (data._S) {
+    Object.assign(S, data._S);
+    syncChips();
+  }
+}
+function syncChips() {
+  const setActive = (groupId, attr, val) => {
+    document.querySelectorAll(`#${groupId} .chip`).forEach(c => {
+      c.classList.toggle('active', String(c.dataset[attr]) === String(val));
+    });
+  };
+  setActive('phiFillChips', 'phi', S.phiFill);
+  setActive('phiBaseChips', 'phi', S.phiBase);
+  setActive('deltaRatioChips', 'r', S.deltaRatio);
+  setActive('fcChips', 'fc', S.fc);
+  setActive('stemBarChips', 'bar', S.stemBar);
+  setActive('heelBarChips', 'bar', S.heelBar);
+  setActive('toeBarChips', 'bar', S.toeBar);
+  setActive('classChips', 'c', S.cls);
+  setActive('pressModeChips', 'mode', S.pressMode);
+}
+
+function loadExample63() {
+  document.getElementById('projectName').value = 'RCB Example 6.3 — Cantilever wall (4 m gravelly clay)';
+  document.getElementById('inH').value = 4000;
+  document.getElementById('inBeta').value = 0;
+  document.getElementById('inTstem').value = 300;
+  document.getElementById('inD').value = 300;
+  document.getElementById('inLtoe').value = 600;
+  document.getElementById('inLheel').value = 2100;
+  document.getElementById('inEmbed').value = 600;
+  document.getElementById('inBatter').value = 0;
+  document.getElementById('inGammaFill').value = 17;
+  document.getElementById('inCFill').value = 0;
+  document.getElementById('inSurch').value = 5;
+  document.getElementById('inGammaBase').value = 18;
+  document.getElementById('inCBase').value = 5;
+  document.getElementById('inQa').value = 250;
+  document.getElementById('inGammaC').value = 25;
+  document.getElementById('inCoverWall').value = 50;
+  document.getElementById('inCoverBase').value = 75;
+  document.getElementById('inFsy').value = 500;
+  document.getElementById('inGammaStb').value = 0.9;
+  document.getElementById('inGammaE').value = 1.5;
+  document.getElementById('inPsiC').value = 1.0;
+  document.getElementById('inStemSp').value = 260;
+  document.getElementById('inHeelSp').value = 260;
+  document.getElementById('inToeSp').value = 260;
+  document.getElementById('inStemHorBar').value = 16;
+  document.getElementById('inStemHorSp').value = 250;
+  document.getElementById('inLongBar').value = 12;
+  document.getElementById('inLongSp').value = 200;
+  document.getElementById('inKeyOn').checked = false;
+  S.phiFill = 30; S.phiBase = 30; S.deltaRatio = 0.75;
+  S.fc = 25; S.stemBar = 20; S.heelBar = 20; S.toeBar = 16;
+  S.cls = 'B'; S.pressMode = 'active';
+  syncChips();
+  scheduleUpdate();
+}
+
+function autoSizeWall() {
+  // Pick H/14 thicknesses and L = 0.6H as starting trial dimensions
+  const H = parseFloat(document.getElementById('inH').value);
+  const t = Math.max(200, Math.round(H/14/10)*10);
+  const D = t;
+  const L = Math.max(1000, Math.round(0.6*H/50)*50);
+  // Toe = L/3, heel = remainder
+  const Lt = Math.round(L/3/50)*50;
+  const Lh = L - Lt - t;
+  document.getElementById('inTstem').value = t;
+  document.getElementById('inD').value = D;
+  document.getElementById('inLtoe').value = Lt;
+  document.getElementById('inLheel').value = Lh;
+  scheduleUpdate();
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// EVENT WIRING + INIT
+// ════════════════════════════════════════════════════════════════════════
+
+function showError(title, msg) {
+  const box = document.getElementById('globalErrors');
+  if (!box) { console.error(title, msg); return; }
+  const el = document.createElement('div');
+  el.className = 'gerr';
+  el.innerHTML = '<span class="gerr-close" title="dismiss">×</span><strong>' + title + '</strong>' + msg;
+  el.querySelector('.gerr-close').addEventListener('click', () => el.remove());
+  box.appendChild(el);
+  box.classList.add('show');
+}
+window.addEventListener('error', e => showError('Runtime error', '<code>' + (e.message || 'unknown') + '</code>' + (e.filename ? ' line '+e.lineno : '')));
+window.addEventListener('unhandledrejection', e => showError('Async error', '<code>' + (e.reason && e.reason.message ? e.reason.message : String(e.reason)) + '</code>'));
+if (Array.isArray(window.__earlyErrors)) {
+  window.__earlyErrors.forEach(e => showError('Load error', '<code>' + e.msg + '</code>'));
+}
+function safe(label, fn) {
+  try { return fn(); } catch (e) {
+    console.error('[' + label + ']', e);
+    showError('Failed: ' + label, '<code>' + (e.message || e) + '</code>');
+    return null;
+  }
+}
+
+let updateScheduled = false;
+function scheduleUpdate() {
+  if (updateScheduled) return;
+  updateScheduled = true;
+  requestAnimationFrame(() => {
+    updateScheduled = false;
+    update();
+  });
+}
+function update() {
+  const r = safe('compute', () => compute());
+  if (!r) return;
+  S.result = r;
+  safe('hero', () => renderHero(r));
+  safe('helpers', () => renderHelpers(r));
+  safe('checks', () => renderChecks(r));
+  safe('forceTable', () => renderForceTable(r));
+  safe('drawMain', () => drawMain(r));
+  safe('chart', () => renderChart(r));
+}
+
+function wireChips(groupId, attr, cb) {
+  const grp = document.getElementById(groupId);
+  if (!grp) return;
+  grp.addEventListener('click', e => {
+    const ch = e.target.closest('.chip');
+    if (!ch) return;
+    grp.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    ch.classList.add('active');
+    cb(ch.dataset[attr]);
+  });
+}
+
+function init() {
+  if (typeof Chart === 'undefined') showError('Chart.js not loaded', 'Charts will be unavailable.');
+  if (typeof window.jspdf === 'undefined') showError('jsPDF not loaded', 'PDF export will be unavailable.');
+  if (typeof html2canvas === 'undefined') showError('html2canvas not loaded', 'PDF export will be unavailable.');
+
+  // Chip groups
+  wireChips('phiFillChips', 'phi', v => { S.phiFill = +v; scheduleUpdate(); });
+  wireChips('phiBaseChips', 'phi', v => { S.phiBase = +v; scheduleUpdate(); });
+  wireChips('deltaRatioChips', 'r', v => { S.deltaRatio = +v; scheduleUpdate(); });
+  wireChips('fcChips', 'fc', v => { S.fc = +v; scheduleUpdate(); });
+  wireChips('stemBarChips', 'bar', v => { S.stemBar = +v; scheduleUpdate(); });
+  wireChips('heelBarChips', 'bar', v => { S.heelBar = +v; scheduleUpdate(); });
+  wireChips('toeBarChips', 'bar', v => { S.toeBar = +v; scheduleUpdate(); });
+  wireChips('classChips', 'c', v => {
+    S.cls = v;
+    // Auto-set minimum surcharge per AS 4678 Class
+    const minSurch = v === 'A' ? 1.5 : v === 'B' ? 2.5 : 5.0;
+    if (parseFloat(document.getElementById('inSurch').value) < minSurch) {
+      document.getElementById('inSurch').value = minSurch;
+    }
+    scheduleUpdate();
+  });
+  wireChips('pressModeChips', 'mode', v => { S.pressMode = v; scheduleUpdate(); });
+
+  // All input changes trigger update
+  document.querySelectorAll('input, select').forEach(el => {
+    const evt = (el.type === 'checkbox') ? 'change' : 'input';
+    el.addEventListener(evt, () => scheduleUpdate());
+  });
+
+  // Card collapse
+  document.querySelectorAll('.toggle-collapse').forEach(t => {
+    t.addEventListener('click', () => {
+      const card = t.closest('.card');
+      card.classList.toggle('collapsed');
+      t.textContent = card.classList.contains('collapsed') ? '+' : '−';
+    });
+  });
+
+  // Geom tab switching
+  document.getElementById('geomTabs').addEventListener('click', e => {
+    const tab = e.target.closest('.tab'); if (!tab) return;
+    document.querySelectorAll('#geomTabs .tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    S.geomTab = tab.dataset.view;
+    scheduleUpdate();
+  });
+  // Chart tab switching
+  document.getElementById('chartTabs').addEventListener('click', e => {
+    const tab = e.target.closest('.tab'); if (!tab) return;
+    document.querySelectorAll('#chartTabs .tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    S.chartTab = tab.dataset.chart;
+    scheduleUpdate();
+  });
+  // Check tile click — toggle expansion
+  document.getElementById('checksGrid').addEventListener('click', e => {
+    const tile = e.target.closest('.check-tile');
+    if (!tile) return;
+    tile.classList.toggle('expanded');
+  });
+
+  // Action buttons
+  document.getElementById('btnLoadExample').addEventListener('click', loadExample63);
+  document.getElementById('btnAutoSize').addEventListener('click', autoSizeWall);
+  document.getElementById('btnSaveJSON').addEventListener('click', () => {
+    const data = JSON.stringify(getAllInputs(), null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const proj = document.getElementById('projectName').value || 'retaining_wall';
+    a.download = `${proj.replace(/[^\w-]+/g,'_')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+  document.getElementById('btnLoadJSON').addEventListener('click', () => {
+    document.getElementById('fileLoader').click();
+  });
+  document.getElementById('fileLoader').addEventListener('change', async e => {
+    const file = e.target.files[0]; if (!file) return;
+    const text = await file.text();
+    try {
+      const data = JSON.parse(text);
+      applyInputs(data);
+      scheduleUpdate();
+    } catch (err) { alert('Invalid JSON: ' + err.message); }
+  });
+  document.getElementById('btnPrintPDF').addEventListener('click', async () => {
+    const btn = document.getElementById('btnPrintPDF');
+    btn.disabled = true;
+    btn.textContent = 'Generating PDF…';
+    try { await generatePDF(S.result); }
+    catch (err) { console.error(err); alert('PDF generation failed: ' + err.message); }
+    finally {
+      btn.disabled = false;
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"/><rect x="6" y="14" width="12" height="8"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/></svg> Print Calculations';
+    }
+  });
+
+  // First compute (after layout settles, so canvas clientWidth/Height are valid)
+  syncChips();
+  // If URL hash requests example load, do that before first render
+  if (window.location.hash === '#example') {
+    loadExample63();
+  } else {
+    scheduleUpdate();
+  }
+  // Re-render once more after first paint to ensure canvases pick up correct sizes
+  requestAnimationFrame(() => requestAnimationFrame(() => scheduleUpdate()));
+  // Resize handler
+  window.addEventListener('resize', () => scheduleUpdate());
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+</script>
+
+</body>
+</html>
