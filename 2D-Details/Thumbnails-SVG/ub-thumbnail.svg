@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  UB (Universal Beam) thumbnail — hand-drawn drafter style.
+
+  Vector approach so the icon stays crisp at any size:
+    • feTurbulence + feDisplacementMap give clean geometry a subtle organic
+      wobble (looks like ink/pencil rather than CAD-perfect).
+    • A diagonal hatch pattern clipped to the I-section fills the steel
+      (AS 1100 cut-material convention).
+    • Letters are drawn as paths so the look does not depend on the host
+      machine having a specific handwriting font installed.
+
+  ViewBox 240×320 chosen to give the I-section the same generous breathing
+  room as the reference PNG.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 320"
+     stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <!-- Coarse wobble for the heavy outline — bigger displacement reads at
+         small sizes. -->
+    <filter id="ink-heavy" x="-3%" y="-3%" width="106%" height="106%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.022"
+                    numOctaves="2" seed="3" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="1.3"/>
+    </filter>
+
+    <!-- Fine wobble for hatching + lettering. Different seed so the noise
+         doesn't visibly correlate with the outline noise. -->
+    <filter id="ink-fine" x="-3%" y="-3%" width="106%" height="106%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.06"
+                    numOctaves="2" seed="11" result="n2"/>
+      <feDisplacementMap in="SourceGraphic" in2="n2" scale="0.7"/>
+    </filter>
+
+    <!-- 45° hatch — line spacing tuned so the section reads as "filled
+         steel" without the lines clumping at thumbnail scale. -->
+    <pattern id="hatch" patternUnits="userSpaceOnUse"
+             width="6" height="6" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="6" stroke="#222" stroke-width="0.55"/>
+    </pattern>
+
+    <!-- I-section profile, CW from top-left.
+         Outer flange corners square; inner flange/web junctions filleted
+         (4 unit radius) — matches AS/NZS 3679.1 root radius convention.
+         Centred horizontally on x=120. Width 130, depth 165.
+         Flange thickness 22, web 24. -->
+    <path id="ub-shape" d="
+      M 55,38   L 185,38   L 185,60
+      L 134,60  Q 130,60   130,64
+      L 130,176 Q 130,180  134,180
+      L 185,180 L 185,202 L 55,202 L 55,180
+      L 106,180 Q 110,180  110,176
+      L 110,64  Q 110,60   106,60
+      L 55,60   Z"/>
+
+    <clipPath id="ub-clip"><use href="#ub-shape"/></clipPath>
+  </defs>
+
+  <!-- Paper -->
+  <rect width="240" height="320" fill="#ffffff"/>
+
+  <!-- Hatched fill, clipped to the I-section. -->
+  <g clip-path="url(#ub-clip)" filter="url(#ink-fine)">
+    <rect x="50" y="33" width="140" height="174" fill="url(#hatch)"/>
+  </g>
+
+  <!-- Heavy outline -->
+  <g filter="url(#ink-heavy)">
+    <use href="#ub-shape" stroke="#1d1d1d" stroke-width="2.6" fill="none"/>
+  </g>
+
+  <!-- "UB" hand-printed lettering + underline.
+       Drawn as paths so it's font-independent. Letter height 22, slim
+       stroke (1.5), centred under the section. -->
+  <g filter="url(#ink-fine)" stroke="#1d1d1d" stroke-width="1.5"
+     fill="none">
+    <!-- U: two verticals joined by a soft semicircle at the base. -->
+    <path d="M 107,250
+             L 107,265 Q 107,271 113,271
+             L 117,271 Q 123,271 123,265
+             L 123,250"/>
+    <!-- B: vertical stroke + two stacked bumps. -->
+    <path d="M 130,250 L 130,271
+             M 130,250 L 137,250
+             Q 142,250 142,255
+             Q 142,260 137,260
+             L 130,260
+             M 130,260 L 138,260
+             Q 144,260 144,265.5
+             Q 144,271 138,271
+             L 130,271"/>
+    <!-- Underline (slightly past the lettering on each side, like the ref) -->
+    <path d="M 102,278 L 148,278" stroke-width="1.1"/>
+  </g>
+</svg>
